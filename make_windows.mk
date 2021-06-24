@@ -4,6 +4,7 @@
 
 COMPILER_FLAGS = \
 	-I "C:/local/include/"  \
+	-I "C:/local/opt/VulkanSDK/1.2.176.1/Include" \
 	-FC -GS -MTd -MP18 -W4 -WL -WX -Z7 -Zo -diagnostics:column -fp:fast -nologo \
 	-sdl -guard:cf -permissive- -std:c++latest \
 	-GL -Oi -O2 \
@@ -12,9 +13,10 @@ COMPILER_FLAGS = \
 
 LINKER_FLAGS = \
 	-LIBPATH:"C:/local/lib/" \
+	-LIBPATH:"C:/local/opt/VulkanSDK/1.2.176.1/Lib" \
 	/SUBSYSTEM:console \
 	-CGTHREADS:8 -DEBUG:FULL -INCREMENTAL:NO -opt:ref \
-	freetype.lib opengl32.lib glfw3.lib assimp-vc142-mtd.lib \
+	vulkan-1.lib freetype.lib opengl32.lib glfw3.lib assimp-vc142-mtd.lib \
 	user32.lib gdi32.lib shell32.lib
 
 .PHONY: unity run
@@ -28,4 +30,4 @@ unity:
 	ctime -end bin/peony.ctm %LastError%
 
 run:
-	bin/peony.exe
+	@bin/peony.exe
