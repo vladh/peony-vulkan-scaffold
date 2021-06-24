@@ -7,6 +7,7 @@ COMPILER_FLAGS = \
 	-I/usr/local/opt/glfw/include \
 	-I/usr/local/opt/assimp/include \
 	-I/usr/local/opt/freetype/include/freetype2 \
+	-I$(HOME)/.local/opt/VulkanSDK/1.2.176.1/macOS/include \
 	-D_FORTIFY_SOURCE=2 -ggdb3 -Og -Wall -Werror -Wextra -pedantic \
 	-std=c++2a \
 	-Wno-deprecated-volatile -Wno-unused-function -Wno-unknown-pragmas -Wno-comment \
@@ -16,7 +17,8 @@ LINKER_FLAGS = \
 	-L/usr/local/opt/glfw/lib \
 	-L/usr/local/opt/assimp/lib \
 	-L/usr/local/opt/freetype/lib \
-	-lfreetype -lglfw -lassimp -lm
+	-L$(HOME)/.local/opt/VulkanSDK/1.2.176.1/macOS/lib \
+	-lvulkan -lfreetype -lglfw -lassimp -lm
 
 .PHONY: unity unity-bundle run
 
