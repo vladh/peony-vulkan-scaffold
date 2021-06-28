@@ -2,5 +2,7 @@
 
 #include <vulkan/vulkan.h>
 
-void vulkan__init(VkInstance *instance);
-void vulkan__destroy(VkInstance *instance);
+namespace vulkan {
+  void init(VkInstance *instance);
+  void destroy(VkInstance *instance);
+}

@@ -2,6 +2,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include "vulkan.hpp"
 #include "types.hpp"
 
 
@@ -34,11 +35,11 @@ static bool32 create_instance(VkInstance *instance) {
 }
 
 
-void vulkan__init(VkInstance *instance) {
+void vulkan::init(VkInstance *instance) {
   create_instance(instance);
 }
 
 
-void vulkan__destroy(VkInstance *instance) {
+void vulkan::destroy(VkInstance *instance) {
   vkDestroyInstance(*instance, nullptr);
 }
