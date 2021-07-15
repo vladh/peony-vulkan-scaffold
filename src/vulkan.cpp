@@ -12,6 +12,7 @@
 constexpr u32 const MAX_N_REQUIRED_EXTENSIONS = 256;
 constexpr u32 const MAX_N_PHYSICAL_DEVICES = 8;
 constexpr u32 const MAX_N_QUEUE_FAMILIES = 64;
+constexpr u32 const MAX_N_QUEUES = 64;
 constexpr bool const USE_VALIDATION = true;
 constexpr char const * const VALIDATION_LAYERS[] = {
   "VK_LAYER_KHRONOS_validation",
@@ -51,12 +52,12 @@ static void get_required_extensions(
 }
 
 
-static bool create_instance(
+static bool init_instance(
   VkState *vk_state,
   VkDebugUtilsMessengerCreateInfoEXT *debug_messenger_create_info
 ) {
   // Initialise info about our application (its name etc.)
-  VkApplicationInfo app_info = {
+  VkApplicationInfo const app_info = {
     .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
     .pApplicationName = "Peony",
     .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
@@ -65,6 +66,7 @@ static bool create_instance(
     .apiVersion = VK_API_VERSION_1_0,
   };
 
+  // Initialise other creation parameters such as required extensions
   VkInstanceCreateInfo create_info = {
     .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
     .pApplicationInfo = &app_info,
@@ -76,6 +78,7 @@ static bool create_instance(
   create_info.enabledExtensionCount = n_required_extensions;
   create_info.ppEnabledExtensionNames = required_extensions;
 
+  // Set validation layer creation options
   if (USE_VALIDATION) {
     create_info.enabledLayerCount = LEN(VALIDATION_LAYERS);
     create_info.ppEnabledLayerNames = VALIDATION_LAYERS;
@@ -104,7 +107,7 @@ static bool ensure_validation_layers_supported() {
   vkEnumerateInstanceLayerProperties(&n_available_layers, available_layers);
 
   // Compare with desired layers
-  u32 n_validation_layers = LEN(VALIDATION_LAYERS);
+  u32 const n_validation_layers = LEN(VALIDATION_LAYERS);
   range_named (idx_desired, 0, n_validation_layers) {
     bool did_find_layer = false;
     range_named (idx_available, 0, n_available_layers) {
@@ -133,7 +136,7 @@ static VkResult CreateDebugUtilsMessengerEXT(
   const VkAllocationCallbacks *p_allocator,
   VkDebugUtilsMessengerEXT *p_debug_messenger
 ) {
-  auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
+  auto const func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
     instance, "vkCreateDebugUtilsMessengerEXT"
   );
   if (func == nullptr) {
@@ -148,7 +151,7 @@ static void DestroyDebugUtilsMessengerEXT(
   VkDebugUtilsMessengerEXT debug_messenger,
   const VkAllocationCallbacks* p_allocator
 ) {
-  auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
+  auto const func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
     instance, "vkDestroyDebugUtilsMessengerEXT"
   );
   if (func == nullptr) {
@@ -176,7 +179,9 @@ static void init_debug_messenger(
 }
 
 
-static QueueFamilyIndices get_queue_family_indices(VkPhysicalDevice physical_device) {
+static QueueFamilyIndices get_queue_family_indices(
+  VkPhysicalDevice physical_device, VkSurfaceKHR surface
+) {
   QueueFamilyIndices indices = {};
   VkQueueFamilyProperties queue_families[MAX_N_QUEUE_FAMILIES];
   u32 n_queue_families = 0;
@@ -186,8 +191,15 @@ static QueueFamilyIndices get_queue_family_indices(VkPhysicalDevice physical_dev
 
   range (0, n_queue_families) {
     VkQueueFamilyProperties *family = &queue_families[idx];
+    VkBool32 supports_presentation = false;
+    vkGetPhysicalDeviceSurfaceSupportKHR(
+      physical_device, idx, surface, &supports_presentation
+    );
     if (family->queueFlags & VK_QUEUE_GRAPHICS_BIT) {
       indices.idx_graphics_family_queue = idx;
+    }
+    if (supports_presentation) {
+      indices.idx_presentation_family_queue = idx;
     }
   }
 
@@ -195,14 +207,21 @@ static QueueFamilyIndices get_queue_family_indices(VkPhysicalDevice physical_dev
 }
 
 
-static bool is_physical_device_suitable(
-  VkPhysicalDevice physical_device, QueueFamilyIndices queue_family_indices
-) {
-  return queue_family_indices.idx_graphics_family_queue.has_value();
+static bool are_queue_family_indices_complete(QueueFamilyIndices queue_family_indices) {
+  return queue_family_indices.idx_graphics_family_queue.has_value() &&
+    queue_family_indices.idx_presentation_family_queue.has_value();
 }
 
 
-static void pick_physical_device(VkState *vk_state) {
+static bool is_physical_device_suitable(
+  VkPhysicalDevice physical_device, QueueFamilyIndices queue_family_indices
+) {
+  return are_queue_family_indices_complete(queue_family_indices);
+}
+
+
+static void init_physical_device(VkState *vk_state) {
+  // Get all physical devices
   vk_state->physical_device = VK_NULL_HANDLE;
 
   VkPhysicalDevice physical_devices[MAX_N_PHYSICAL_DEVICES];
@@ -214,11 +233,11 @@ static void pick_physical_device(VkState *vk_state) {
   assert(n_devices < MAX_N_PHYSICAL_DEVICES);
   vkEnumeratePhysicalDevices(vk_state->instance, &n_devices, physical_devices);
 
+  // Check which physical device we actually want
   QueueFamilyIndices queue_family_indices;
-
   range (0, n_devices) {
     VkPhysicalDevice *device = &physical_devices[idx];
-    queue_family_indices = get_queue_family_indices(*device);
+    queue_family_indices = get_queue_family_indices(*device, vk_state->surface);
     if (is_physical_device_suitable(*device, queue_family_indices)) {
       vk_state->physical_device = *device;
       vk_state->queue_family_indices = queue_family_indices;
@@ -231,20 +250,39 @@ static void pick_physical_device(VkState *vk_state) {
 }
 
 
-void make_logical_device(VkState *vk_state) {
-  f32 queue_priorities = 1.0f;
-
-  VkDeviceQueueCreateInfo queue_create_info = {
-    .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-    .queueFamilyIndex = vk_state->queue_family_indices.idx_graphics_family_queue.value(),
-    .queueCount = 1,
-    .pQueuePriorities = &queue_priorities,
+static void init_logical_device(VkState *vk_state) {
+  VkDeviceQueueCreateInfo queue_create_infos[MAX_N_QUEUES];
+  u32 n_queue_create_infos = 0;
+  u32 potential_queues[2] = {
+    vk_state->queue_family_indices.idx_graphics_family_queue.value(),
+    vk_state->queue_family_indices.idx_presentation_family_queue.value(),
   };
+  u32 const n_potential_queues = 2;
+  f32 const queue_priorities = 1.0f;
+
+  range (0, n_potential_queues) {
+    u32 const potential_queue = potential_queues[idx];
+    bool is_already_created = false;
+    range_named (idx_existing, 0, n_queue_create_infos) {
+      if (queue_create_infos[idx_existing].queueFamilyIndex == potential_queue) {
+        is_already_created = true;
+      }
+    }
+    if (is_already_created) {
+      break;
+    }
+    queue_create_infos[n_queue_create_infos++] = {
+      .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+      .queueFamilyIndex = potential_queue,
+      .queueCount = 1,
+      .pQueuePriorities = &queue_priorities,
+    };
+  }
   VkPhysicalDeviceFeatures device_features = {};
   VkDeviceCreateInfo device_create_info = {
     .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-    .queueCreateInfoCount = 1,
-    .pQueueCreateInfos = &queue_create_info,
+    .queueCreateInfoCount = n_queue_create_infos,
+    .pQueueCreateInfos = queue_create_infos,
     .enabledExtensionCount = 0,
     .pEnabledFeatures = &device_features,
   };
@@ -263,10 +301,26 @@ void make_logical_device(VkState *vk_state) {
     0,
     &vk_state->graphics_queue
   );
+  vkGetDeviceQueue(
+    vk_state->device,
+    vk_state->queue_family_indices.idx_presentation_family_queue.value(),
+    0,
+    &vk_state->presentation_queue
+  );
 }
 
 
-void vulkan::init(VkState *vk_state) {
+static void init_surface(VkState *vk_state, GLFWwindow *window) {
+  if (
+    glfwCreateWindowSurface(vk_state->instance, window, nullptr, &vk_state->surface) !=
+    VK_SUCCESS
+  ) {
+    logs::fatal("Could not create window surface.");
+  }
+}
+
+
+void vulkan::init(VkState *vk_state, GLFWwindow *window) {
   VkDebugUtilsMessengerCreateInfoEXT debug_messenger_create_info = {};
 
   if (USE_VALIDATION) {
@@ -289,10 +343,11 @@ void vulkan::init(VkState *vk_state) {
   }
 
 
-  create_instance(vk_state, &debug_messenger_create_info);
+  init_instance(vk_state, &debug_messenger_create_info);
   init_debug_messenger(vk_state, &debug_messenger_create_info);
-  pick_physical_device(vk_state);
-  make_logical_device(vk_state);
+  init_surface(vk_state, window);
+  init_physical_device(vk_state);
+  init_logical_device(vk_state);
 }
 
 
@@ -301,5 +356,6 @@ void vulkan::destroy(VkState *vk_state) {
   if (USE_VALIDATION) {
     DestroyDebugUtilsMessengerEXT(vk_state->instance, vk_state->debug_messenger, nullptr);
   }
+  vkDestroySurfaceKHR(vk_state->instance, vk_state->surface, nullptr);
   vkDestroyInstance(vk_state->instance, nullptr);
 }

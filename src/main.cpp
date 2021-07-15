@@ -44,7 +44,7 @@ int main() {
   init_window(&state->window);
   defer { destroy_window(state->window); };
 
-  vulkan::init(&state->vk_state);
+  vulkan::init(&state->vk_state, state->window);
   defer { vulkan::destroy(&state->vk_state); };
 
   run_main_loop(state);
