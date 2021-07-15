@@ -10,6 +10,8 @@
 
 
 constexpr u32 const MAX_N_REQUIRED_EXTENSIONS = 256;
+constexpr u32 const MAX_N_PHYSICAL_DEVICES = 8;
+constexpr u32 const MAX_N_QUEUE_FAMILIES = 64;
 constexpr bool const USE_VALIDATION = true;
 constexpr char const * const VALIDATION_LAYERS[] = {
   "VK_LAYER_KHRONOS_validation",
@@ -40,6 +42,7 @@ static void get_required_extensions(
   if (USE_VALIDATION) {
     required_extensions[(*n_required_extensions)++] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
   }
+  assert(*n_required_extensions < MAX_N_REQUIRED_EXTENSIONS);
 }
 
 
@@ -48,7 +51,7 @@ static bool create_instance(
   VkDebugUtilsMessengerCreateInfoEXT *debug_messenger_create_info
 ) {
   // Initialise info about our application (its name etc.)
-  VkApplicationInfo app_info{};
+  VkApplicationInfo app_info = {};
   app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
   app_info.pApplicationName = "Peony";
   app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -56,7 +59,7 @@ static bool create_instance(
   app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
   app_info.apiVersion = VK_API_VERSION_1_0;
 
-  VkInstanceCreateInfo create_info{};
+  VkInstanceCreateInfo create_info = {};
   create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
   create_info.pApplicationInfo = &app_info;
 
@@ -166,8 +169,60 @@ static void init_debug_messenger(
 }
 
 
+static QueueFamilyIndices get_queue_family_indices(VkPhysicalDevice device) {
+  QueueFamilyIndices indices = {};
+  VkQueueFamilyProperties queue_families[MAX_N_QUEUE_FAMILIES];
+  u32 n_queue_families = 0;
+  vkGetPhysicalDeviceQueueFamilyProperties(device, &n_queue_families, nullptr);
+  assert(n_queue_families < MAX_N_QUEUE_FAMILIES);
+  vkGetPhysicalDeviceQueueFamilyProperties(device, &n_queue_families, queue_families);
+
+  range (0, n_queue_families) {
+    VkQueueFamilyProperties *family = &queue_families[idx];
+    if (family->queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+      indices.idx_graphics_family_queue = idx;
+    }
+  }
+
+  return indices;
+}
+
+
+static bool is_physical_device_suitable(
+  VkPhysicalDevice device, QueueFamilyIndices queue_family_indices
+) {
+  return queue_family_indices.idx_graphics_family_queue.has_value();
+}
+
+
+static void pick_physical_device(VkState *vk_state) {
+  vk_state->physical_device = VK_NULL_HANDLE;
+
+  VkPhysicalDevice devices[MAX_N_PHYSICAL_DEVICES];
+  u32 n_devices = 0;
+  vkEnumeratePhysicalDevices(vk_state->instance, &n_devices, nullptr);
+  if (n_devices == 0) {
+    logs::fatal("Could not find any physical devices.");
+  }
+  assert(n_devices < MAX_N_PHYSICAL_DEVICES);
+  vkEnumeratePhysicalDevices(vk_state->instance, &n_devices, devices);
+
+  range (0, n_devices) {
+    VkPhysicalDevice *device = &devices[idx];
+    QueueFamilyIndices queue_family_indices = get_queue_family_indices(*device);
+    if (is_physical_device_suitable(*device, queue_family_indices)) {
+      vk_state->physical_device = *device;
+    }
+  }
+
+  if (vk_state->physical_device == VK_NULL_HANDLE) {
+    logs::fatal("Could not find any suitable physical devices.");
+  }
+}
+
+
 void vulkan::init(VkState *vk_state) {
-  VkDebugUtilsMessengerCreateInfoEXT debug_messenger_create_info{};
+  VkDebugUtilsMessengerCreateInfoEXT debug_messenger_create_info = {};
 
   if (USE_VALIDATION) {
     if (!ensure_validation_layers_supported()) {
@@ -181,8 +236,9 @@ void vulkan::init(VkState *vk_state) {
       /* VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | */
       VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
       VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    debug_messenger_create_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
-      | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+    debug_messenger_create_info.messageType =
+      VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+      VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
       VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
     debug_messenger_create_info.pfnUserCallback = debug_callback;
   }
@@ -190,6 +246,7 @@ void vulkan::init(VkState *vk_state) {
 
   create_instance(vk_state, &debug_messenger_create_info);
   init_debug_messenger(vk_state, &debug_messenger_create_info);
+  pick_physical_device(vk_state);
 }
 
 
