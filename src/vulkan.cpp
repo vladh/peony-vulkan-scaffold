@@ -9,40 +9,72 @@
 #include "types.hpp"
 
 
+constexpr u32 const MAX_N_REQUIRED_EXTENSIONS = 256;
 constexpr bool const USE_VALIDATION = true;
 constexpr char const * const VALIDATION_LAYERS[] = {
   "VK_LAYER_KHRONOS_validation",
 };
 
 
-static bool32 create_instance(VkInstance *instance) {
-  // Initialise info about our application (its name etc.)
-  VkApplicationInfo appInfo{};
-  appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-  appInfo.pApplicationName = "Peony";
-  appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-  appInfo.pEngineName = "peony";
-  appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-  appInfo.apiVersion = VK_API_VERSION_1_0;
+static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
+  VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
+  VkDebugUtilsMessageTypeFlagsEXT message_type,
+  const VkDebugUtilsMessengerCallbackDataEXT* p_callback_data,
+  void* p_user_data
+) {
+  logs::info("(Validation layer) %s", p_callback_data->pMessage);
+  return VK_FALSE;
+}
 
-  VkInstanceCreateInfo createInfo{};
-  createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-  createInfo.pApplicationInfo = &appInfo;
+
+static void get_required_extensions(
+  char const *required_extensions[MAX_N_REQUIRED_EXTENSIONS],
+  u32 *n_required_extensions
+) {
+  char const **glfw_extensions = glfwGetRequiredInstanceExtensions(
+    n_required_extensions
+  );
+  range (0, *n_required_extensions) {
+    required_extensions[idx] = glfw_extensions[idx];
+  }
   if (USE_VALIDATION) {
-    createInfo.enabledLayerCount = LEN(VALIDATION_LAYERS);
-    createInfo.ppEnabledLayerNames = VALIDATION_LAYERS;
+    required_extensions[(*n_required_extensions)++] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
+  }
+}
+
+
+static bool create_instance(
+  VkState *vk_state,
+  VkDebugUtilsMessengerCreateInfoEXT *debug_messenger_create_info
+) {
+  // Initialise info about our application (its name etc.)
+  VkApplicationInfo app_info{};
+  app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+  app_info.pApplicationName = "Peony";
+  app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+  app_info.pEngineName = "peony";
+  app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+  app_info.apiVersion = VK_API_VERSION_1_0;
+
+  VkInstanceCreateInfo create_info{};
+  create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+  create_info.pApplicationInfo = &app_info;
+
+  char const *required_extensions[MAX_N_REQUIRED_EXTENSIONS];
+  u32 n_required_extensions;
+  get_required_extensions(required_extensions, &n_required_extensions);
+  create_info.enabledExtensionCount = n_required_extensions;
+  create_info.ppEnabledExtensionNames = required_extensions;
+
+  if (USE_VALIDATION) {
+    create_info.enabledLayerCount = LEN(VALIDATION_LAYERS);
+    create_info.ppEnabledLayerNames = VALIDATION_LAYERS;
+    create_info.pNext = debug_messenger_create_info;
   } else {
-    createInfo.enabledLayerCount = 0;
+    create_info.enabledLayerCount = 0;
   }
 
-  uint32 glfwExtensionCount = 0;
-  char const **glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-  createInfo.enabledExtensionCount = glfwExtensionCount;
-  createInfo.ppEnabledExtensionNames = glfwExtensions;
-
-  createInfo.enabledLayerCount = 0;
-
-  if (vkCreateInstance(&createInfo, nullptr, instance) != VK_SUCCESS) {
+  if (vkCreateInstance(&create_info, nullptr, &vk_state->instance) != VK_SUCCESS) {
     return false;
   }
 
@@ -50,9 +82,9 @@ static bool32 create_instance(VkInstance *instance) {
 }
 
 
-bool ensure_validation_layers_supported() {
+static bool ensure_validation_layers_supported() {
   // Get available layers
-  uint32 n_available_layers;
+  u32 n_available_layers;
   vkEnumerateInstanceLayerProperties(&n_available_layers, nullptr);
 
   VkLayerProperties *available_layers = (VkLayerProperties*)calloc(
@@ -62,9 +94,9 @@ bool ensure_validation_layers_supported() {
   vkEnumerateInstanceLayerProperties(&n_available_layers, available_layers);
 
   // Compare with desired layers
-  uint32 n_validation_layers = LEN(VALIDATION_LAYERS);
+  u32 n_validation_layers = LEN(VALIDATION_LAYERS);
   range_named (idx_desired, 0, n_validation_layers) {
-    bool32 did_find_layer = false;
+    bool did_find_layer = false;
     range_named (idx_available, 0, n_available_layers) {
       if (pstr_eq(
           available_layers[idx_available].layerName,
@@ -85,16 +117,85 @@ bool ensure_validation_layers_supported() {
 }
 
 
-void vulkan::init(VkInstance *instance) {
+static VkResult CreateDebugUtilsMessengerEXT(
+  VkInstance instance,
+  const VkDebugUtilsMessengerCreateInfoEXT *p_create_info,
+  const VkAllocationCallbacks *p_allocator,
+  VkDebugUtilsMessengerEXT *p_debug_messenger
+) {
+  auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
+    instance, "vkCreateDebugUtilsMessengerEXT"
+  );
+  if (func == nullptr) {
+    return VK_ERROR_EXTENSION_NOT_PRESENT;
+  }
+  return func(instance, p_create_info, p_allocator, p_debug_messenger);
+}
+
+
+static void DestroyDebugUtilsMessengerEXT(
+  VkInstance instance,
+  VkDebugUtilsMessengerEXT debug_messenger,
+  const VkAllocationCallbacks* p_allocator
+) {
+  auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
+    instance, "vkDestroyDebugUtilsMessengerEXT"
+  );
+  if (func == nullptr) {
+    return;
+  }
+  func(instance, debug_messenger, p_allocator);
+}
+
+
+static void init_debug_messenger(
+  VkState *vk_state,
+  VkDebugUtilsMessengerCreateInfoEXT *debug_messenger_create_info
+) {
+  if (!USE_VALIDATION) {
+    return;
+  }
+
+  if (
+    CreateDebugUtilsMessengerEXT(
+      vk_state->instance, debug_messenger_create_info, nullptr, &vk_state->debug_messenger
+    ) != VK_SUCCESS
+  ) {
+    logs::fatal("Could not set up debug messenger.");
+  }
+}
+
+
+void vulkan::init(VkState *vk_state) {
+  VkDebugUtilsMessengerCreateInfoEXT debug_messenger_create_info{};
+
   if (USE_VALIDATION) {
     if (!ensure_validation_layers_supported()) {
       logs::fatal("Could not get required validation layers.");
     }
+
+    debug_messenger_create_info.sType =
+      VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+    debug_messenger_create_info.messageSeverity =
+      /* VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | */
+      /* VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | */
+      VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+      VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    debug_messenger_create_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
+      | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+      VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    debug_messenger_create_info.pfnUserCallback = debug_callback;
   }
-  create_instance(instance);
+
+
+  create_instance(vk_state, &debug_messenger_create_info);
+  init_debug_messenger(vk_state, &debug_messenger_create_info);
 }
 
 
-void vulkan::destroy(VkInstance *instance) {
-  vkDestroyInstance(*instance, nullptr);
+void vulkan::destroy(VkState *vk_state) {
+  if (USE_VALIDATION) {
+    DestroyDebugUtilsMessengerEXT(vk_state->instance, vk_state->debug_messenger, nullptr);
+  }
+  vkDestroyInstance(vk_state->instance, nullptr);
 }

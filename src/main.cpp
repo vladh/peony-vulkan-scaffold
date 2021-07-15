@@ -12,7 +12,7 @@
 
 struct State {
   GLFWwindow *window;
-  VkInstance instance;
+  VkState vk_state;
 };
 
 
@@ -44,8 +44,8 @@ int main() {
   init_window(&state->window);
   defer { destroy_window(state->window); };
 
-  vulkan::init(&state->instance);
-  defer { vulkan::destroy(&state->instance); };
+  vulkan::init(&state->vk_state);
+  defer { vulkan::destroy(&state->vk_state); };
 
   run_main_loop(state);
 
