@@ -24,6 +24,11 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
   const VkDebugUtilsMessengerCallbackDataEXT* p_callback_data,
   void* p_user_data
 ) {
+  if (
+    strstr(p_callback_data->pMessage, "invalid layer manifest file version") != nullptr
+  ) {
+    return VK_FALSE;
+  }
   logs::info("(Validation layer) %s", p_callback_data->pMessage);
   return VK_FALSE;
 }
@@ -51,17 +56,19 @@ static bool create_instance(
   VkDebugUtilsMessengerCreateInfoEXT *debug_messenger_create_info
 ) {
   // Initialise info about our application (its name etc.)
-  VkApplicationInfo app_info = {};
-  app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-  app_info.pApplicationName = "Peony";
-  app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-  app_info.pEngineName = "peony";
-  app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-  app_info.apiVersion = VK_API_VERSION_1_0;
+  VkApplicationInfo app_info = {
+    .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+    .pApplicationName = "Peony",
+    .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+    .pEngineName = "peony",
+    .engineVersion = VK_MAKE_VERSION(1, 0, 0),
+    .apiVersion = VK_API_VERSION_1_0,
+  };
 
-  VkInstanceCreateInfo create_info = {};
-  create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-  create_info.pApplicationInfo = &app_info;
+  VkInstanceCreateInfo create_info = {
+    .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+    .pApplicationInfo = &app_info,
+  };
 
   char const *required_extensions[MAX_N_REQUIRED_EXTENSIONS];
   u32 n_required_extensions;
@@ -169,13 +176,13 @@ static void init_debug_messenger(
 }
 
 
-static QueueFamilyIndices get_queue_family_indices(VkPhysicalDevice device) {
+static QueueFamilyIndices get_queue_family_indices(VkPhysicalDevice physical_device) {
   QueueFamilyIndices indices = {};
   VkQueueFamilyProperties queue_families[MAX_N_QUEUE_FAMILIES];
   u32 n_queue_families = 0;
-  vkGetPhysicalDeviceQueueFamilyProperties(device, &n_queue_families, nullptr);
+  vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &n_queue_families, nullptr);
   assert(n_queue_families < MAX_N_QUEUE_FAMILIES);
-  vkGetPhysicalDeviceQueueFamilyProperties(device, &n_queue_families, queue_families);
+  vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &n_queue_families, queue_families);
 
   range (0, n_queue_families) {
     VkQueueFamilyProperties *family = &queue_families[idx];
@@ -189,7 +196,7 @@ static QueueFamilyIndices get_queue_family_indices(VkPhysicalDevice device) {
 
 
 static bool is_physical_device_suitable(
-  VkPhysicalDevice device, QueueFamilyIndices queue_family_indices
+  VkPhysicalDevice physical_device, QueueFamilyIndices queue_family_indices
 ) {
   return queue_family_indices.idx_graphics_family_queue.has_value();
 }
@@ -198,26 +205,64 @@ static bool is_physical_device_suitable(
 static void pick_physical_device(VkState *vk_state) {
   vk_state->physical_device = VK_NULL_HANDLE;
 
-  VkPhysicalDevice devices[MAX_N_PHYSICAL_DEVICES];
+  VkPhysicalDevice physical_devices[MAX_N_PHYSICAL_DEVICES];
   u32 n_devices = 0;
   vkEnumeratePhysicalDevices(vk_state->instance, &n_devices, nullptr);
   if (n_devices == 0) {
     logs::fatal("Could not find any physical devices.");
   }
   assert(n_devices < MAX_N_PHYSICAL_DEVICES);
-  vkEnumeratePhysicalDevices(vk_state->instance, &n_devices, devices);
+  vkEnumeratePhysicalDevices(vk_state->instance, &n_devices, physical_devices);
+
+  QueueFamilyIndices queue_family_indices;
 
   range (0, n_devices) {
-    VkPhysicalDevice *device = &devices[idx];
-    QueueFamilyIndices queue_family_indices = get_queue_family_indices(*device);
+    VkPhysicalDevice *device = &physical_devices[idx];
+    queue_family_indices = get_queue_family_indices(*device);
     if (is_physical_device_suitable(*device, queue_family_indices)) {
       vk_state->physical_device = *device;
+      vk_state->queue_family_indices = queue_family_indices;
     }
   }
 
   if (vk_state->physical_device == VK_NULL_HANDLE) {
     logs::fatal("Could not find any suitable physical devices.");
   }
+}
+
+
+void make_logical_device(VkState *vk_state) {
+  f32 queue_priorities = 1.0f;
+
+  VkDeviceQueueCreateInfo queue_create_info = {
+    .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+    .queueFamilyIndex = vk_state->queue_family_indices.idx_graphics_family_queue.value(),
+    .queueCount = 1,
+    .pQueuePriorities = &queue_priorities,
+  };
+  VkPhysicalDeviceFeatures device_features = {};
+  VkDeviceCreateInfo device_create_info = {
+    .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+    .queueCreateInfoCount = 1,
+    .pQueueCreateInfos = &queue_create_info,
+    .enabledExtensionCount = 0,
+    .pEnabledFeatures = &device_features,
+  };
+
+  if (
+    vkCreateDevice(
+      vk_state->physical_device, &device_create_info, nullptr, &vk_state->device
+    ) != VK_SUCCESS
+  ) {
+    logs::fatal("Could not create logical device.");
+  }
+
+  vkGetDeviceQueue(
+    vk_state->device,
+    vk_state->queue_family_indices.idx_graphics_family_queue.value(),
+    0,
+    &vk_state->graphics_queue
+  );
 }
 
 
@@ -247,10 +292,12 @@ void vulkan::init(VkState *vk_state) {
   create_instance(vk_state, &debug_messenger_create_info);
   init_debug_messenger(vk_state, &debug_messenger_create_info);
   pick_physical_device(vk_state);
+  make_logical_device(vk_state);
 }
 
 
 void vulkan::destroy(VkState *vk_state) {
+  vkDestroyDevice(vk_state->device, nullptr);
   if (USE_VALIDATION) {
     DestroyDebugUtilsMessengerEXT(vk_state->instance, vk_state->debug_messenger, nullptr);
   }

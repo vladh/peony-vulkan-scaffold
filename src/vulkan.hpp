@@ -12,6 +12,9 @@ struct VkState {
   VkInstance instance;
   VkDebugUtilsMessengerEXT debug_messenger;
   VkPhysicalDevice physical_device;
+  QueueFamilyIndices queue_family_indices;
+  VkDevice device;
+  VkQueue graphics_queue;
 };
 
 namespace vulkan {
