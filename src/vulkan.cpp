@@ -591,20 +591,51 @@ static void init_image_views(VkState *vk_state) {
 }
 
 
+static VkShaderModule init_shader_module(
+  VkState *vk_state, u8 const *shader, size_t size
+) {
+  VkShaderModuleCreateInfo create_info = {
+    .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+    .codeSize = size,
+    .pCode = (u32*)shader,
+  };
+
+  VkShaderModule shader_module;
+  if (
+    vkCreateShaderModule(vk_state->device, &create_info, nullptr, &shader_module) !=
+    VK_SUCCESS
+  ) {
+    logs::fatal("Could not create shader module.");
+  }
+
+  return shader_module;
+}
+
+
 static void init_pipeline(VkState *vk_state) {
   MemoryPool pool = {};
 
-  uint32 vert_shader_size;
-  char const *vert_shader = files::load_file(
+  size_t vert_shader_size;
+  u8 *vert_shader = files::load_file_to_pool_u8(
     &pool, "bin/shaders/test.vert.spv", &vert_shader_size);
 
-  uint32 frag_shader_size;
-  char const *frag_shader = files::load_file(
+  size_t frag_shader_size;
+  u8 *frag_shader = files::load_file_to_pool_u8(
     &pool, "bin/shaders/test.frag.spv", &frag_shader_size);
 
   logs::info("vert_shader size: %d", vert_shader_size);
   logs::info("frag_shader size: %d", frag_shader_size);
   logs::info("pool.used: %d", pool.used);
+
+  VkShaderModule vert_shader_module = init_shader_module(
+    vk_state, vert_shader, vert_shader_size);
+  VkShaderModule frag_shader_module = init_shader_module(
+    vk_state, frag_shader, frag_shader_size);
+
+
+
+  vkDestroyShaderModule(vk_state->device, vert_shader_module, nullptr);
+  vkDestroyShaderModule(vk_state->device, frag_shader_module, nullptr);
 }
 
 

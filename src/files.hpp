@@ -17,11 +17,15 @@ namespace files {
     const char *path, int32 *width, int32 *height, int32 *n_channels
   );
   void free_image(unsigned char *image_data);
-  uint32 get_file_size(const char *path);
-  const char* load_file(
-    MemoryPool *memory_pool, const char *path, uint32 *file_size
+
+  u32 get_file_size(char const * const path);
+  char* load_file_to_pool_str(
+    MemoryPool *memory_pool, char const *path, size_t *file_size
   );
-  const char* load_file(
-    char *string, const char *path, uint32 *file_size
+  u8* load_file_to_pool_u8(
+    MemoryPool *memory_pool, char const *path, size_t *file_size
+  );
+  char* load_file_to_str(
+    char *buffer, char const *path, size_t *file_size
   );
 }
