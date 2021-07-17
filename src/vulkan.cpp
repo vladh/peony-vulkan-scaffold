@@ -10,6 +10,7 @@
 #include "intrinsics.hpp"
 #include "types.hpp"
 #include "constants.hpp"
+#include "files.hpp"
 
 
 constexpr u32 const MAX_N_REQUIRED_EXTENSIONS = 256;
@@ -591,6 +592,19 @@ static void init_image_views(VkState *vk_state) {
 
 
 static void init_pipeline(VkState *vk_state) {
+  MemoryPool pool = {};
+
+  uint32 vert_shader_size;
+  char const *vert_shader = files::load_file(
+    &pool, "bin/shaders/test.vert.spv", &vert_shader_size);
+
+  uint32 frag_shader_size;
+  char const *frag_shader = files::load_file(
+    &pool, "bin/shaders/test.frag.spv", &frag_shader_size);
+
+  logs::info("vert_shader size: %d", vert_shader_size);
+  logs::info("frag_shader size: %d", frag_shader_size);
+  logs::info("pool.used: %d", pool.used);
 }
 
 

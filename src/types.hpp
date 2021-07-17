@@ -41,6 +41,11 @@ typedef double float64;
 typedef float32 f32;
 typedef float64 f64;
 
+typedef float real32;
+typedef double real64;
+typedef float32 r32;
+typedef float64 r64;
+
 typedef glm::vec2 v2;
 typedef glm::vec3 v3;
 typedef glm::vec4 v4;

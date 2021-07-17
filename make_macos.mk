@@ -11,7 +11,7 @@ COMPILER_FLAGS = \
 	-D_FORTIFY_SOURCE=2 -ggdb3 -Og -Wall -Werror -Wextra -pedantic \
 	-std=c++2a \
 	-Wno-deprecated-volatile -Wno-unused-function -Wno-unknown-pragmas -Wno-comment \
-	-Wno-unused-parameter -Wno-sign-compare
+	-Wno-unused-parameter -Wno-sign-compare -Wno-unused
 
 LINKER_FLAGS = \
 	-L/usr/local/opt/glfw/lib \
@@ -20,16 +20,18 @@ LINKER_FLAGS = \
 	-L$(HOME)/.local/opt/VulkanSDK/1.2.176.1/macOS/lib \
 	-lvulkan -lfreetype -lglfw -lassimp -lm
 
-unity-bundle: unity
+unity-bundle: unity-bare
 	mkdir -p bin/peony.app/Contents/MacOS
 	cp bin/peony bin/peony.app/Contents/MacOS/
 	cp extra/Info.plist bin/peony.app/Contents/
 
-unity: shaders
+unity-bare: shaders
 	@echo "################################################################################"
 	@echo "### Building"
 	@echo "################################################################################"
 	time g++ $(COMPILER_FLAGS) $(LINKER_FLAGS) src/_unity.cpp -o bin/peony
+
+unity: unity-bundle
 
 run:
 	@./bin/peony.app/Contents/MacOS/peony
