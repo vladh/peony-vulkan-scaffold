@@ -618,21 +618,31 @@ static void init_pipeline(VkState *vk_state) {
   size_t vert_shader_size;
   u8 *vert_shader = files::load_file_to_pool_u8(
     &pool, "bin/shaders/test.vert.spv", &vert_shader_size);
+  VkShaderModule vert_shader_module = init_shader_module(
+    vk_state, vert_shader, vert_shader_size);
+  VkPipelineShaderStageCreateInfo vert_shader_stage_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+    .stage = VK_SHADER_STAGE_VERTEX_BIT,
+    .module = vert_shader_module,
+    .pName = "main",
+  };
 
   size_t frag_shader_size;
   u8 *frag_shader = files::load_file_to_pool_u8(
     &pool, "bin/shaders/test.frag.spv", &frag_shader_size);
-
-  logs::info("vert_shader size: %d", vert_shader_size);
-  logs::info("frag_shader size: %d", frag_shader_size);
-  logs::info("pool.used: %d", pool.used);
-
-  VkShaderModule vert_shader_module = init_shader_module(
-    vk_state, vert_shader, vert_shader_size);
   VkShaderModule frag_shader_module = init_shader_module(
     vk_state, frag_shader, frag_shader_size);
+  VkPipelineShaderStageCreateInfo frag_shader_stage_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+    .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+    .module = frag_shader_module,
+    .pName = "main",
+  };
 
-
+  VkPipelineShaderStageCreateInfo shader_stages[] = {
+    vert_shader_stage_info,
+    frag_shader_stage_info,
+  };
 
   vkDestroyShaderModule(vk_state->device, vert_shader_module, nullptr);
   vkDestroyShaderModule(vk_state->device, frag_shader_module, nullptr);
