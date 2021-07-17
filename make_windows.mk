@@ -19,9 +19,7 @@ LINKER_FLAGS = \
 	vulkan-1.lib freetype.lib opengl32.lib glfw3.lib assimp-vc142-mtd.lib \
 	user32.lib gdi32.lib shell32.lib
 
-.PHONY: unity run
-
-unity:
+unity: shaders
 	@echo "################################################################################"
 	@echo "### Building"
 	@echo "################################################################################"

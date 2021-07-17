@@ -19,9 +19,7 @@ LINKER_FLAGS = \
 	-L$(HOME)/.local/opt/vulkansdk/lib \
 	-lvulkan -lfreetype -lglfw -lassimp -lm -ldl -pthread
 
-.PHONY: unity run
-
-unity:
+unity: shaders
 	@echo "################################################################################"
 	@echo "### Building"
 	@echo "################################################################################"

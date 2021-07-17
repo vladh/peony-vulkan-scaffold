@@ -590,6 +590,10 @@ static void init_image_views(VkState *vk_state) {
 }
 
 
+static void init_pipeline(VkState *vk_state) {
+}
+
+
 void vulkan::init(VkState *vk_state, GLFWwindow *window) {
   VkDebugUtilsMessengerCreateInfoEXT debug_messenger_create_info = {};
 
@@ -627,6 +631,8 @@ void vulkan::init(VkState *vk_state, GLFWwindow *window) {
   init_swapchain(vk_state, window);
   logs::info("Creating swapchain image views");
   init_image_views(vk_state);
+  logs::info("Creating pipeline");
+  init_pipeline(vk_state);
 }
 
 

@@ -20,14 +20,12 @@ LINKER_FLAGS = \
 	-L$(HOME)/.local/opt/VulkanSDK/1.2.176.1/macOS/lib \
 	-lvulkan -lfreetype -lglfw -lassimp -lm
 
-.PHONY: unity unity-bundle run
-
 unity-bundle: unity
 	mkdir -p bin/peony.app/Contents/MacOS
 	cp bin/peony bin/peony.app/Contents/MacOS/
 	cp extra/Info.plist bin/peony.app/Contents/
 
-unity:
+unity: shaders
 	@echo "################################################################################"
 	@echo "### Building"
 	@echo "################################################################################"
