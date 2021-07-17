@@ -9,13 +9,17 @@
 #include "logs.hpp"
 #include "intrinsics.hpp"
 #include "types.hpp"
+#include "constants.hpp"
 
 
 constexpr u32 const MAX_N_REQUIRED_EXTENSIONS = 256;
 constexpr bool const USE_VALIDATION = true;
 constexpr char const * const VALIDATION_LAYERS[] = {"VK_LAYER_KHRONOS_validation"};
 constexpr char const * const REQUIRED_DEVICE_EXTENSIONS[] = {
-  VK_KHR_SWAPCHAIN_EXTENSION_NAME
+  VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+  #if PLATFORM & PLATFORM_MACOS
+    "VK_KHR_portability_subset",
+  #endif
 };
 
 
@@ -47,6 +51,10 @@ static void get_required_extensions(
   if (USE_VALIDATION) {
     required_extensions[(*n_required_extensions)++] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
   }
+  #if PLATFORM & PLATFORM_MACOS
+    required_extensions[(*n_required_extensions)++] =
+      "VK_KHR_get_physical_device_properties2";
+  #endif
   assert(*n_required_extensions <= MAX_N_REQUIRED_EXTENSIONS);
 }
 

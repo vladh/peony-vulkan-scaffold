@@ -1,6 +1,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include "logs.hpp"
+#include "constants.hpp"
 
 
 void logs::fatal(const char *format, ...) {
@@ -10,9 +11,9 @@ void logs::fatal(const char *format, ...) {
   vfprintf(stderr, format, vargs);
   fprintf(stderr, "\n");
   va_end(vargs);
-  #if defined(PLATFORM_WINDOWS)
+  #if PLATFORM & PLATFORM_WINDOWS
     __debugbreak();
-  #elif defined(PLATFORM_POSIX)
+  #elif PLATFORM & PLATFORM_POSIX
     raise(SIGABRT);
   #endif
 }
