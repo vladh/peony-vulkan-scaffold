@@ -34,6 +34,7 @@ struct VkState {
   VkSurfaceKHR surface;
   VkSwapchainKHR swapchain;
   VkImage swapchain_images[MAX_N_SWAPCHAIN_IMAGES];
+  VkImageView swapchain_image_views[MAX_N_SWAPCHAIN_IMAGES];
   u32 n_swapchain_images;
   VkFormat swapchain_image_format;
   VkExtent2D swapchain_extent;

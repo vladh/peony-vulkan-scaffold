@@ -560,6 +560,36 @@ static void init_swapchain(VkState *vk_state, GLFWwindow *window) {
 }
 
 
+static void init_image_views(VkState *vk_state) {
+  range (0, vk_state->n_swapchain_images) {
+    VkImageView *image_view = &vk_state->swapchain_image_views[idx];
+
+    VkImageViewCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+      .image = vk_state->swapchain_images[idx],
+      .viewType = VK_IMAGE_VIEW_TYPE_2D,
+      .format = vk_state->swapchain_image_format,
+      .components.r = VK_COMPONENT_SWIZZLE_IDENTITY,
+      .components.g = VK_COMPONENT_SWIZZLE_IDENTITY,
+      .components.b = VK_COMPONENT_SWIZZLE_IDENTITY,
+      .components.a = VK_COMPONENT_SWIZZLE_IDENTITY,
+      .subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+      .subresourceRange.baseMipLevel = 0,
+      .subresourceRange.levelCount = 1,
+      .subresourceRange.baseArrayLayer = 0,
+      .subresourceRange.layerCount = 1,
+    };
+
+    if (
+      vkCreateImageView(vk_state->device, &create_info, nullptr, image_view) !=
+      VK_SUCCESS
+    ) {
+      logs::fatal("Could not create image views.");
+    }
+  }
+}
+
+
 void vulkan::init(VkState *vk_state, GLFWwindow *window) {
   VkDebugUtilsMessengerCreateInfoEXT debug_messenger_create_info = {};
 
@@ -595,10 +625,15 @@ void vulkan::init(VkState *vk_state, GLFWwindow *window) {
   init_logical_device(vk_state);
   logs::info("Creating swapchain");
   init_swapchain(vk_state, window);
+  logs::info("Creating swapchain image views");
+  init_image_views(vk_state);
 }
 
 
 void vulkan::destroy(VkState *vk_state) {
+  range (0, vk_state->n_swapchain_images) {
+    vkDestroyImageView(vk_state->device, vk_state->swapchain_image_views[idx], nullptr);
+  }
   vkDestroySwapchainKHR(vk_state->device, vk_state->swapchain, nullptr);
   vkDestroyDevice(vk_state->device, nullptr);
   if (USE_VALIDATION) {
