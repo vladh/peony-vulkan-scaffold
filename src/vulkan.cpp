@@ -786,6 +786,28 @@ static void init_pipeline(VkState *vk_state) {
 }
 
 
+static void init_framebuffers(VkState *vk_state) {
+  range (0, vk_state->n_swapchain_images) {
+    VkImageView attachments[] = { vk_state->swapchain_image_views[idx] };
+    VkFramebufferCreateInfo framebuffer_ci = {
+      .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+      .renderPass = vk_state->render_pass,
+      .attachmentCount = 1,
+      .pAttachments = attachments,
+      .width = vk_state->swapchain_extent.width,
+      .height = vk_state->swapchain_extent.height,
+      .layers = 1,
+    };
+    if (
+      vkCreateFramebuffer(vk_state->device, &framebuffer_ci, nullptr,
+        &vk_state->swapchain_framebuffers[idx]) != VK_SUCCESS
+    ) {
+      logs::fatal("Could not create framebuffer.");
+    }
+  }
+}
+
+
 void vulkan::init(VkState *vk_state, GLFWwindow *window) {
   VkDebugUtilsMessengerCreateInfoEXT debug_messenger_ci = {};
 
@@ -827,10 +849,16 @@ void vulkan::init(VkState *vk_state, GLFWwindow *window) {
   init_render_pass(vk_state);
   logs::info("Creating pipeline");
   init_pipeline(vk_state);
+  logs::info("Creating framebuffers");
+  init_framebuffers(vk_state);
 }
 
 
 void vulkan::destroy(VkState *vk_state) {
+  range (0, vk_state->n_swapchain_images) {
+    vkDestroyFramebuffer(vk_state->device, vk_state->swapchain_framebuffers[idx],
+      nullptr);
+  }
   vkDestroyPipeline(vk_state->device, vk_state->pipeline, nullptr);
   vkDestroyPipelineLayout(vk_state->device, vk_state->pipeline_layout, nullptr);
   vkDestroyRenderPass(vk_state->device, vk_state->render_pass, nullptr);
