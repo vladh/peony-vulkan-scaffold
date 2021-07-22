@@ -38,7 +38,9 @@ struct VkState {
   u32 n_swapchain_images;
   VkFormat swapchain_image_format;
   VkExtent2D swapchain_extent;
+  VkRenderPass render_pass;
   VkPipelineLayout pipeline_layout;
+  VkPipeline pipeline;
 };
 
 namespace vulkan {

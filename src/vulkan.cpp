@@ -612,6 +612,44 @@ static VkShaderModule init_shader_module(
 }
 
 
+static void init_render_pass(VkState *vk_state) {
+  VkAttachmentDescription color_attachment = {
+    .format = vk_state->swapchain_image_format,
+    .samples = VK_SAMPLE_COUNT_1_BIT,
+    .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+    .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+    .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+    .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+    .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+  };
+  VkAttachmentReference color_attachment_ref = {
+    .attachment = 0,
+    .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+  };
+  VkSubpassDescription subpass = {
+    .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+    .colorAttachmentCount = 1,
+    .pColorAttachments = &color_attachment_ref,
+  };
+
+  VkRenderPassCreateInfo render_pass_ci = {
+    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+    .attachmentCount = 1,
+    .pAttachments = &color_attachment,
+    .subpassCount = 1,
+    .pSubpasses = &subpass,
+  };
+
+  if (
+    vkCreateRenderPass(vk_state->device, &render_pass_ci, nullptr,
+      &vk_state->render_pass) != VK_SUCCESS
+  ) {
+    logs::fatal("Could not create render pass.");
+  }
+}
+
+
 static void init_pipeline(VkState *vk_state) {
   MemoryPool pool = {};
 
@@ -643,7 +681,6 @@ static void init_pipeline(VkState *vk_state) {
     vert_shader_stage_ci,
     frag_shader_stage_ci,
   };
-
 
   VkPipelineVertexInputStateCreateInfo vertex_input_ci = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
@@ -720,6 +757,30 @@ static void init_pipeline(VkState *vk_state) {
     logs::fatal("Could not create pipeline layout.");
   }
 
+  VkGraphicsPipelineCreateInfo pipeline_ci = {
+    .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+    .stageCount = 2,
+    .pStages = shader_stages,
+    .pVertexInputState = &vertex_input_ci,
+    .pInputAssemblyState = &input_assembly_ci,
+    .pViewportState = &viewport_state_ci,
+    .pRasterizationState = &rasterizer_ci,
+    .pMultisampleState = &multisampling_ci,
+    .pDepthStencilState = nullptr,
+    .pColorBlendState = &color_blending_ci,
+    .pDynamicState = nullptr,
+    .layout = vk_state->pipeline_layout,
+    .renderPass = vk_state->render_pass,
+    .subpass = 0,
+  };
+
+  if (
+    vkCreateGraphicsPipelines(vk_state->device, VK_NULL_HANDLE, 1, &pipeline_ci,
+      nullptr, &vk_state->pipeline) != VK_SUCCESS
+  ) {
+    logs::fatal("Could not create graphics pipeline.");
+  }
+
   vkDestroyShaderModule(vk_state->device, vert_shader_module, nullptr);
   vkDestroyShaderModule(vk_state->device, frag_shader_module, nullptr);
 }
@@ -762,13 +823,17 @@ void vulkan::init(VkState *vk_state, GLFWwindow *window) {
   init_swapchain(vk_state, window);
   logs::info("Creating swapchain image views");
   init_image_views(vk_state);
+  logs::info("Creating render pass");
+  init_render_pass(vk_state);
   logs::info("Creating pipeline");
   init_pipeline(vk_state);
 }
 
 
 void vulkan::destroy(VkState *vk_state) {
+  vkDestroyPipeline(vk_state->device, vk_state->pipeline, nullptr);
   vkDestroyPipelineLayout(vk_state->device, vk_state->pipeline_layout, nullptr);
+  vkDestroyRenderPass(vk_state->device, vk_state->render_pass, nullptr);
   range (0, vk_state->n_swapchain_images) {
     vkDestroyImageView(vk_state->device, vk_state->swapchain_image_views[idx], nullptr);
   }
