@@ -62,7 +62,7 @@ static void get_required_extensions(
 
 static bool init_instance(
   VkState *vk_state,
-  VkDebugUtilsMessengerCreateInfoEXT *debug_messenger_create_info
+  VkDebugUtilsMessengerCreateInfoEXT *debug_messenger_ci
 ) {
   // Initialise info about our application (its name etc.)
   VkApplicationInfo const app_info = {
@@ -75,7 +75,7 @@ static bool init_instance(
   };
 
   // Initialise other creation parameters such as required extensions
-  VkInstanceCreateInfo create_info = {
+  VkInstanceCreateInfo ci = {
     .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
     .pApplicationInfo = &app_info,
   };
@@ -83,19 +83,19 @@ static bool init_instance(
   char const *required_extensions[MAX_N_REQUIRED_EXTENSIONS];
   u32 n_required_extensions;
   get_required_extensions(required_extensions, &n_required_extensions);
-  create_info.enabledExtensionCount = n_required_extensions;
-  create_info.ppEnabledExtensionNames = required_extensions;
+  ci.enabledExtensionCount = n_required_extensions;
+  ci.ppEnabledExtensionNames = required_extensions;
 
   // Set validation layer creation options
   if (USE_VALIDATION) {
-    create_info.enabledLayerCount = LEN(VALIDATION_LAYERS);
-    create_info.ppEnabledLayerNames = VALIDATION_LAYERS;
-    create_info.pNext = debug_messenger_create_info;
+    ci.enabledLayerCount = LEN(VALIDATION_LAYERS);
+    ci.ppEnabledLayerNames = VALIDATION_LAYERS;
+    ci.pNext = debug_messenger_ci;
   } else {
-    create_info.enabledLayerCount = 0;
+    ci.enabledLayerCount = 0;
   }
 
-  if (vkCreateInstance(&create_info, nullptr, &vk_state->instance) != VK_SUCCESS) {
+  if (vkCreateInstance(&ci, nullptr, &vk_state->instance) != VK_SUCCESS) {
     return false;
   }
 
@@ -138,7 +138,7 @@ static bool ensure_validation_layers_supported() {
 
 static VkResult CreateDebugUtilsMessengerEXT(
   VkInstance instance,
-  const VkDebugUtilsMessengerCreateInfoEXT *p_create_info,
+  const VkDebugUtilsMessengerCreateInfoEXT *p_ci,
   const VkAllocationCallbacks *p_allocator,
   VkDebugUtilsMessengerEXT *p_debug_messenger
 ) {
@@ -147,7 +147,7 @@ static VkResult CreateDebugUtilsMessengerEXT(
   if (func == nullptr) {
     return VK_ERROR_EXTENSION_NOT_PRESENT;
   }
-  return func(instance, p_create_info, p_allocator, p_debug_messenger);
+  return func(instance, p_ci, p_allocator, p_debug_messenger);
 }
 
 
@@ -167,7 +167,7 @@ static void DestroyDebugUtilsMessengerEXT(
 
 static void init_debug_messenger(
   VkState *vk_state,
-  VkDebugUtilsMessengerCreateInfoEXT *debug_messenger_create_info
+  VkDebugUtilsMessengerCreateInfoEXT *debug_messenger_ci
 ) {
   if (!USE_VALIDATION) {
     return;
@@ -175,7 +175,7 @@ static void init_debug_messenger(
 
   if (
     CreateDebugUtilsMessengerEXT(
-      vk_state->instance, debug_messenger_create_info,
+      vk_state->instance, debug_messenger_ci,
       nullptr, &vk_state->debug_messenger) != VK_SUCCESS
   ) {
     logs::fatal("Could not set up debug messenger.");
@@ -378,8 +378,8 @@ static void init_physical_device(VkState *vk_state) {
 
 static void init_logical_device(VkState *vk_state) {
   constexpr u32 const MAX_N_QUEUES = 32;
-  VkDeviceQueueCreateInfo queue_create_infos[MAX_N_QUEUES];
-  u32 n_queue_create_infos = 0;
+  VkDeviceQueueCreateInfo queue_cis[MAX_N_QUEUES];
+  u32 n_queue_cis = 0;
   u32 potential_queues[2] = {
     vk_state->queue_family_indices.idx_graphics_family_queue.value(),
     vk_state->queue_family_indices.idx_present_family_queue.value(),
@@ -390,15 +390,15 @@ static void init_logical_device(VkState *vk_state) {
   range (0, n_potential_queues) {
     u32 const potential_queue = potential_queues[idx];
     bool is_already_created = false;
-    range_named (idx_existing, 0, n_queue_create_infos) {
-      if (queue_create_infos[idx_existing].queueFamilyIndex == potential_queue) {
+    range_named (idx_existing, 0, n_queue_cis) {
+      if (queue_cis[idx_existing].queueFamilyIndex == potential_queue) {
         is_already_created = true;
       }
     }
     if (is_already_created) {
       break;
     }
-    queue_create_infos[n_queue_create_infos++] = {
+    queue_cis[n_queue_cis++] = {
       .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
       .queueFamilyIndex = potential_queue,
       .queueCount = 1,
@@ -406,17 +406,17 @@ static void init_logical_device(VkState *vk_state) {
     };
   }
   VkPhysicalDeviceFeatures device_features = {};
-  VkDeviceCreateInfo device_create_info = {
+  VkDeviceCreateInfo device_ci = {
     .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-    .queueCreateInfoCount = n_queue_create_infos,
-    .pQueueCreateInfos = queue_create_infos,
+    .queueCreateInfoCount = n_queue_cis,
+    .pQueueCreateInfos = queue_cis,
     .enabledExtensionCount = LEN(REQUIRED_DEVICE_EXTENSIONS),
     .ppEnabledExtensionNames = REQUIRED_DEVICE_EXTENSIONS,
     .pEnabledFeatures = &device_features,
   };
 
   if (
-    vkCreateDevice(vk_state->physical_device, &device_create_info, nullptr,
+    vkCreateDevice(vk_state->physical_device, &device_ci, nullptr,
       &vk_state->device) != VK_SUCCESS
   ) {
     logs::fatal("Could not create logical device.");
@@ -511,7 +511,7 @@ static void init_swapchain(VkState *vk_state, GLFWwindow *window) {
     image_count = capabilities->maxImageCount;
   }
 
-  VkSwapchainCreateInfoKHR swapchain_create_info = {
+  VkSwapchainCreateInfoKHR swapchain_ci = {
     .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
     .surface = vk_state->surface,
     .minImageCount = image_count,
@@ -535,16 +535,16 @@ static void init_swapchain(VkState *vk_state, GLFWwindow *window) {
   };
 
   if (indices->idx_graphics_family_queue != indices->idx_present_family_queue) {
-    swapchain_create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-    swapchain_create_info.queueFamilyIndexCount = LEN(queue_family_indices);
-    swapchain_create_info.pQueueFamilyIndices = queue_family_indices;
+    swapchain_ci.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+    swapchain_ci.queueFamilyIndexCount = LEN(queue_family_indices);
+    swapchain_ci.pQueueFamilyIndices = queue_family_indices;
   } else {
-    swapchain_create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    swapchain_ci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
   }
 
   if (
     vkCreateSwapchainKHR(
-      vk_state->device, &swapchain_create_info, nullptr, &vk_state->swapchain) !=
+      vk_state->device, &swapchain_ci, nullptr, &vk_state->swapchain) !=
     VK_SUCCESS
   ) {
     logs::fatal("Could not create swapchain.");
@@ -565,7 +565,7 @@ static void init_image_views(VkState *vk_state) {
   range (0, vk_state->n_swapchain_images) {
     VkImageView *image_view = &vk_state->swapchain_image_views[idx];
 
-    VkImageViewCreateInfo create_info = {
+    VkImageViewCreateInfo ci = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
       .image = vk_state->swapchain_images[idx],
       .viewType = VK_IMAGE_VIEW_TYPE_2D,
@@ -582,7 +582,7 @@ static void init_image_views(VkState *vk_state) {
     };
 
     if (
-      vkCreateImageView(vk_state->device, &create_info, nullptr, image_view) !=
+      vkCreateImageView(vk_state->device, &ci, nullptr, image_view) !=
       VK_SUCCESS
     ) {
       logs::fatal("Could not create image views.");
@@ -594,7 +594,7 @@ static void init_image_views(VkState *vk_state) {
 static VkShaderModule init_shader_module(
   VkState *vk_state, u8 const *shader, size_t size
 ) {
-  VkShaderModuleCreateInfo create_info = {
+  VkShaderModuleCreateInfo ci = {
     .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
     .codeSize = size,
     .pCode = (u32*)shader,
@@ -602,7 +602,7 @@ static VkShaderModule init_shader_module(
 
   VkShaderModule shader_module;
   if (
-    vkCreateShaderModule(vk_state->device, &create_info, nullptr, &shader_module) !=
+    vkCreateShaderModule(vk_state->device, &ci, nullptr, &shader_module) !=
     VK_SUCCESS
   ) {
     logs::fatal("Could not create shader module.");
@@ -620,7 +620,7 @@ static void init_pipeline(VkState *vk_state) {
     &pool, "bin/shaders/test.vert.spv", &vert_shader_size);
   VkShaderModule vert_shader_module = init_shader_module(
     vk_state, vert_shader, vert_shader_size);
-  VkPipelineShaderStageCreateInfo vert_shader_stage_info = {
+  VkPipelineShaderStageCreateInfo vert_shader_stage_ci = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
     .stage = VK_SHADER_STAGE_VERTEX_BIT,
     .module = vert_shader_module,
@@ -632,7 +632,7 @@ static void init_pipeline(VkState *vk_state) {
     &pool, "bin/shaders/test.frag.spv", &frag_shader_size);
   VkShaderModule frag_shader_module = init_shader_module(
     vk_state, frag_shader, frag_shader_size);
-  VkPipelineShaderStageCreateInfo frag_shader_stage_info = {
+  VkPipelineShaderStageCreateInfo frag_shader_stage_ci = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
     .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
     .module = frag_shader_module,
@@ -640,9 +640,85 @@ static void init_pipeline(VkState *vk_state) {
   };
 
   VkPipelineShaderStageCreateInfo shader_stages[] = {
-    vert_shader_stage_info,
-    frag_shader_stage_info,
+    vert_shader_stage_ci,
+    frag_shader_stage_ci,
   };
+
+
+  VkPipelineVertexInputStateCreateInfo vertex_input_ci = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+    .vertexBindingDescriptionCount = 0,
+    .pVertexBindingDescriptions = nullptr,
+    .vertexAttributeDescriptionCount = 0,
+    .pVertexAttributeDescriptions = nullptr,
+  };
+  VkPipelineInputAssemblyStateCreateInfo input_assembly_ci = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+    .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+    .primitiveRestartEnable = VK_FALSE,
+  };
+  VkViewport viewport = {
+    .x = 0.0f,
+    .y = 0.0f,
+    .width = (f32)vk_state->swapchain_extent.width,
+    .height = (f32)vk_state->swapchain_extent.height,
+    .minDepth = 0.0f,
+    .maxDepth = 1.0f,
+  };
+  VkRect2D scissor = {
+    .offset = {0, 0},
+    .extent = vk_state->swapchain_extent,
+  };
+  VkPipelineViewportStateCreateInfo viewport_state_ci = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+    .viewportCount = 1,
+    .pViewports = &viewport,
+    .scissorCount = 1,
+    .pScissors = &scissor,
+  };
+  VkPipelineRasterizationStateCreateInfo rasterizer_ci = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+    .depthClampEnable = VK_FALSE,
+    .rasterizerDiscardEnable = VK_FALSE,
+    .polygonMode = VK_POLYGON_MODE_FILL,
+    .lineWidth = 1.0f,
+    .cullMode = VK_CULL_MODE_BACK_BIT,
+    .frontFace = VK_FRONT_FACE_CLOCKWISE,
+    .depthBiasEnable = VK_FALSE,
+  };
+  VkPipelineMultisampleStateCreateInfo multisampling_ci = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+    .sampleShadingEnable = VK_FALSE,
+    .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+  };
+  VkPipelineColorBlendAttachmentState color_blend_attachment = {
+    .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+      VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+    .blendEnable = VK_TRUE,
+    .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+    .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+    .colorBlendOp = VK_BLEND_OP_ADD,
+    .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
+    .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+    .alphaBlendOp = VK_BLEND_OP_ADD,
+  };
+  VkPipelineColorBlendStateCreateInfo color_blending_ci = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+    .logicOpEnable = VK_FALSE,
+    .attachmentCount = 1,
+    .pAttachments = &color_blend_attachment,
+  };
+
+  VkPipelineLayoutCreateInfo pipeline_layout_ci = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+  };
+
+  if (
+    vkCreatePipelineLayout(vk_state->device, &pipeline_layout_ci, nullptr,
+      &vk_state->pipeline_layout) != VK_SUCCESS
+  ) {
+    logs::fatal("Could not create pipeline layout.");
+  }
 
   vkDestroyShaderModule(vk_state->device, vert_shader_module, nullptr);
   vkDestroyShaderModule(vk_state->device, frag_shader_module, nullptr);
@@ -650,32 +726,32 @@ static void init_pipeline(VkState *vk_state) {
 
 
 void vulkan::init(VkState *vk_state, GLFWwindow *window) {
-  VkDebugUtilsMessengerCreateInfoEXT debug_messenger_create_info = {};
+  VkDebugUtilsMessengerCreateInfoEXT debug_messenger_ci = {};
 
   if (USE_VALIDATION) {
     if (!ensure_validation_layers_supported()) {
       logs::fatal("Could not get required validation layers.");
     }
 
-    debug_messenger_create_info.sType =
+    debug_messenger_ci.sType =
       VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-    debug_messenger_create_info.messageSeverity =
+    debug_messenger_ci.messageSeverity =
       /* VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | */
       /* VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | */
       VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
       VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    debug_messenger_create_info.messageType =
+    debug_messenger_ci.messageType =
       VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
       VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
       VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-    debug_messenger_create_info.pfnUserCallback = debug_callback;
+    debug_messenger_ci.pfnUserCallback = debug_callback;
   }
 
 
   logs::info("Creating instance");
-  init_instance(vk_state, &debug_messenger_create_info);
+  init_instance(vk_state, &debug_messenger_ci);
   logs::info("Creating debug messenger");
-  init_debug_messenger(vk_state, &debug_messenger_create_info);
+  init_debug_messenger(vk_state, &debug_messenger_ci);
   logs::info("Creating surface");
   init_surface(vk_state, window);
   logs::info("Creating physical device");
@@ -692,6 +768,7 @@ void vulkan::init(VkState *vk_state, GLFWwindow *window) {
 
 
 void vulkan::destroy(VkState *vk_state) {
+  vkDestroyPipelineLayout(vk_state->device, vk_state->pipeline_layout, nullptr);
   range (0, vk_state->n_swapchain_images) {
     vkDestroyImageView(vk_state->device, vk_state->swapchain_image_views[idx], nullptr);
   }
