@@ -62,7 +62,7 @@ static void get_required_extensions(
 
 static bool init_instance(
   VkState *vk_state,
-  VkDebugUtilsMessengerCreateInfoEXT *debug_messenger_ci
+  VkDebugUtilsMessengerCreateInfoEXT *debug_messenger_info
 ) {
   // Initialise info about our application (its name etc.)
   VkApplicationInfo const app_info = {
@@ -90,7 +90,7 @@ static bool init_instance(
   if (USE_VALIDATION) {
     ci.enabledLayerCount = LEN(VALIDATION_LAYERS);
     ci.ppEnabledLayerNames = VALIDATION_LAYERS;
-    ci.pNext = debug_messenger_ci;
+    ci.pNext = debug_messenger_info;
   } else {
     ci.enabledLayerCount = 0;
   }
@@ -138,7 +138,7 @@ static bool ensure_validation_layers_supported() {
 
 static VkResult CreateDebugUtilsMessengerEXT(
   VkInstance instance,
-  const VkDebugUtilsMessengerCreateInfoEXT *p_ci,
+  const VkDebugUtilsMessengerCreateInfoEXT *p_info,
   const VkAllocationCallbacks *p_allocator,
   VkDebugUtilsMessengerEXT *p_debug_messenger
 ) {
@@ -147,7 +147,7 @@ static VkResult CreateDebugUtilsMessengerEXT(
   if (func == nullptr) {
     return VK_ERROR_EXTENSION_NOT_PRESENT;
   }
-  return func(instance, p_ci, p_allocator, p_debug_messenger);
+  return func(instance, p_info, p_allocator, p_debug_messenger);
 }
 
 
@@ -167,7 +167,7 @@ static void DestroyDebugUtilsMessengerEXT(
 
 static void init_debug_messenger(
   VkState *vk_state,
-  VkDebugUtilsMessengerCreateInfoEXT *debug_messenger_ci
+  VkDebugUtilsMessengerCreateInfoEXT *debug_messenger_info
 ) {
   if (!USE_VALIDATION) {
     return;
@@ -175,7 +175,7 @@ static void init_debug_messenger(
 
   if (
     CreateDebugUtilsMessengerEXT(
-      vk_state->instance, debug_messenger_ci,
+      vk_state->instance, debug_messenger_info,
       nullptr, &vk_state->debug_messenger) != VK_SUCCESS
   ) {
     logs::fatal("Could not set up debug messenger.");
@@ -201,10 +201,10 @@ static QueueFamilyIndices get_queue_family_indices(
     vkGetPhysicalDeviceSurfaceSupportKHR(
       physical_device, idx, surface, &supports_present);
     if (family->queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-      indices.idx_graphics_family_queue = idx;
+      indices.graphics = idx;
     }
     if (supports_present) {
-      indices.idx_present_family_queue = idx;
+      indices.present = idx;
     }
   }
 
@@ -213,8 +213,8 @@ static QueueFamilyIndices get_queue_family_indices(
 
 
 static bool are_queue_family_indices_complete(QueueFamilyIndices queue_family_indices) {
-  return queue_family_indices.idx_graphics_family_queue.has_value() &&
-    queue_family_indices.idx_present_family_queue.has_value();
+  return queue_family_indices.graphics != NO_QUEUE_FAMILY &&
+    queue_family_indices.present != NO_QUEUE_FAMILY;
 }
 
 
@@ -285,18 +285,8 @@ static void print_physical_device_info(
   vkGetPhysicalDeviceProperties(physical_device, &properties);
   logs::info("Found physical device: %s (%d)", properties.deviceName, physical_device);
   logs::info("  Queue families");
-  logs::info("    idx_graphics_family_queue: %d",
-    (
-      queue_family_indices.idx_graphics_family_queue.has_value() ?
-      queue_family_indices.idx_graphics_family_queue.value() :
-      -1
-    ));
-  logs::info("    idx_present_family_queue: %d",
-    (
-      queue_family_indices.idx_present_family_queue.has_value() ?
-      queue_family_indices.idx_present_family_queue.value() :
-      -1
-    ));
+  logs::info("    graphics: %d", queue_family_indices.graphics);
+  logs::info("    present: %d", queue_family_indices.present);
   logs::info("  Swap chain support");
   logs::info("    Capabilities");
   logs::info("      minImageCount: %d",
@@ -381,8 +371,8 @@ static void init_logical_device(VkState *vk_state) {
   VkDeviceQueueCreateInfo queue_cis[MAX_N_QUEUES];
   u32 n_queue_cis = 0;
   u32 potential_queues[2] = {
-    vk_state->queue_family_indices.idx_graphics_family_queue.value(),
-    vk_state->queue_family_indices.idx_present_family_queue.value(),
+    (u32)vk_state->queue_family_indices.graphics,
+    (u32)vk_state->queue_family_indices.present,
   };
   u32 const n_potential_queues = 2;
   f32 const queue_priorities = 1.0f;
@@ -406,7 +396,7 @@ static void init_logical_device(VkState *vk_state) {
     };
   }
   VkPhysicalDeviceFeatures device_features = {};
-  VkDeviceCreateInfo device_ci = {
+  VkDeviceCreateInfo device_info = {
     .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
     .queueCreateInfoCount = n_queue_cis,
     .pQueueCreateInfos = queue_cis,
@@ -416,7 +406,7 @@ static void init_logical_device(VkState *vk_state) {
   };
 
   if (
-    vkCreateDevice(vk_state->physical_device, &device_ci, nullptr,
+    vkCreateDevice(vk_state->physical_device, &device_info, nullptr,
       &vk_state->device) != VK_SUCCESS
   ) {
     logs::fatal("Could not create logical device.");
@@ -424,12 +414,12 @@ static void init_logical_device(VkState *vk_state) {
 
   vkGetDeviceQueue(
     vk_state->device,
-    vk_state->queue_family_indices.idx_graphics_family_queue.value(),
+    vk_state->queue_family_indices.graphics,
     0,
     &vk_state->graphics_queue);
   vkGetDeviceQueue(
     vk_state->device,
-    vk_state->queue_family_indices.idx_present_family_queue.value(),
+    vk_state->queue_family_indices.present,
     0,
     &vk_state->present_queue);
 }
@@ -511,7 +501,7 @@ static void init_swapchain(VkState *vk_state, GLFWwindow *window) {
     image_count = capabilities->maxImageCount;
   }
 
-  VkSwapchainCreateInfoKHR swapchain_ci = {
+  VkSwapchainCreateInfoKHR swapchain_info = {
     .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
     .surface = vk_state->surface,
     .minImageCount = image_count,
@@ -531,20 +521,20 @@ static void init_swapchain(VkState *vk_state, GLFWwindow *window) {
   };
 
   u32 queue_family_indices[] = {
-    indices->idx_graphics_family_queue.value(), indices->idx_present_family_queue.value()
+    (u32)indices->graphics, (u32)indices->present
   };
 
-  if (indices->idx_graphics_family_queue != indices->idx_present_family_queue) {
-    swapchain_ci.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-    swapchain_ci.queueFamilyIndexCount = LEN(queue_family_indices);
-    swapchain_ci.pQueueFamilyIndices = queue_family_indices;
+  if (indices->graphics != indices->present) {
+    swapchain_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+    swapchain_info.queueFamilyIndexCount = LEN(queue_family_indices);
+    swapchain_info.pQueueFamilyIndices = queue_family_indices;
   } else {
-    swapchain_ci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    swapchain_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
   }
 
   if (
     vkCreateSwapchainKHR(
-      vk_state->device, &swapchain_ci, nullptr, &vk_state->swapchain) !=
+      vk_state->device, &swapchain_info, nullptr, &vk_state->swapchain) !=
     VK_SUCCESS
   ) {
     logs::fatal("Could not create swapchain.");
@@ -633,7 +623,7 @@ static void init_render_pass(VkState *vk_state) {
     .pColorAttachments = &color_attachment_ref,
   };
 
-  VkRenderPassCreateInfo render_pass_ci = {
+  VkRenderPassCreateInfo render_pass_info = {
     .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
     .attachmentCount = 1,
     .pAttachments = &color_attachment,
@@ -642,7 +632,7 @@ static void init_render_pass(VkState *vk_state) {
   };
 
   if (
-    vkCreateRenderPass(vk_state->device, &render_pass_ci, nullptr,
+    vkCreateRenderPass(vk_state->device, &render_pass_info, nullptr,
       &vk_state->render_pass) != VK_SUCCESS
   ) {
     logs::fatal("Could not create render pass.");
@@ -658,7 +648,7 @@ static void init_pipeline(VkState *vk_state) {
     &pool, "bin/shaders/test.vert.spv", &vert_shader_size);
   VkShaderModule vert_shader_module = init_shader_module(
     vk_state, vert_shader, vert_shader_size);
-  VkPipelineShaderStageCreateInfo vert_shader_stage_ci = {
+  VkPipelineShaderStageCreateInfo vert_shader_stage_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
     .stage = VK_SHADER_STAGE_VERTEX_BIT,
     .module = vert_shader_module,
@@ -670,7 +660,7 @@ static void init_pipeline(VkState *vk_state) {
     &pool, "bin/shaders/test.frag.spv", &frag_shader_size);
   VkShaderModule frag_shader_module = init_shader_module(
     vk_state, frag_shader, frag_shader_size);
-  VkPipelineShaderStageCreateInfo frag_shader_stage_ci = {
+  VkPipelineShaderStageCreateInfo frag_shader_stage_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
     .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
     .module = frag_shader_module,
@@ -678,18 +668,18 @@ static void init_pipeline(VkState *vk_state) {
   };
 
   VkPipelineShaderStageCreateInfo shader_stages[] = {
-    vert_shader_stage_ci,
-    frag_shader_stage_ci,
+    vert_shader_stage_info,
+    frag_shader_stage_info,
   };
 
-  VkPipelineVertexInputStateCreateInfo vertex_input_ci = {
+  VkPipelineVertexInputStateCreateInfo vertex_input_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
     .vertexBindingDescriptionCount = 0,
     .pVertexBindingDescriptions = nullptr,
     .vertexAttributeDescriptionCount = 0,
     .pVertexAttributeDescriptions = nullptr,
   };
-  VkPipelineInputAssemblyStateCreateInfo input_assembly_ci = {
+  VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
     .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
     .primitiveRestartEnable = VK_FALSE,
@@ -706,14 +696,14 @@ static void init_pipeline(VkState *vk_state) {
     .offset = {0, 0},
     .extent = vk_state->swapchain_extent,
   };
-  VkPipelineViewportStateCreateInfo viewport_state_ci = {
+  VkPipelineViewportStateCreateInfo viewport_state_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
     .viewportCount = 1,
     .pViewports = &viewport,
     .scissorCount = 1,
     .pScissors = &scissor,
   };
-  VkPipelineRasterizationStateCreateInfo rasterizer_ci = {
+  VkPipelineRasterizationStateCreateInfo rasterizer_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
     .depthClampEnable = VK_FALSE,
     .rasterizerDiscardEnable = VK_FALSE,
@@ -723,7 +713,7 @@ static void init_pipeline(VkState *vk_state) {
     .frontFace = VK_FRONT_FACE_CLOCKWISE,
     .depthBiasEnable = VK_FALSE,
   };
-  VkPipelineMultisampleStateCreateInfo multisampling_ci = {
+  VkPipelineMultisampleStateCreateInfo multisampling_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
     .sampleShadingEnable = VK_FALSE,
     .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
@@ -739,35 +729,35 @@ static void init_pipeline(VkState *vk_state) {
     .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
     .alphaBlendOp = VK_BLEND_OP_ADD,
   };
-  VkPipelineColorBlendStateCreateInfo color_blending_ci = {
+  VkPipelineColorBlendStateCreateInfo color_blending_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
     .logicOpEnable = VK_FALSE,
     .attachmentCount = 1,
     .pAttachments = &color_blend_attachment,
   };
 
-  VkPipelineLayoutCreateInfo pipeline_layout_ci = {
+  VkPipelineLayoutCreateInfo pipeline_layout_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
   };
 
   if (
-    vkCreatePipelineLayout(vk_state->device, &pipeline_layout_ci, nullptr,
+    vkCreatePipelineLayout(vk_state->device, &pipeline_layout_info, nullptr,
       &vk_state->pipeline_layout) != VK_SUCCESS
   ) {
     logs::fatal("Could not create pipeline layout.");
   }
 
-  VkGraphicsPipelineCreateInfo pipeline_ci = {
+  VkGraphicsPipelineCreateInfo pipeline_info = {
     .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
     .stageCount = 2,
     .pStages = shader_stages,
-    .pVertexInputState = &vertex_input_ci,
-    .pInputAssemblyState = &input_assembly_ci,
-    .pViewportState = &viewport_state_ci,
-    .pRasterizationState = &rasterizer_ci,
-    .pMultisampleState = &multisampling_ci,
+    .pVertexInputState = &vertex_input_info,
+    .pInputAssemblyState = &input_assembly_info,
+    .pViewportState = &viewport_state_info,
+    .pRasterizationState = &rasterizer_info,
+    .pMultisampleState = &multisampling_info,
     .pDepthStencilState = nullptr,
-    .pColorBlendState = &color_blending_ci,
+    .pColorBlendState = &color_blending_info,
     .pDynamicState = nullptr,
     .layout = vk_state->pipeline_layout,
     .renderPass = vk_state->render_pass,
@@ -775,7 +765,7 @@ static void init_pipeline(VkState *vk_state) {
   };
 
   if (
-    vkCreateGraphicsPipelines(vk_state->device, VK_NULL_HANDLE, 1, &pipeline_ci,
+    vkCreateGraphicsPipelines(vk_state->device, VK_NULL_HANDLE, 1, &pipeline_info,
       nullptr, &vk_state->pipeline) != VK_SUCCESS
   ) {
     logs::fatal("Could not create graphics pipeline.");
@@ -789,7 +779,7 @@ static void init_pipeline(VkState *vk_state) {
 static void init_framebuffers(VkState *vk_state) {
   range (0, vk_state->n_swapchain_images) {
     VkImageView attachments[] = { vk_state->swapchain_image_views[idx] };
-    VkFramebufferCreateInfo framebuffer_ci = {
+    VkFramebufferCreateInfo framebuffer_info = {
       .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
       .renderPass = vk_state->render_pass,
       .attachmentCount = 1,
@@ -799,7 +789,7 @@ static void init_framebuffers(VkState *vk_state) {
       .layers = 1,
     };
     if (
-      vkCreateFramebuffer(vk_state->device, &framebuffer_ci, nullptr,
+      vkCreateFramebuffer(vk_state->device, &framebuffer_info, nullptr,
         &vk_state->swapchain_framebuffers[idx]) != VK_SUCCESS
     ) {
       logs::fatal("Could not create framebuffer.");
@@ -808,33 +798,98 @@ static void init_framebuffers(VkState *vk_state) {
 }
 
 
+static void init_command_pool(VkState *vk_state) {
+  VkCommandPoolCreateInfo pool_info = {
+    .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+    .queueFamilyIndex = (u32)vk_state->queue_family_indices.graphics,
+  };
+
+  if (
+    vkCreateCommandPool(
+      vk_state->device, &pool_info, nullptr, &vk_state->command_pool) != VK_SUCCESS
+  ) {
+    logs::fatal("Could not create command pool.");
+  }
+}
+
+
+static void init_command_buffers(VkState *vk_state) {
+  VkCommandBufferAllocateInfo alloc_info = {
+    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+    .commandPool = vk_state->command_pool,
+    .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+    .commandBufferCount = vk_state->n_swapchain_images,
+  };
+
+  if (
+    vkAllocateCommandBuffers(vk_state->device, &alloc_info, vk_state->command_buffers)
+    != VK_SUCCESS
+  ) {
+    logs::fatal("Could not allocate command buffers.");
+  }
+
+  range (0, vk_state->n_swapchain_images) {
+    VkCommandBuffer command_buffer = vk_state->command_buffers[idx];
+
+    VkCommandBufferBeginInfo buffer_info = {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+    };
+
+    if (vkBeginCommandBuffer(command_buffer, &buffer_info) != VK_SUCCESS) {
+      logs::fatal("Could not begin recording command buffer.");
+    }
+
+    VkClearValue clear_color = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+    VkRenderPassBeginInfo renderpass_info = {
+      .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+      .renderPass = vk_state->render_pass,
+      .framebuffer = vk_state->swapchain_framebuffers[idx],
+      .renderArea.offset = {0, 0},
+      .renderArea.extent = vk_state->swapchain_extent,
+      .clearValueCount = 1,
+      .pClearValues = &clear_color,
+    };
+
+    vkCmdBeginRenderPass(command_buffer, &renderpass_info, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+      vk_state->pipeline);
+    vkCmdDraw(command_buffer, 3, 1, 0, 0);
+    vkCmdEndRenderPass(command_buffer);
+    if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
+      logs::fatal("Could not record command buffer.");
+    }
+  }
+
+}
+
+
 void vulkan::init(VkState *vk_state, GLFWwindow *window) {
-  VkDebugUtilsMessengerCreateInfoEXT debug_messenger_ci = {};
+  VkDebugUtilsMessengerCreateInfoEXT debug_messenger_info = {};
 
   if (USE_VALIDATION) {
     if (!ensure_validation_layers_supported()) {
       logs::fatal("Could not get required validation layers.");
     }
 
-    debug_messenger_ci.sType =
+    debug_messenger_info.sType =
       VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-    debug_messenger_ci.messageSeverity =
+    debug_messenger_info.messageSeverity =
       /* VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | */
       /* VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | */
       VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
       VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    debug_messenger_ci.messageType =
+    debug_messenger_info.messageType =
       VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
       VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
       VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-    debug_messenger_ci.pfnUserCallback = debug_callback;
+    debug_messenger_info.pfnUserCallback = debug_callback;
   }
 
 
   logs::info("Creating instance");
-  init_instance(vk_state, &debug_messenger_ci);
+  init_instance(vk_state, &debug_messenger_info);
   logs::info("Creating debug messenger");
-  init_debug_messenger(vk_state, &debug_messenger_ci);
+  init_debug_messenger(vk_state, &debug_messenger_info);
   logs::info("Creating surface");
   init_surface(vk_state, window);
   logs::info("Creating physical device");
@@ -851,10 +906,15 @@ void vulkan::init(VkState *vk_state, GLFWwindow *window) {
   init_pipeline(vk_state);
   logs::info("Creating framebuffers");
   init_framebuffers(vk_state);
+  logs::info("Creating command pool");
+  init_command_pool(vk_state);
+  logs::info("Creating command buffers");
+  init_command_buffers(vk_state);
 }
 
 
 void vulkan::destroy(VkState *vk_state) {
+  vkDestroyCommandPool(vk_state->device, vk_state->command_pool, nullptr);
   range (0, vk_state->n_swapchain_images) {
     vkDestroyFramebuffer(vk_state->device, vk_state->swapchain_framebuffers[idx],
       nullptr);

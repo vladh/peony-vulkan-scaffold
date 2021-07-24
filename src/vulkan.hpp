@@ -1,17 +1,17 @@
 #pragma once
 
-#include <optional>
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
 #include "types.hpp"
 
-constexpr u32 const MAX_N_SWAPCHAIN_FORMATS = 32;
-constexpr u32 const MAX_N_SWAPCHAIN_PRESENT_MODES = 32;
-constexpr u32 const MAX_N_SWAPCHAIN_IMAGES = 8;
+static constexpr i64 const NO_QUEUE_FAMILY = -1;
+static constexpr u32 const MAX_N_SWAPCHAIN_FORMATS = 32;
+static constexpr u32 const MAX_N_SWAPCHAIN_PRESENT_MODES = 32;
+static constexpr u32 const MAX_N_SWAPCHAIN_IMAGES = 8;
 
 struct QueueFamilyIndices {
-  std::optional<u32> idx_graphics_family_queue;
-  std::optional<u32> idx_present_family_queue;
+  i64 graphics;
+  i64 present;
 };
 
 struct SwapChainSupportDetails {
@@ -42,6 +42,8 @@ struct VkState {
   VkRenderPass render_pass;
   VkPipelineLayout pipeline_layout;
   VkPipeline pipeline;
+  VkCommandPool command_pool;
+  VkCommandBuffer command_buffers[MAX_N_SWAPCHAIN_IMAGES];
 };
 
 namespace vulkan {
