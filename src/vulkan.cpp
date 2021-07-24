@@ -1006,5 +1006,6 @@ void vulkan::render(VkState *vk_state) {
 
 
 void vulkan::wait(VkState *vk_state) {
+  vkQueueWaitIdle(vk_state->present_queue);
   vkDeviceWaitIdle(vk_state->device);
 }
