@@ -622,6 +622,14 @@ static void init_render_pass(VkState *vk_state) {
     .colorAttachmentCount = 1,
     .pColorAttachments = &color_attachment_ref,
   };
+  VkSubpassDependency dependency = {
+    .srcSubpass = VK_SUBPASS_EXTERNAL,
+    .dstSubpass = 0,
+    .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+    .srcAccessMask = 0,
+    .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+    .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+  };
 
   VkRenderPassCreateInfo render_pass_info = {
     .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
@@ -629,6 +637,8 @@ static void init_render_pass(VkState *vk_state) {
     .pAttachments = &color_attachment,
     .subpassCount = 1,
     .pSubpasses = &subpass,
+    .dependencyCount = 1,
+    .pDependencies = &dependency,
   };
 
   if (
@@ -859,7 +869,22 @@ static void init_command_buffers(VkState *vk_state) {
       logs::fatal("Could not record command buffer.");
     }
   }
+}
 
+
+static void init_semaphores(VkState *vk_state) {
+  VkSemaphoreCreateInfo semaphore_info = {
+    .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+  };
+
+  if (
+    vkCreateSemaphore(vk_state->device, &semaphore_info, nullptr,
+      &vk_state->image_available) != VK_SUCCESS ||
+    vkCreateSemaphore(vk_state->device, &semaphore_info, nullptr,
+      &vk_state->render_finished) != VK_SUCCESS
+  ) {
+    logs::fatal("Could not create semaphores.");
+  }
 }
 
 
@@ -910,10 +935,14 @@ void vulkan::init(VkState *vk_state, GLFWwindow *window) {
   init_command_pool(vk_state);
   logs::info("Creating command buffers");
   init_command_buffers(vk_state);
+  logs::info("Creating semaphones");
+  init_semaphores(vk_state);
 }
 
 
 void vulkan::destroy(VkState *vk_state) {
+  vkDestroySemaphore(vk_state->device, vk_state->render_finished, nullptr);
+  vkDestroySemaphore(vk_state->device, vk_state->image_available, nullptr);
   vkDestroyCommandPool(vk_state->device, vk_state->command_pool, nullptr);
   range (0, vk_state->n_swapchain_images) {
     vkDestroyFramebuffer(vk_state->device, vk_state->swapchain_framebuffers[idx],
@@ -932,4 +961,50 @@ void vulkan::destroy(VkState *vk_state) {
   }
   vkDestroySurfaceKHR(vk_state->instance, vk_state->surface, nullptr);
   vkDestroyInstance(vk_state->instance, nullptr);
+}
+
+
+void vulkan::render(VkState *vk_state) {
+  u32 idx_image;
+  vkAcquireNextImageKHR(vk_state->device, vk_state->swapchain, UINT64_MAX,
+    vk_state->image_available, VK_NULL_HANDLE, &idx_image);
+
+  VkSemaphore wait_semaphores[] = { vk_state->image_available };
+  VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+  VkSemaphore signal_semaphores[] = { vk_state->render_finished };
+
+  VkSubmitInfo submit_info = {
+    .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+    .waitSemaphoreCount = 1,
+    .pWaitSemaphores = wait_semaphores,
+    .pWaitDstStageMask = wait_stages,
+    .commandBufferCount = 1,
+    .pCommandBuffers = &vk_state->command_buffers[idx_image],
+    .signalSemaphoreCount = 1,
+    .pSignalSemaphores = signal_semaphores,
+  };
+
+  if (
+    vkQueueSubmit(vk_state->graphics_queue, 1, &submit_info,
+      VK_NULL_HANDLE) != VK_SUCCESS
+  ) {
+    logs::fatal("Could not submit draw command buffer.");
+  }
+
+  VkSwapchainKHR swapchains[] = { vk_state->swapchain };
+  VkPresentInfoKHR present_info = {
+    .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+    .waitSemaphoreCount = 1,
+    .pWaitSemaphores = signal_semaphores,
+    .swapchainCount = 1,
+    .pSwapchains = swapchains,
+    .pImageIndices = &idx_image,
+
+  };
+  vkQueuePresentKHR(vk_state->present_queue, &present_info);
+}
+
+
+void vulkan::wait(VkState *vk_state) {
+  vkDeviceWaitIdle(vk_state->device);
 }

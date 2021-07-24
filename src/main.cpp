@@ -33,7 +33,9 @@ static void destroy_window(GLFWwindow *window) {
 static void run_main_loop(State *state) {
   while (!glfwWindowShouldClose(state->window)) {
     glfwPollEvents();
+    vulkan::render(&state->vk_state);
   }
+  vulkan::wait(&state->vk_state);
 }
 
 

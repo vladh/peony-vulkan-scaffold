@@ -44,9 +44,13 @@ struct VkState {
   VkPipeline pipeline;
   VkCommandPool command_pool;
   VkCommandBuffer command_buffers[MAX_N_SWAPCHAIN_IMAGES];
+  VkSemaphore image_available;
+  VkSemaphore render_finished;
 };
 
 namespace vulkan {
   void init(VkState *vk_state, GLFWwindow *window);
   void destroy(VkState *vk_state);
+  void render(VkState *vk_state);
+  void wait(VkState *vk_state);
 }
