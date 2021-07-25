@@ -4,10 +4,51 @@
 #include <vulkan/vulkan.h>
 #include "types.hpp"
 
+struct Vertex {
+  v3 position;
+  v3 color;
+};
+
 static constexpr i64 const NO_QUEUE_FAMILY = -1;
 static constexpr u32 const MAX_N_SWAPCHAIN_FORMATS = 32;
 static constexpr u32 const MAX_N_SWAPCHAIN_PRESENT_MODES = 32;
 static constexpr u32 const MAX_N_SWAPCHAIN_IMAGES = 8;
+constexpr u32 const MAX_N_REQUIRED_EXTENSIONS = 256;
+
+constexpr bool const USE_VALIDATION = true;
+constexpr char const * const VALIDATION_LAYERS[] = {"VK_LAYER_KHRONOS_validation"};
+constexpr char const * const REQUIRED_DEVICE_EXTENSIONS[] = {
+  VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+  #if PLATFORM & PLATFORM_MACOS
+    "VK_KHR_portability_subset",
+  #endif
+};
+
+constexpr Vertex const COOL_VERTICES_BRO[] = {
+  {{ 0.0f, -0.5f, 0.0f}, {1.0f, 0.0f, 1.0f}},
+  {{ 0.5f,  0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
+  {{-0.5f,  0.5f, 0.0f}, {0.0f, 1.0f, 1.0f}}
+};
+
+constexpr VkVertexInputBindingDescription const VERTEX_BINDING_DESCRIPTION = {
+  .binding = 0,
+  .stride = sizeof(Vertex),
+  .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+};
+constexpr VkVertexInputAttributeDescription const VERTEX_ATTRIBUTE_DESCRIPTIONS[2] = {
+  {
+    .binding = 0,
+    .location = 0,
+    .format = VK_FORMAT_R32G32B32_SFLOAT,
+    .offset = offsetof(Vertex, position),
+  },
+  {
+    .binding = 0,
+    .location = 1,
+    .format = VK_FORMAT_R32G32B32_SFLOAT,
+    .offset = offsetof(Vertex, color),
+  }
+};
 
 struct QueueFamilyIndices {
   i64 graphics;
@@ -46,6 +87,8 @@ struct VkState {
   VkSemaphore image_available;
   VkSemaphore render_finished;
   bool should_recreate_swapchain;
+  VkBuffer vertex_buffer;
+  VkDeviceMemory vertex_buffer_memory;
 };
 
 namespace vulkan {

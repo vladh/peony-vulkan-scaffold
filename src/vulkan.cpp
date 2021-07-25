@@ -13,17 +13,6 @@
 #include "files.hpp"
 
 
-constexpr u32 const MAX_N_REQUIRED_EXTENSIONS = 256;
-constexpr bool const USE_VALIDATION = true;
-constexpr char const * const VALIDATION_LAYERS[] = {"VK_LAYER_KHRONOS_validation"};
-constexpr char const * const REQUIRED_DEVICE_EXTENSIONS[] = {
-  VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-  #if PLATFORM & PLATFORM_MACOS
-    "VK_KHR_portability_subset",
-  #endif
-};
-
-
 static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
   VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
   VkDebugUtilsMessageTypeFlagsEXT message_type,
@@ -686,10 +675,10 @@ static void init_pipeline(VkState *vk_state) {
 
   VkPipelineVertexInputStateCreateInfo vertex_input_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-    .vertexBindingDescriptionCount = 0,
-    .pVertexBindingDescriptions = nullptr,
-    .vertexAttributeDescriptionCount = 0,
-    .pVertexAttributeDescriptions = nullptr,
+    .vertexBindingDescriptionCount = 1,
+    .pVertexBindingDescriptions = &VERTEX_BINDING_DESCRIPTION,
+    .vertexAttributeDescriptionCount = 2,
+    .pVertexAttributeDescriptions = VERTEX_ATTRIBUTE_DESCRIPTIONS,
   };
   VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
@@ -825,6 +814,71 @@ static void init_command_pool(VkState *vk_state) {
 }
 
 
+static u32 find_memory_type(
+  VkState *vk_state, u32 type_filter, VkMemoryPropertyFlags desired_properties
+) {
+  VkPhysicalDeviceMemoryProperties actual_properties;
+  vkGetPhysicalDeviceMemoryProperties(vk_state->physical_device, &actual_properties);
+
+  range (0, actual_properties.memoryTypeCount) {
+    if (
+      type_filter & (1 << idx) &&
+      actual_properties.memoryTypes[idx].propertyFlags & desired_properties
+    ) {
+      return idx;
+    }
+  }
+
+  logs::fatal("Could not find suitable memory type.");
+  return 0;
+}
+
+
+static void init_vertex_buffer(VkState *vk_state) {
+  VkBufferCreateInfo buffer_info = {
+    .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+    .size = sizeof(COOL_VERTICES_BRO),
+    .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+    .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+  };
+  if (
+    vkCreateBuffer(vk_state->device, &buffer_info, nullptr,
+      &vk_state->vertex_buffer) != VK_SUCCESS
+  ) {
+    logs::fatal("Could not create vertex buffer.");
+  }
+
+  VkMemoryRequirements requirements;
+  vkGetBufferMemoryRequirements(vk_state->device, vk_state->vertex_buffer,
+    &requirements);
+
+  u32 memory_type = find_memory_type(vk_state, requirements.memoryTypeBits,
+    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+  VkMemoryAllocateInfo alloc_info = {
+    .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+    .allocationSize = requirements.size,
+    .memoryTypeIndex = memory_type,
+  };
+
+  if (
+    vkAllocateMemory(vk_state->device, &alloc_info, nullptr,
+      &vk_state->vertex_buffer_memory) != VK_SUCCESS
+  ) {
+    logs::fatal("Could not allocate vertex buffer memory.");
+  }
+
+  vkBindBufferMemory(vk_state->device, vk_state->vertex_buffer,
+    vk_state->vertex_buffer_memory, 0);
+
+  void *memory;
+  vkMapMemory(vk_state->device, vk_state->vertex_buffer_memory, 0,
+    sizeof(COOL_VERTICES_BRO), 0, &memory);
+  memcpy(memory, COOL_VERTICES_BRO, sizeof(COOL_VERTICES_BRO));
+  vkUnmapMemory(vk_state->device, vk_state->vertex_buffer_memory);
+}
+
+
 static void init_command_buffers(VkState *vk_state) {
   VkCommandBufferAllocateInfo alloc_info = {
     .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -865,6 +919,12 @@ static void init_command_buffers(VkState *vk_state) {
     vkCmdBeginRenderPass(command_buffer, &renderpass_info, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
       vk_state->pipeline);
+
+    VkBuffer vertex_buffers[] = { vk_state->vertex_buffer };
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(vk_state->command_buffers[idx], 0, 1, vertex_buffers,
+      offsets);
+
     vkCmdDraw(command_buffer, 3, 1, 0, 0);
     vkCmdEndRenderPass(command_buffer);
     if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
@@ -935,6 +995,8 @@ void vulkan::init(VkState *vk_state, GLFWwindow *window) {
   init_framebuffers(vk_state);
   logs::info("Creating command pool");
   init_command_pool(vk_state);
+  logs::info("Creating vertex buffer");
+  init_vertex_buffer(vk_state);
   logs::info("Creating command buffers");
   init_command_buffers(vk_state);
   logs::info("Creating semaphores");
@@ -962,6 +1024,8 @@ static void destroy_swapchain(VkState *vk_state) {
 void vulkan::destroy(VkState *vk_state) {
   destroy_swapchain(vk_state);
 
+  vkDestroyBuffer(vk_state->device, vk_state->vertex_buffer, nullptr);
+  vkFreeMemory(vk_state->device, vk_state->vertex_buffer_memory, nullptr);
   vkDestroySemaphore(vk_state->device, vk_state->render_finished, nullptr);
   vkDestroySemaphore(vk_state->device, vk_state->image_available, nullptr);
   vkDestroyCommandPool(vk_state->device, vk_state->command_pool, nullptr);
