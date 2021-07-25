@@ -17,8 +17,7 @@ struct QueueFamilyIndices {
 struct SwapChainSupportDetails {
   VkSurfaceCapabilitiesKHR capabilities;
   VkSurfaceFormatKHR formats[MAX_N_SWAPCHAIN_FORMATS];
-  u32 n_formats;
-  VkPresentModeKHR present_modes[MAX_N_SWAPCHAIN_PRESENT_MODES];
+  u32 n_formats; VkPresentModeKHR present_modes[MAX_N_SWAPCHAIN_PRESENT_MODES];
   u32 n_present_modes;
 };
 
@@ -46,11 +45,13 @@ struct VkState {
   VkCommandBuffer command_buffers[MAX_N_SWAPCHAIN_IMAGES];
   VkSemaphore image_available;
   VkSemaphore render_finished;
+  bool should_recreate_swapchain;
 };
 
 namespace vulkan {
   void init(VkState *vk_state, GLFWwindow *window);
+  void recreate_swapchain(VkState *vk_state, GLFWwindow *window);
   void destroy(VkState *vk_state);
-  void render(VkState *vk_state);
+  void render(VkState *vk_state, GLFWwindow *window);
   void wait(VkState *vk_state);
 }

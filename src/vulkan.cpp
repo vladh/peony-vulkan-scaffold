@@ -250,7 +250,8 @@ static bool are_required_extensions_supported(VkPhysicalDevice physical_device) 
 
 
 static void init_swapchain_support_details(
-  SwapChainSupportDetails *details, VkPhysicalDevice physical_device, VkSurfaceKHR surface
+  SwapChainSupportDetails *details, VkPhysicalDevice physical_device,
+  VkSurfaceKHR surface
 ) {
   *details = {};
 
@@ -494,6 +495,7 @@ static void init_swapchain(VkState *vk_state, GLFWwindow *window) {
   VkSurfaceFormatKHR surface_format = choose_swap_surface_format(details);
   VkPresentModeKHR present_mode = choose_swap_present_mode(details);
   VkExtent2D extent = choose_swap_extent(details, window);
+  logs::info("Extent is %d x %d", extent.width, extent.height);
 
   // Just get one more than the minimum. We can probably tune this later.
   u32 image_count = capabilities->minImageCount + 1;
@@ -935,19 +937,18 @@ void vulkan::init(VkState *vk_state, GLFWwindow *window) {
   init_command_pool(vk_state);
   logs::info("Creating command buffers");
   init_command_buffers(vk_state);
-  logs::info("Creating semaphones");
+  logs::info("Creating semaphores");
   init_semaphores(vk_state);
 }
 
 
-void vulkan::destroy(VkState *vk_state) {
-  vkDestroySemaphore(vk_state->device, vk_state->render_finished, nullptr);
-  vkDestroySemaphore(vk_state->device, vk_state->image_available, nullptr);
-  vkDestroyCommandPool(vk_state->device, vk_state->command_pool, nullptr);
+static void destroy_swapchain(VkState *vk_state) {
   range (0, vk_state->n_swapchain_images) {
     vkDestroyFramebuffer(vk_state->device, vk_state->swapchain_framebuffers[idx],
       nullptr);
   }
+  vkFreeCommandBuffers(vk_state->device, vk_state->command_pool,
+    vk_state->n_swapchain_images, vk_state->command_buffers);
   vkDestroyPipeline(vk_state->device, vk_state->pipeline, nullptr);
   vkDestroyPipelineLayout(vk_state->device, vk_state->pipeline_layout, nullptr);
   vkDestroyRenderPass(vk_state->device, vk_state->render_pass, nullptr);
@@ -955,19 +956,65 @@ void vulkan::destroy(VkState *vk_state) {
     vkDestroyImageView(vk_state->device, vk_state->swapchain_image_views[idx], nullptr);
   }
   vkDestroySwapchainKHR(vk_state->device, vk_state->swapchain, nullptr);
+}
+
+
+void vulkan::destroy(VkState *vk_state) {
+  destroy_swapchain(vk_state);
+
+  vkDestroySemaphore(vk_state->device, vk_state->render_finished, nullptr);
+  vkDestroySemaphore(vk_state->device, vk_state->image_available, nullptr);
+  vkDestroyCommandPool(vk_state->device, vk_state->command_pool, nullptr);
   vkDestroyDevice(vk_state->device, nullptr);
   if (USE_VALIDATION) {
-    DestroyDebugUtilsMessengerEXT(vk_state->instance, vk_state->debug_messenger, nullptr);
+    DestroyDebugUtilsMessengerEXT(vk_state->instance, vk_state->debug_messenger,
+      nullptr);
   }
   vkDestroySurfaceKHR(vk_state->instance, vk_state->surface, nullptr);
   vkDestroyInstance(vk_state->instance, nullptr);
 }
 
 
-void vulkan::render(VkState *vk_state) {
+void vulkan::recreate_swapchain(VkState *vk_state, GLFWwindow *window) {
+  logs::info("Recreating swapchain");
+
+  // If the width or height is 0, wait until they're both greater than zero.
+  // We don't want to do anything while the window size is zero.
+  int width = 0;
+  int height = 0;
+  glfwGetFramebufferSize(window, &width, &height);
+  while (width == 0 || height == 0) {
+    glfwGetFramebufferSize(window, &width, &height);
+    glfwWaitEvents();
+  }
+
+  vkDeviceWaitIdle(vk_state->device);
+
+  destroy_swapchain(vk_state);
+
+  init_swapchain_support_details(&vk_state->swapchain_support_details,
+    vk_state->physical_device, vk_state->surface);
+  init_swapchain(vk_state, window);
+  init_image_views(vk_state);
+  init_render_pass(vk_state);
+  init_pipeline(vk_state);
+  init_framebuffers(vk_state);
+  init_command_buffers(vk_state);
+}
+
+
+void vulkan::render(VkState *vk_state, GLFWwindow *window) {
   u32 idx_image;
-  vkAcquireNextImageKHR(vk_state->device, vk_state->swapchain, UINT64_MAX,
-    vk_state->image_available, VK_NULL_HANDLE, &idx_image);
+  VkResult acquire_image_res = vkAcquireNextImageKHR(vk_state->device,
+    vk_state->swapchain, UINT64_MAX, vk_state->image_available, VK_NULL_HANDLE,
+    &idx_image);
+
+  if (acquire_image_res == VK_ERROR_OUT_OF_DATE_KHR) {
+    recreate_swapchain(vk_state, window);
+    return;
+  } else if (acquire_image_res != VK_SUCCESS && acquire_image_res != VK_SUBOPTIMAL_KHR) {
+    logs::fatal("Could not acquire swap chain image.");
+  }
 
   VkSemaphore wait_semaphores[] = { vk_state->image_available };
   VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
@@ -1001,7 +1048,18 @@ void vulkan::render(VkState *vk_state) {
     .pImageIndices = &idx_image,
 
   };
-  vkQueuePresentKHR(vk_state->present_queue, &present_info);
+
+  VkResult present_res = vkQueuePresentKHR(vk_state->present_queue, &present_info);
+
+  if (
+    present_res == VK_ERROR_OUT_OF_DATE_KHR || present_res == VK_SUBOPTIMAL_KHR ||
+    vk_state->should_recreate_swapchain
+  ) {
+    recreate_swapchain(vk_state, window);
+    vk_state->should_recreate_swapchain = false;
+  } else if (present_res != VK_SUCCESS) {
+    logs::fatal("Could not present swap chain image.");
+  }
 }
 
 
