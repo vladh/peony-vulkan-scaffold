@@ -835,6 +835,10 @@ static u32 find_memory_type(
 
 
 static void init_vertex_buffer(VkState *vk_state) {
+  // TODO: #slow Use VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT memory, which is faster.
+  // We can copy to it using a staging buffer.
+  // vulkan-tutorial.com/en/Vertex_buffers/Staging_buffer.html
+
   VkBufferCreateInfo buffer_info = {
     .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
     .size = sizeof(COOL_VERTICES_BRO),
@@ -925,7 +929,7 @@ static void init_command_buffers(VkState *vk_state) {
     vkCmdBindVertexBuffers(vk_state->command_buffers[idx], 0, 1, vertex_buffers,
       offsets);
 
-    vkCmdDraw(command_buffer, 3, 1, 0, 0);
+    vkCmdDraw(command_buffer, LEN(COOL_VERTICES_BRO), 1, 0, 0);
     vkCmdEndRenderPass(command_buffer);
     if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
       logs::fatal("Could not record command buffer.");
