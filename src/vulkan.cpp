@@ -875,6 +875,10 @@ static void init_buffers(VkState *vk_state) {
   // We can copy to it using a staging buffer.
   // vulkan-tutorial.com/en/Vertex_buffers/Staging_buffer.html
 
+  // TODO: #slow Allocate memory only once, and split that up ourselves into the
+  // two buffers using the memory offsets in e.g. `vkCmdBindVertexBuffers()`.
+  // vulkan-tutorial.com/Vertex_buffers/Index_buffer.html
+
   // Vertex buffer
   make_buffer(
     vk_state->device, vk_state->physical_device,
