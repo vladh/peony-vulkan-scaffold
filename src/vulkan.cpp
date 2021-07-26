@@ -815,10 +815,11 @@ static void init_command_pool(VkState *vk_state) {
 
 
 static u32 find_memory_type(
-  VkState *vk_state, u32 type_filter, VkMemoryPropertyFlags desired_properties
+  VkPhysicalDevice physical_device, u32 type_filter,
+  VkMemoryPropertyFlags desired_properties
 ) {
   VkPhysicalDeviceMemoryProperties actual_properties;
-  vkGetPhysicalDeviceMemoryProperties(vk_state->physical_device, &actual_properties);
+  vkGetPhysicalDeviceMemoryProperties(physical_device, &actual_properties);
 
   range (0, actual_properties.memoryTypeCount) {
     if (
@@ -834,52 +835,77 @@ static u32 find_memory_type(
 }
 
 
-static void init_vertex_buffer(VkState *vk_state) {
-  // TODO: #slow Use VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT memory, which is faster.
-  // We can copy to it using a staging buffer.
-  // vulkan-tutorial.com/en/Vertex_buffers/Staging_buffer.html
-
+void make_buffer(
+  VkDevice device, VkPhysicalDevice physical_device,
+  VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
+  VkBuffer *buffer, VkDeviceMemory *memory
+) {
   VkBufferCreateInfo buffer_info = {
     .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-    .size = sizeof(COOL_VERTICES_BRO),
-    .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+    .size = size,
+    .usage = usage,
     .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
   };
-  if (
-    vkCreateBuffer(vk_state->device, &buffer_info, nullptr,
-      &vk_state->vertex_buffer) != VK_SUCCESS
-  ) {
-    logs::fatal("Could not create vertex buffer.");
+
+  if (vkCreateBuffer(device, &buffer_info, nullptr, buffer) != VK_SUCCESS) {
+    logs::fatal("Could not create buffer.");
   }
 
   VkMemoryRequirements requirements;
-  vkGetBufferMemoryRequirements(vk_state->device, vk_state->vertex_buffer,
-    &requirements);
+  vkGetBufferMemoryRequirements(device, *buffer, &requirements);
 
-  u32 memory_type = find_memory_type(vk_state, requirements.memoryTypeBits,
-    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
+  u32 memory_type = find_memory_type(physical_device, requirements.memoryTypeBits,
+    properties);
   VkMemoryAllocateInfo alloc_info = {
     .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
     .allocationSize = requirements.size,
     .memoryTypeIndex = memory_type,
   };
 
-  if (
-    vkAllocateMemory(vk_state->device, &alloc_info, nullptr,
-      &vk_state->vertex_buffer_memory) != VK_SUCCESS
-  ) {
-    logs::fatal("Could not allocate vertex buffer memory.");
+  if (vkAllocateMemory(device, &alloc_info, nullptr, memory) != VK_SUCCESS) {
+    logs::fatal("Could not allocate buffer memory.");
   }
 
-  vkBindBufferMemory(vk_state->device, vk_state->vertex_buffer,
-    vk_state->vertex_buffer_memory, 0);
+  vkBindBufferMemory(device, *buffer, *memory, 0);
+}
 
-  void *memory;
+
+static void init_buffers(VkState *vk_state) {
+  // TODO: #slow Use VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT memory, which is faster.
+  // We can copy to it using a staging buffer.
+  // vulkan-tutorial.com/en/Vertex_buffers/Staging_buffer.html
+
+  // Vertex buffer
+  make_buffer(
+    vk_state->device, vk_state->physical_device,
+    sizeof(VERTICES),
+    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+    &vk_state->vertex_buffer,
+    &vk_state->vertex_buffer_memory
+  );
+
+  void *vertex_memory;
   vkMapMemory(vk_state->device, vk_state->vertex_buffer_memory, 0,
-    sizeof(COOL_VERTICES_BRO), 0, &memory);
-  memcpy(memory, COOL_VERTICES_BRO, sizeof(COOL_VERTICES_BRO));
+    sizeof(VERTICES), 0, &vertex_memory);
+  memcpy(vertex_memory, VERTICES, sizeof(VERTICES));
   vkUnmapMemory(vk_state->device, vk_state->vertex_buffer_memory);
+
+  // Index buffer
+  make_buffer(
+    vk_state->device, vk_state->physical_device,
+    sizeof(INDICES),
+    VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+    &vk_state->index_buffer,
+    &vk_state->index_buffer_memory
+  );
+
+  void *index_memory;
+  vkMapMemory(vk_state->device, vk_state->index_buffer_memory, 0,
+    sizeof(INDICES), 0, &index_memory);
+  memcpy(index_memory, INDICES, sizeof(INDICES));
+  vkUnmapMemory(vk_state->device, vk_state->index_buffer_memory);
 }
 
 
@@ -926,10 +952,12 @@ static void init_command_buffers(VkState *vk_state) {
 
     VkBuffer vertex_buffers[] = { vk_state->vertex_buffer };
     VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(vk_state->command_buffers[idx], 0, 1, vertex_buffers,
-      offsets);
+    vkCmdBindVertexBuffers(vk_state->command_buffers[idx], 0, 1,
+      vertex_buffers, offsets);
+    vkCmdBindIndexBuffer(vk_state->command_buffers[idx],
+      vk_state->index_buffer, 0, VK_INDEX_TYPE_UINT32);
 
-    vkCmdDraw(command_buffer, LEN(COOL_VERTICES_BRO), 1, 0, 0);
+    vkCmdDrawIndexed(command_buffer, LEN(INDICES), 1, 0, 0, 0);
     vkCmdEndRenderPass(command_buffer);
     if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
       logs::fatal("Could not record command buffer.");
@@ -1000,7 +1028,7 @@ void vulkan::init(VkState *vk_state, GLFWwindow *window) {
   logs::info("Creating command pool");
   init_command_pool(vk_state);
   logs::info("Creating vertex buffer");
-  init_vertex_buffer(vk_state);
+  init_buffers(vk_state);
   logs::info("Creating command buffers");
   init_command_buffers(vk_state);
   logs::info("Creating semaphores");
@@ -1030,8 +1058,12 @@ void vulkan::destroy(VkState *vk_state) {
 
   vkDestroyBuffer(vk_state->device, vk_state->vertex_buffer, nullptr);
   vkFreeMemory(vk_state->device, vk_state->vertex_buffer_memory, nullptr);
+  vkDestroyBuffer(vk_state->device, vk_state->index_buffer, nullptr);
+  vkFreeMemory(vk_state->device, vk_state->index_buffer_memory, nullptr);
+
   vkDestroySemaphore(vk_state->device, vk_state->render_finished, nullptr);
   vkDestroySemaphore(vk_state->device, vk_state->image_available, nullptr);
+
   vkDestroyCommandPool(vk_state->device, vk_state->command_pool, nullptr);
   vkDestroyDevice(vk_state->device, nullptr);
   if (USE_VALIDATION) {

@@ -24,11 +24,14 @@ constexpr char const * const REQUIRED_DEVICE_EXTENSIONS[] = {
   #endif
 };
 
-constexpr Vertex const COOL_VERTICES_BRO[] = {
-  {{ 0.0f, -0.5f, 0.0f}, {1.0f, 0.0f, 1.0f}},
-  {{ 0.5f,  0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
-  {{-0.5f,  0.5f, 0.0f}, {0.0f, 1.0f, 1.0f}}
+constexpr Vertex const VERTICES[] = {
+  {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
+  {{ 0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
+  {{ 0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}},
+  {{-0.5f,  0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}},
 };
+
+constexpr u32 INDICES[] = {0, 1, 2, 2, 3, 0};
 
 constexpr VkVertexInputBindingDescription const VERTEX_BINDING_DESCRIPTION = {
   .binding = 0,
@@ -89,6 +92,8 @@ struct VkState {
   bool should_recreate_swapchain;
   VkBuffer vertex_buffer;
   VkDeviceMemory vertex_buffer_memory;
+  VkBuffer index_buffer;
+  VkDeviceMemory index_buffer_memory;
 };
 
 namespace vulkan {
