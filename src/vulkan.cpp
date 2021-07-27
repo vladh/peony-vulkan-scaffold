@@ -163,8 +163,7 @@ static void init_debug_messenger(
   }
 
   if (
-    CreateDebugUtilsMessengerEXT(
-      vk_state->instance, debug_messenger_info,
+    CreateDebugUtilsMessengerEXT(vk_state->instance, debug_messenger_info,
       nullptr, &vk_state->debug_messenger) != VK_SUCCESS
   ) {
     logs::fatal("Could not set up debug messenger.");
@@ -181,14 +180,14 @@ static QueueFamilyIndices get_queue_family_indices(
   u32 n_queue_families = 0;
   vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &n_queue_families, nullptr);
   assert(n_queue_families <= MAX_N_QUEUE_FAMILIES);
-  vkGetPhysicalDeviceQueueFamilyProperties(
-    physical_device, &n_queue_families, queue_families);
+  vkGetPhysicalDeviceQueueFamilyProperties(physical_device,
+    &n_queue_families, queue_families);
 
   range (0, n_queue_families) {
     VkQueueFamilyProperties *family = &queue_families[idx];
     VkBool32 supports_present = false;
-    vkGetPhysicalDeviceSurfaceSupportKHR(
-      physical_device, idx, surface, &supports_present);
+    vkGetPhysicalDeviceSurfaceSupportKHR(physical_device,
+      idx, surface, &supports_present);
     if (family->queueFlags & VK_QUEUE_GRAPHICS_BIT) {
       indices.graphics = idx;
     }
@@ -211,11 +210,11 @@ static bool are_required_extensions_supported(VkPhysicalDevice physical_device) 
   constexpr u32 const MAX_N_EXTENSIONS = 512;
   VkExtensionProperties supported_extensions[MAX_N_EXTENSIONS];
   u32 n_supported_extensions;
-  vkEnumerateDeviceExtensionProperties(
-    physical_device, nullptr, &n_supported_extensions, nullptr);
+  vkEnumerateDeviceExtensionProperties(physical_device,
+    nullptr, &n_supported_extensions, nullptr);
   assert(n_supported_extensions <= MAX_N_EXTENSIONS);
-  vkEnumerateDeviceExtensionProperties(
-    physical_device, nullptr, &n_supported_extensions, supported_extensions);
+  vkEnumerateDeviceExtensionProperties(physical_device,
+    nullptr, &n_supported_extensions, supported_extensions);
 
   range_named (idx_required, 0, LEN(REQUIRED_DEVICE_EXTENSIONS)) {
     bool did_find_extension = false;
@@ -245,23 +244,23 @@ static void init_swapchain_support_details(
   *details = {};
 
   // Capabilities
-  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-    physical_device, surface, &details->capabilities);
+  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device,
+    surface, &details->capabilities);
 
   // Formats
-  vkGetPhysicalDeviceSurfaceFormatsKHR(
-    physical_device, surface, &details->n_formats, nullptr);
+  vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device,
+    surface, &details->n_formats, nullptr);
   if (details->n_formats != 0) {
-    vkGetPhysicalDeviceSurfaceFormatsKHR(
-      physical_device, surface, &details->n_formats, details->formats);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device,
+      surface, &details->n_formats, details->formats);
   }
 
   // Present modes
-  vkGetPhysicalDeviceSurfacePresentModesKHR(
-    physical_device, surface, &details->n_present_modes, nullptr);
+  vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device,
+    surface, &details->n_present_modes, nullptr);
   if (details->n_present_modes != 0) {
-    vkGetPhysicalDeviceSurfacePresentModesKHR(
-      physical_device, surface, &details->n_present_modes, details->present_modes);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device,
+      surface, &details->n_present_modes, details->present_modes);
   }
 }
 
@@ -336,13 +335,13 @@ static void init_physical_device(VkState *vk_state) {
     VkPhysicalDevice *physical_device = &physical_devices[idx];
     queue_family_indices = get_queue_family_indices(*physical_device, vk_state->surface);
     SwapChainSupportDetails swapchain_support_details = {};
-    init_swapchain_support_details(
-      &swapchain_support_details, *physical_device, vk_state->surface);
-    print_physical_device_info(
-      *physical_device, queue_family_indices, &swapchain_support_details);
+    init_swapchain_support_details(&swapchain_support_details,
+      *physical_device, vk_state->surface);
+    print_physical_device_info(*physical_device,
+      queue_family_indices, &swapchain_support_details);
     if (
-      is_physical_device_suitable(
-        *physical_device, queue_family_indices, &swapchain_support_details)
+      is_physical_device_suitable(*physical_device,
+        queue_family_indices, &swapchain_support_details)
     ) {
       vk_state->physical_device = *physical_device;
       vk_state->queue_family_indices = queue_family_indices;
@@ -402,13 +401,11 @@ static void init_logical_device(VkState *vk_state) {
     logs::fatal("Could not create logical device.");
   }
 
-  vkGetDeviceQueue(
-    vk_state->device,
+  vkGetDeviceQueue(vk_state->device,
     vk_state->queue_family_indices.graphics,
     0,
     &vk_state->graphics_queue);
-  vkGetDeviceQueue(
-    vk_state->device,
+  vkGetDeviceQueue(vk_state->device,
     vk_state->queue_family_indices.present,
     0,
     &vk_state->present_queue);
@@ -462,12 +459,10 @@ static VkExtent2D choose_swap_extent(
     glfwGetFramebufferSize(window, &width, &height);
 
     VkExtent2D extent = {(u32)width, (u32)height};
-    extent.width = clamp(
-      extent.width,
+    extent.width = clamp(extent.width,
       details->capabilities.minImageExtent.width,
       details->capabilities.maxImageExtent.width);
-    extent.height = clamp(
-      extent.height,
+    extent.height = clamp(extent.height,
       details->capabilities.minImageExtent.height,
       details->capabilities.maxImageExtent.height);
 
@@ -524,18 +519,16 @@ static void init_swapchain(VkState *vk_state, GLFWwindow *window) {
   }
 
   if (
-    vkCreateSwapchainKHR(
-      vk_state->device, &swapchain_info, nullptr, &vk_state->swapchain) !=
-    VK_SUCCESS
+    vkCreateSwapchainKHR(vk_state->device, &swapchain_info, nullptr,
+      &vk_state->swapchain) != VK_SUCCESS
   ) {
     logs::fatal("Could not create swapchain.");
   }
 
-  vkGetSwapchainImagesKHR(
-    vk_state->device, vk_state->swapchain, &vk_state->n_swapchain_images, nullptr);
-  vkGetSwapchainImagesKHR(
-    vk_state->device, vk_state->swapchain, &vk_state->n_swapchain_images,
-    vk_state->swapchain_images);
+  vkGetSwapchainImagesKHR(vk_state->device,
+    vk_state->swapchain, &vk_state->n_swapchain_images, nullptr);
+  vkGetSwapchainImagesKHR(vk_state->device,
+    vk_state->swapchain, &vk_state->n_swapchain_images, vk_state->swapchain_images);
 
   vk_state->swapchain_image_format = surface_format.format;
   vk_state->swapchain_extent = extent;
@@ -563,8 +556,7 @@ static void init_image_views(VkState *vk_state) {
     };
 
     if (
-      vkCreateImageView(vk_state->device, &ci, nullptr, image_view) !=
-      VK_SUCCESS
+      vkCreateImageView(vk_state->device, &ci, nullptr, image_view) != VK_SUCCESS
     ) {
       logs::fatal("Could not create image views.");
     }
@@ -583,8 +575,7 @@ static VkShaderModule init_shader_module(
 
   VkShaderModule shader_module;
   if (
-    vkCreateShaderModule(vk_state->device, &ci, nullptr, &shader_module) !=
-    VK_SUCCESS
+    vkCreateShaderModule(vk_state->device, &ci, nullptr, &shader_module) != VK_SUCCESS
   ) {
     logs::fatal("Could not create shader module.");
   }
@@ -722,10 +713,10 @@ static void init_pipeline(VkState *vk_state) {
   MemoryPool pool = {};
 
   size_t vert_shader_size;
-  u8 *vert_shader = files::load_file_to_pool_u8(
-    &pool, "bin/shaders/test.vert.spv", &vert_shader_size);
-  VkShaderModule vert_shader_module = init_shader_module(
-    vk_state, vert_shader, vert_shader_size);
+  u8 *vert_shader = files::load_file_to_pool_u8(&pool,
+    "bin/shaders/test.vert.spv", &vert_shader_size);
+  VkShaderModule vert_shader_module = init_shader_module(vk_state,
+    vert_shader, vert_shader_size);
   VkPipelineShaderStageCreateInfo vert_shader_stage_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
     .stage = VK_SHADER_STAGE_VERTEX_BIT,
@@ -734,10 +725,10 @@ static void init_pipeline(VkState *vk_state) {
   };
 
   size_t frag_shader_size;
-  u8 *frag_shader = files::load_file_to_pool_u8(
-    &pool, "bin/shaders/test.frag.spv", &frag_shader_size);
-  VkShaderModule frag_shader_module = init_shader_module(
-    vk_state, frag_shader, frag_shader_size);
+  u8 *frag_shader = files::load_file_to_pool_u8(&pool,
+    "bin/shaders/test.frag.spv", &frag_shader_size);
+  VkShaderModule frag_shader_module = init_shader_module(vk_state,
+    frag_shader, frag_shader_size);
   VkPipelineShaderStageCreateInfo frag_shader_stage_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
     .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -858,7 +849,7 @@ static void init_pipeline(VkState *vk_state) {
 
 static void init_framebuffers(VkState *vk_state) {
   range (0, vk_state->n_swapchain_images) {
-    VkImageView attachments[] = { vk_state->swapchain_image_views[idx] };
+    VkImageView attachments[] = {vk_state->swapchain_image_views[idx]};
     VkFramebufferCreateInfo framebuffer_info = {
       .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
       .renderPass = vk_state->render_pass,
@@ -885,8 +876,8 @@ static void init_command_pool(VkState *vk_state) {
   };
 
   if (
-    vkCreateCommandPool(
-      vk_state->device, &pool_info, nullptr, &vk_state->command_pool) != VK_SUCCESS
+    vkCreateCommandPool(vk_state->device, &pool_info, nullptr,
+      &vk_state->command_pool) != VK_SUCCESS
   ) {
     logs::fatal("Could not create command pool.");
   }
@@ -949,54 +940,292 @@ void make_buffer(
 }
 
 
-static void init_buffers(VkState *vk_state) {
-  // TODO: #slow Use VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT memory, which is faster.
-  // We can copy to it using a staging buffer.
-  // vulkan-tutorial.com/en/Vertex_buffers/Staging_buffer.html
+static VkCommandBuffer begin_command_buffer(VkState *vk_state) {
+  VkCommandBufferAllocateInfo alloc_info = {
+    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+    .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+    .commandPool = vk_state->command_pool,
+    .commandBufferCount = 1,
+  };
+  VkCommandBuffer command_buffer;
+  vkAllocateCommandBuffers(vk_state->device, &alloc_info, &command_buffer);
 
+  VkCommandBufferBeginInfo begin_info = {
+    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+    .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+  };
+  vkBeginCommandBuffer(command_buffer, &begin_info);
+
+  return command_buffer;
+}
+
+
+static void end_command_buffer(VkState *vk_state, VkCommandBuffer command_buffer) {
+  vkEndCommandBuffer(command_buffer);
+
+  VkSubmitInfo submit_info = {
+    .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+    .commandBufferCount = 1,
+    .pCommandBuffers = &command_buffer,
+  };
+  vkQueueSubmit(vk_state->graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
+
+  vkQueueWaitIdle(vk_state->graphics_queue);
+  vkFreeCommandBuffers(vk_state->device, vk_state->command_pool, 1, &command_buffer);
+}
+
+
+static void copy_buffer(
+  VkState *vk_state, VkBuffer src, VkBuffer dest, VkDeviceSize size
+) {
+  VkCommandBuffer command_buffer = begin_command_buffer(vk_state);
+  VkBufferCopy copy_region = {.size = size};
+  vkCmdCopyBuffer(command_buffer, src, dest, 1, &copy_region);
+  end_command_buffer(vk_state, command_buffer);
+}
+
+
+static void transition_image_layout(
+  VkState *vk_state,
+  VkImage image, VkFormat format, VkImageLayout old_layout, VkImageLayout new_layout
+) {
+  VkCommandBuffer command_buffer = begin_command_buffer(vk_state);
+
+  VkImageMemoryBarrier barrier = {
+    .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+    .oldLayout = old_layout,
+    .newLayout = new_layout,
+    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+    .image = image,
+    .subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+    .subresourceRange.baseMipLevel = 0,
+    .subresourceRange.levelCount = 1,
+    .subresourceRange.baseArrayLayer = 0,
+    .subresourceRange.layerCount = 1,
+    .srcAccessMask = 0, // Filled in later
+    .dstAccessMask = 0, // Filled in later
+  };
+
+  VkPipelineStageFlags source_stage = {};
+  VkPipelineStageFlags destination_stage = {};
+
+  if (
+    old_layout == VK_IMAGE_LAYOUT_UNDEFINED &&
+    new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+  ) {
+    barrier.srcAccessMask = 0;
+    barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    source_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    destination_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+
+  } else if (
+    old_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
+    new_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+  ) {
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    source_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    destination_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+
+  } else {
+    logs::fatal("Could not complete requested layout transition as it's unsupported.");
+  }
+
+  vkCmdPipelineBarrier(command_buffer, source_stage, destination_stage,
+    0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+  end_command_buffer(vk_state, command_buffer);
+}
+
+
+static void copy_buffer_to_image(
+  VkState *vk_state, VkBuffer buffer, VkImage image, u32 width, u32 height
+) {
+  VkCommandBuffer command_buffer = begin_command_buffer(vk_state);
+
+  VkBufferImageCopy region = {
+    .bufferOffset = 0,
+    .bufferRowLength = 0,
+    .bufferImageHeight = 0,
+    .imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+    .imageSubresource.mipLevel = 0,
+    .imageSubresource.baseArrayLayer = 0,
+    .imageSubresource.layerCount = 1,
+    .imageOffset = {0, 0, 0},
+    .imageExtent = {width, height, 1},
+  };
+
+  vkCmdCopyBufferToImage(command_buffer, buffer, image,
+    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+  end_command_buffer(vk_state, command_buffer);
+}
+
+
+static void init_textures(VkState *vk_state) {
+  // Load image
+  int width, height, n_channels;
+  unsigned char* image = files::load_image("resources/textures/alpaca.jpg",
+    &width, &height, &n_channels, STBI_rgb_alpha, true);
+  VkDeviceSize image_size = width * height * 4;
+
+  // Copy to staging buffer
+  VkBuffer staging_buffer;
+  VkDeviceMemory staging_buffer_memory;
+  make_buffer(vk_state->device, vk_state->physical_device,
+    image_size,
+    VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+    &staging_buffer,
+    &staging_buffer_memory);
+  void *memory;
+  vkMapMemory(vk_state->device, staging_buffer_memory, 0, image_size, 0, &memory);
+  memcpy(memory, image, (size_t)image_size);
+  vkUnmapMemory(vk_state->device, staging_buffer_memory);
+
+  files::free_image(image);
+
+  // Create VkImage
+  VkImageCreateInfo image_info = {
+    .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+    .imageType = VK_IMAGE_TYPE_2D,
+    .extent.width = (u32)width,
+    .extent.height = (u32)height,
+    .extent.depth = 1,
+    .mipLevels = 1,
+    .arrayLayers = 1,
+    .format = VK_FORMAT_R8G8B8A8_SRGB,
+    .tiling = VK_IMAGE_TILING_OPTIMAL,
+    .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    .usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+    .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    .samples = VK_SAMPLE_COUNT_1_BIT,
+  };
+  if (
+    vkCreateImage(vk_state->device, &image_info, nullptr,
+      &vk_state->texture_image) != VK_SUCCESS
+  ) {
+    logs::fatal("Could not create image.");
+  }
+
+  // Allocate memory
+  VkMemoryRequirements requirements;
+  vkGetImageMemoryRequirements(vk_state->device, vk_state->texture_image, &requirements);
+  VkMemoryAllocateInfo alloc_info = {
+    .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+    .allocationSize = requirements.size,
+    .memoryTypeIndex = find_memory_type(vk_state->physical_device,
+      requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+  };
+  if (
+    vkAllocateMemory(vk_state->device, &alloc_info, nullptr,
+      &vk_state->texture_image_memory) != VK_SUCCESS
+  ) {
+    logs::fatal("Could not allocate image memory.");
+  }
+  vkBindImageMemory(vk_state->device, vk_state->texture_image,
+    vk_state->texture_image_memory, 0);
+
+  // Copy image
+  transition_image_layout(vk_state,
+    vk_state->texture_image,
+    VK_FORMAT_R8G8B8A8_SRGB,
+    VK_IMAGE_LAYOUT_UNDEFINED,
+    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  copy_buffer_to_image(vk_state,
+    staging_buffer,
+    vk_state->texture_image,
+    width,
+    height);
+  transition_image_layout(vk_state,
+    vk_state->texture_image,
+    VK_FORMAT_R8G8B8A8_SRGB,
+    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+  vkDestroyBuffer(vk_state->device, staging_buffer, nullptr);
+  vkFreeMemory(vk_state->device, staging_buffer_memory, nullptr);
+}
+
+
+static void init_buffers(VkState *vk_state) {
   // TODO: #slow Allocate memory only once, and split that up ourselves into the
   // two buffers using the memory offsets in e.g. `vkCmdBindVertexBuffers()`.
   // vulkan-tutorial.com/Vertex_buffers/Index_buffer.html
 
   // Vertex buffer
-  make_buffer(vk_state->device, vk_state->physical_device,
-    sizeof(VERTICES),
-    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-    &vk_state->vertex_buffer,
-    &vk_state->vertex_buffer_memory);
+  {
+    VkDeviceSize buffer_size = sizeof(VERTICES);
 
-  void *vertex_memory;
-  vkMapMemory(vk_state->device, vk_state->vertex_buffer_memory, 0,
-    sizeof(VERTICES), 0, &vertex_memory);
-  memcpy(vertex_memory, VERTICES, sizeof(VERTICES));
-  vkUnmapMemory(vk_state->device, vk_state->vertex_buffer_memory);
+    VkBuffer staging_buffer;
+    VkDeviceMemory staging_buffer_memory;
+    make_buffer(vk_state->device, vk_state->physical_device,
+      buffer_size,
+      VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+      &staging_buffer,
+      &staging_buffer_memory);
+
+    void *memory;
+    vkMapMemory(vk_state->device, staging_buffer_memory, 0, buffer_size, 0, &memory);
+    memcpy(memory, VERTICES, (size_t)buffer_size);
+    vkUnmapMemory(vk_state->device, staging_buffer_memory);
+
+    make_buffer(vk_state->device, vk_state->physical_device,
+      buffer_size,
+      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+      &vk_state->vertex_buffer,
+      &vk_state->vertex_buffer_memory);
+    copy_buffer(vk_state, staging_buffer, vk_state->vertex_buffer, buffer_size);
+
+    vkDestroyBuffer(vk_state->device, staging_buffer, nullptr);
+    vkFreeMemory(vk_state->device, staging_buffer_memory, nullptr);
+  }
 
   // Index buffer
-  make_buffer(vk_state->device, vk_state->physical_device,
-    sizeof(INDICES),
-    VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-    &vk_state->index_buffer,
-    &vk_state->index_buffer_memory);
+  {
+    VkDeviceSize buffer_size = sizeof(INDICES);
 
-  void *index_memory;
-  vkMapMemory(vk_state->device, vk_state->index_buffer_memory, 0,
-    sizeof(INDICES), 0, &index_memory);
-  memcpy(index_memory, INDICES, sizeof(INDICES));
-  vkUnmapMemory(vk_state->device, vk_state->index_buffer_memory);
+    VkBuffer staging_buffer;
+    VkDeviceMemory staging_buffer_memory;
+    make_buffer(vk_state->device, vk_state->physical_device,
+      buffer_size,
+      VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+      &staging_buffer,
+      &staging_buffer_memory);
 
+    void *memory;
+    vkMapMemory(vk_state->device, staging_buffer_memory, 0, buffer_size, 0, &memory);
+    memcpy(memory, INDICES, (size_t)buffer_size);
+    vkUnmapMemory(vk_state->device, staging_buffer_memory);
+
+    make_buffer(vk_state->device, vk_state->physical_device,
+      buffer_size,
+      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+      &vk_state->index_buffer,
+      &vk_state->index_buffer_memory);
+    copy_buffer(vk_state, staging_buffer, vk_state->index_buffer, buffer_size);
+
+    vkDestroyBuffer(vk_state->device, staging_buffer, nullptr);
+    vkFreeMemory(vk_state->device, staging_buffer_memory, nullptr);
+  }
+
+  // Uniform buffer
   // TODO: When we render multiple frames at the same time, we'll want to create
   // a separate UBO for each. Maybe.
   // vulkan-tutorial.com/Uniform_buffers/Descriptor_layout_and_buffer.html
-
-  // Uniform buffer
-  make_buffer(vk_state->device, vk_state->physical_device,
-    sizeof(ShaderCommon),
-    VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-    &vk_state->uniform_buffer,
-    &vk_state->uniform_buffer_memory);
+  {
+    make_buffer(vk_state->device, vk_state->physical_device,
+      sizeof(ShaderCommon),
+      VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+      &vk_state->uniform_buffer,
+      &vk_state->uniform_buffer_memory);
+  }
 }
 
 
@@ -1041,7 +1270,7 @@ static void init_command_buffers(VkState *vk_state) {
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
       vk_state->pipeline);
 
-    VkBuffer vertex_buffers[] = { vk_state->vertex_buffer };
+    VkBuffer vertex_buffers[] = {vk_state->vertex_buffer};
     VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(vk_state->command_buffers[idx], 0, 1,
       vertex_buffers, offsets);
@@ -1122,6 +1351,8 @@ void vulkan::init(VkState *vk_state, GLFWwindow *window) {
   init_framebuffers(vk_state);
   logs::info("Creating command pool");
   init_command_pool(vk_state);
+  logs::info("Creating textures");
+  init_textures(vk_state);
   logs::info("Creating buffers");
   init_buffers(vk_state);
   logs::info("Creating descriptors");
@@ -1152,6 +1383,9 @@ static void destroy_swapchain(VkState *vk_state) {
 
 void vulkan::destroy(VkState *vk_state) {
   destroy_swapchain(vk_state);
+
+  vkDestroyImage(vk_state->device, vk_state->texture_image, nullptr);
+  vkFreeMemory(vk_state->device, vk_state->texture_image_memory, nullptr);
 
   vkDestroyDescriptorSetLayout(vk_state->device,
     vk_state->descriptor_set_layout, nullptr);
@@ -1252,9 +1486,9 @@ void vulkan::render(VkState *vk_state, GLFWwindow *window) {
     logs::fatal("Could not acquire swap chain image.");
   }
 
-  VkSemaphore wait_semaphores[] = { vk_state->image_available };
-  VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-  VkSemaphore signal_semaphores[] = { vk_state->render_finished };
+  VkSemaphore wait_semaphores[] = {vk_state->image_available};
+  VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+  VkSemaphore signal_semaphores[] = {vk_state->render_finished};
 
   update_ubo(vk_state);
 
@@ -1276,7 +1510,7 @@ void vulkan::render(VkState *vk_state, GLFWwindow *window) {
     logs::fatal("Could not submit draw command buffer.");
   }
 
-  VkSwapchainKHR swapchains[] = { vk_state->swapchain };
+  VkSwapchainKHR swapchains[] = {vk_state->swapchain};
   VkPresentInfoKHR present_info = {
     .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
     .waitSemaphoreCount = 1,

@@ -105,6 +105,8 @@ struct VkState {
   VkDeviceMemory uniform_buffer_memory;
   VkDescriptorPool descriptor_pool;
   VkDescriptorSet descriptor_set;
+  VkImage texture_image;
+  VkDeviceMemory texture_image_memory;
 };
 
 namespace vulkan {
