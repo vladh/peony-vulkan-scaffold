@@ -4,6 +4,12 @@
 #include <vulkan/vulkan.h>
 #include "types.hpp"
 
+struct ShaderCommon {
+  m4 model;
+  m4 view;
+  m4 projection;
+};
+
 struct Vertex {
   v3 position;
   v3 color;
@@ -83,6 +89,7 @@ struct VkState {
   VkFormat swapchain_image_format;
   VkExtent2D swapchain_extent;
   VkRenderPass render_pass;
+  VkDescriptorSetLayout descriptor_set_layout;
   VkPipelineLayout pipeline_layout;
   VkPipeline pipeline;
   VkCommandPool command_pool;
@@ -94,6 +101,10 @@ struct VkState {
   VkDeviceMemory vertex_buffer_memory;
   VkBuffer index_buffer;
   VkDeviceMemory index_buffer_memory;
+  VkBuffer uniform_buffer;
+  VkDeviceMemory uniform_buffer_memory;
+  VkDescriptorPool descriptor_pool;
+  VkDescriptorSet descriptor_set;
 };
 
 namespace vulkan {

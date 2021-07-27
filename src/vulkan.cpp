@@ -641,6 +641,83 @@ static void init_render_pass(VkState *vk_state) {
 }
 
 
+static void init_descriptor_set_layout(VkState *vk_state) {
+  VkDescriptorSetLayoutBinding ubo_layout_binding = {
+    .binding = 0,
+    .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+    .descriptorCount = 1,
+    .stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS,
+  };
+
+  VkDescriptorSetLayoutCreateInfo layout_info = {
+    .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+    .bindingCount = 1,
+    .pBindings = &ubo_layout_binding,
+  };
+
+  if (
+    vkCreateDescriptorSetLayout(vk_state->device, &layout_info, nullptr,
+      &vk_state->descriptor_set_layout) != VK_SUCCESS
+  ) {
+    logs::fatal("Could not create descriptor set layout.");
+  }
+}
+
+
+static void init_descriptors(VkState *vk_state) {
+  // Create descriptor pool
+  VkDescriptorPoolSize pool_size = {
+    .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+    .descriptorCount = 1, // TODO: Change this when we have one UBO per framebuffer
+  };
+  VkDescriptorPoolCreateInfo pool_info = {
+    .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+    .poolSizeCount = 1,
+    .pPoolSizes = &pool_size,
+    .maxSets = 1, // TODO: Change this when we have one UBO per framebuffer
+  };
+
+  if (
+    vkCreateDescriptorPool(vk_state->device, &pool_info, nullptr,
+      &vk_state->descriptor_pool) != VK_SUCCESS
+  ) {
+    logs::fatal("Could not create descriptor pool.");
+  }
+
+  // Create descriptor sets
+  VkDescriptorSetAllocateInfo alloc_info = {
+    .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+    .descriptorPool = vk_state->descriptor_pool,
+    .descriptorSetCount = 1,
+    .pSetLayouts = &vk_state->descriptor_set_layout,
+  };
+  if (
+    vkAllocateDescriptorSets(vk_state->device, &alloc_info,
+      &vk_state->descriptor_set) != VK_SUCCESS
+  ) {
+    logs::fatal("Could not allocate descriptor sets.");
+  }
+
+  // Populate descriptors
+  VkDescriptorBufferInfo buffer_info = {
+    .buffer = vk_state->uniform_buffer,
+    .offset = 0,
+    .range = sizeof(ShaderCommon),
+  };
+  VkWriteDescriptorSet descriptor_write = {
+    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+    .dstSet = vk_state->descriptor_set,
+    .dstBinding = 0,
+    .dstArrayElement = 0,
+    .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+    .descriptorCount = 1,
+    .pBufferInfo = &buffer_info,
+  };
+
+  vkUpdateDescriptorSets(vk_state->device, 1, &descriptor_write, 0, nullptr);
+}
+
+
 static void init_pipeline(VkState *vk_state) {
   MemoryPool pool = {};
 
@@ -711,7 +788,7 @@ static void init_pipeline(VkState *vk_state) {
     .polygonMode = VK_POLYGON_MODE_FILL,
     .lineWidth = 1.0f,
     .cullMode = VK_CULL_MODE_BACK_BIT,
-    .frontFace = VK_FRONT_FACE_CLOCKWISE,
+    .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
     .depthBiasEnable = VK_FALSE,
   };
   VkPipelineMultisampleStateCreateInfo multisampling_info = {
@@ -739,6 +816,8 @@ static void init_pipeline(VkState *vk_state) {
 
   VkPipelineLayoutCreateInfo pipeline_layout_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+    .setLayoutCount = 1,
+    .pSetLayouts = &vk_state->descriptor_set_layout,
   };
 
   if (
@@ -880,14 +959,12 @@ static void init_buffers(VkState *vk_state) {
   // vulkan-tutorial.com/Vertex_buffers/Index_buffer.html
 
   // Vertex buffer
-  make_buffer(
-    vk_state->device, vk_state->physical_device,
+  make_buffer(vk_state->device, vk_state->physical_device,
     sizeof(VERTICES),
     VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
     &vk_state->vertex_buffer,
-    &vk_state->vertex_buffer_memory
-  );
+    &vk_state->vertex_buffer_memory);
 
   void *vertex_memory;
   vkMapMemory(vk_state->device, vk_state->vertex_buffer_memory, 0,
@@ -896,20 +973,30 @@ static void init_buffers(VkState *vk_state) {
   vkUnmapMemory(vk_state->device, vk_state->vertex_buffer_memory);
 
   // Index buffer
-  make_buffer(
-    vk_state->device, vk_state->physical_device,
+  make_buffer(vk_state->device, vk_state->physical_device,
     sizeof(INDICES),
     VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
     &vk_state->index_buffer,
-    &vk_state->index_buffer_memory
-  );
+    &vk_state->index_buffer_memory);
 
   void *index_memory;
   vkMapMemory(vk_state->device, vk_state->index_buffer_memory, 0,
     sizeof(INDICES), 0, &index_memory);
   memcpy(index_memory, INDICES, sizeof(INDICES));
   vkUnmapMemory(vk_state->device, vk_state->index_buffer_memory);
+
+  // TODO: When we render multiple frames at the same time, we'll want to create
+  // a separate UBO for each. Maybe.
+  // vulkan-tutorial.com/Uniform_buffers/Descriptor_layout_and_buffer.html
+
+  // Uniform buffer
+  make_buffer(vk_state->device, vk_state->physical_device,
+    sizeof(ShaderCommon),
+    VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+    &vk_state->uniform_buffer,
+    &vk_state->uniform_buffer_memory);
 }
 
 
@@ -961,6 +1048,8 @@ static void init_command_buffers(VkState *vk_state) {
     vkCmdBindIndexBuffer(vk_state->command_buffers[idx],
       vk_state->index_buffer, 0, VK_INDEX_TYPE_UINT32);
 
+    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+      vk_state->pipeline_layout, 0, 1, &vk_state->descriptor_set, 0, nullptr);
     vkCmdDrawIndexed(command_buffer, LEN(INDICES), 1, 0, 0, 0);
     vkCmdEndRenderPass(command_buffer);
     if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
@@ -1025,14 +1114,18 @@ void vulkan::init(VkState *vk_state, GLFWwindow *window) {
   init_image_views(vk_state);
   logs::info("Creating render pass");
   init_render_pass(vk_state);
+  logs::info("Creating descriptor set layout");
+  init_descriptor_set_layout(vk_state);
   logs::info("Creating pipeline");
   init_pipeline(vk_state);
   logs::info("Creating framebuffers");
   init_framebuffers(vk_state);
   logs::info("Creating command pool");
   init_command_pool(vk_state);
-  logs::info("Creating vertex buffer");
+  logs::info("Creating buffers");
   init_buffers(vk_state);
+  logs::info("Creating descriptors");
+  init_descriptors(vk_state);
   logs::info("Creating command buffers");
   init_command_buffers(vk_state);
   logs::info("Creating semaphores");
@@ -1060,10 +1153,17 @@ static void destroy_swapchain(VkState *vk_state) {
 void vulkan::destroy(VkState *vk_state) {
   destroy_swapchain(vk_state);
 
+  vkDestroyDescriptorSetLayout(vk_state->device,
+    vk_state->descriptor_set_layout, nullptr);
+
   vkDestroyBuffer(vk_state->device, vk_state->vertex_buffer, nullptr);
   vkFreeMemory(vk_state->device, vk_state->vertex_buffer_memory, nullptr);
   vkDestroyBuffer(vk_state->device, vk_state->index_buffer, nullptr);
   vkFreeMemory(vk_state->device, vk_state->index_buffer_memory, nullptr);
+
+  vkDestroyBuffer(vk_state->device, vk_state->uniform_buffer, nullptr);
+  vkFreeMemory(vk_state->device, vk_state->uniform_buffer_memory, nullptr);
+  vkDestroyDescriptorPool(vk_state->device, vk_state->descriptor_pool, nullptr);
 
   vkDestroySemaphore(vk_state->device, vk_state->render_finished, nullptr);
   vkDestroySemaphore(vk_state->device, vk_state->image_available, nullptr);
@@ -1107,6 +1207,38 @@ void vulkan::recreate_swapchain(VkState *vk_state, GLFWwindow *window) {
 }
 
 
+static void update_ubo(VkState *vk_state) {
+  ShaderCommon ubo = {
+    .model = glm::rotate(
+      glm::mat4(1.0f),
+      0.0f * glm::radians(90.0f),
+      glm::vec3(0.0f, 0.0f, 1.0f)
+    ),
+    .view = glm::lookAt(
+      glm::vec3(2.0f, 2.0f, 2.0f),
+      glm::vec3(0.0f, 0.0f, 0.0f),
+      glm::vec3(0.0f, 0.0f, 1.0f)
+    ),
+    .projection = glm::perspective(
+      glm::radians(45.0f),
+      (f32)vk_state->swapchain_extent.width / (f32)vk_state->swapchain_extent.height,
+      0.01f,
+      20.0f
+    ),
+  };
+
+  // In OpenGL (which GLM was designed for), the y coordinate of the clip coordinates
+  // is inverted. This is not true in Vulkan, so we invert it back.
+  ubo.projection[1][1] *= -1;
+
+  void *memory;
+  vkMapMemory(vk_state->device, vk_state->uniform_buffer_memory, 0,
+    sizeof(ShaderCommon), 0, &memory);
+  memcpy(memory, &ubo, sizeof(ShaderCommon));
+  vkUnmapMemory(vk_state->device, vk_state->uniform_buffer_memory);
+}
+
+
 void vulkan::render(VkState *vk_state, GLFWwindow *window) {
   u32 idx_image;
   VkResult acquire_image_res = vkAcquireNextImageKHR(vk_state->device,
@@ -1123,6 +1255,8 @@ void vulkan::render(VkState *vk_state, GLFWwindow *window) {
   VkSemaphore wait_semaphores[] = { vk_state->image_available };
   VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
   VkSemaphore signal_semaphores[] = { vk_state->render_finished };
+
+  update_ubo(vk_state);
 
   VkSubmitInfo submit_info = {
     .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
