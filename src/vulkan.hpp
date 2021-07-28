@@ -13,6 +13,7 @@ struct ShaderCommon {
 struct Vertex {
   v3 position;
   v3 color;
+  v2 tex_coords;
 };
 
 static constexpr i64 const NO_QUEUE_FAMILY = -1;
@@ -31,10 +32,10 @@ constexpr char const * const REQUIRED_DEVICE_EXTENSIONS[] = {
 };
 
 constexpr Vertex const VERTICES[] = {
-  {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-  {{ 0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
-  {{ 0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}},
-  {{-0.5f,  0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+  {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+  {{ 0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+  {{ 0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+  {{-0.5f,  0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
 };
 
 constexpr u32 INDICES[] = {0, 1, 2, 2, 3, 0};
@@ -44,7 +45,7 @@ constexpr VkVertexInputBindingDescription const VERTEX_BINDING_DESCRIPTION = {
   .stride = sizeof(Vertex),
   .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
 };
-constexpr VkVertexInputAttributeDescription const VERTEX_ATTRIBUTE_DESCRIPTIONS[2] = {
+constexpr VkVertexInputAttributeDescription const VERTEX_ATTRIBUTE_DESCRIPTIONS[] = {
   {
     .binding = 0,
     .location = 0,
@@ -56,6 +57,12 @@ constexpr VkVertexInputAttributeDescription const VERTEX_ATTRIBUTE_DESCRIPTIONS[
     .location = 1,
     .format = VK_FORMAT_R32G32B32_SFLOAT,
     .offset = offsetof(Vertex, color),
+  },
+  {
+    .binding = 0,
+    .location = 2,
+    .format = VK_FORMAT_R32G32_SFLOAT,
+    .offset = offsetof(Vertex, tex_coords),
   }
 };
 

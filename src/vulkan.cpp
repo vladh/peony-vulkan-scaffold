@@ -366,7 +366,7 @@ static void init_logical_device(VkState *vk_state) {
   constexpr u32 const MAX_N_QUEUES = 32;
   VkDeviceQueueCreateInfo queue_cis[MAX_N_QUEUES];
   u32 n_queue_cis = 0;
-  u32 potential_queues[2] = {
+  u32 potential_queues[] = {
     (u32)vk_state->queue_family_indices.graphics,
     (u32)vk_state->queue_family_indices.present,
   };
@@ -642,6 +642,14 @@ static void init_render_pass(VkState *vk_state) {
 
 
 static void init_descriptor_set_layout(VkState *vk_state) {
+  VkDescriptorSetLayoutBinding sampler_layout_binding = {
+    .binding = 1,
+    .descriptorCount = 1,
+    .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+    .pImmutableSamplers = nullptr,
+    .stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS,
+  };
+
   VkDescriptorSetLayoutBinding ubo_layout_binding = {
     .binding = 0,
     .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -649,10 +657,14 @@ static void init_descriptor_set_layout(VkState *vk_state) {
     .stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS,
   };
 
+  VkDescriptorSetLayoutBinding bindings[] = {
+    sampler_layout_binding, ubo_layout_binding
+  };
+
   VkDescriptorSetLayoutCreateInfo layout_info = {
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-    .bindingCount = 1,
-    .pBindings = &ubo_layout_binding,
+    .bindingCount = 2,
+    .pBindings = bindings,
   };
 
   if (
@@ -666,14 +678,20 @@ static void init_descriptor_set_layout(VkState *vk_state) {
 
 static void init_descriptors(VkState *vk_state) {
   // Create descriptor pool
-  VkDescriptorPoolSize pool_size = {
-    .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-    .descriptorCount = 1, // TODO: Change this when we have one UBO per framebuffer
+  VkDescriptorPoolSize pool_sizes[] = {
+    {
+      .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+      .descriptorCount = 1, // TODO: Change this when we have one UBO per framebuffer
+    },
+    {
+      .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      .descriptorCount = 1, // TODO: Change this when we have one UBO per framebuffer
+    },
   };
   VkDescriptorPoolCreateInfo pool_info = {
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-    .poolSizeCount = 1,
-    .pPoolSizes = &pool_size,
+    .poolSizeCount = 2,
+    .pPoolSizes = pool_sizes,
     .maxSets = 1, // TODO: Change this when we have one UBO per framebuffer
   };
 
@@ -704,17 +722,34 @@ static void init_descriptors(VkState *vk_state) {
     .offset = 0,
     .range = sizeof(ShaderCommon),
   };
-  VkWriteDescriptorSet descriptor_write = {
-    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-    .dstSet = vk_state->descriptor_set,
-    .dstBinding = 0,
-    .dstArrayElement = 0,
-    .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-    .descriptorCount = 1,
-    .pBufferInfo = &buffer_info,
+  VkDescriptorImageInfo image_info = {
+    .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    .imageView = vk_state->texture_image_view,
+    .sampler = vk_state->texture_sampler,
+  };
+  VkWriteDescriptorSet descriptor_writes[] = {
+    {
+      .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+      .dstSet = vk_state->descriptor_set,
+      .dstBinding = 0,
+      .dstArrayElement = 0,
+      .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+      .descriptorCount = 1,
+      .pBufferInfo = &buffer_info,
+    },
+    {
+      .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+      .dstSet = vk_state->descriptor_set,
+      .dstBinding = 1,
+      .dstArrayElement = 0,
+      .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      .descriptorCount = 1,
+      .pImageInfo = &image_info,
+    },
   };
 
-  vkUpdateDescriptorSets(vk_state->device, 1, &descriptor_write, 0, nullptr);
+  vkUpdateDescriptorSets(vk_state->device, LEN(descriptor_writes),
+    descriptor_writes, 0, nullptr);
 }
 
 
@@ -754,7 +789,7 @@ static void init_pipeline(VkState *vk_state) {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
     .vertexBindingDescriptionCount = 1,
     .pVertexBindingDescriptions = &VERTEX_BINDING_DESCRIPTION,
-    .vertexAttributeDescriptionCount = 2,
+    .vertexAttributeDescriptionCount = LEN(VERTEX_ATTRIBUTE_DESCRIPTIONS),
     .pVertexAttributeDescriptions = VERTEX_ATTRIBUTE_DESCRIPTIONS,
   };
   VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {
@@ -1076,7 +1111,7 @@ static void init_textures(VkState *vk_state) {
   // Load image
   int width, height, n_channels;
   unsigned char* image = files::load_image("resources/textures/alpaca.jpg",
-    &width, &height, &n_channels, STBI_rgb_alpha, true);
+    &width, &height, &n_channels, STBI_rgb_alpha, false);
   VkDeviceSize image_size = width * height * 4;
 
   // Copy to staging buffer
