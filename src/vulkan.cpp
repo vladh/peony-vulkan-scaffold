@@ -308,10 +308,14 @@ static bool is_physical_device_suitable(
   QueueFamilyIndices queue_family_indices,
   SwapChainSupportDetails *swapchain_support_details
 ) {
+  VkPhysicalDeviceFeatures supported_features;
+  vkGetPhysicalDeviceFeatures(physical_device, &supported_features);
+
   return are_queue_family_indices_complete(queue_family_indices) &&
     are_required_extensions_supported(physical_device) &&
     swapchain_support_details->n_formats > 0 &&
-    swapchain_support_details->n_present_modes > 0;
+    swapchain_support_details->n_present_modes > 0 &&
+    supported_features.samplerAnisotropy;
 }
 
 
@@ -352,6 +356,9 @@ static void init_physical_device(VkState *vk_state) {
   if (vk_state->physical_device == VK_NULL_HANDLE) {
     logs::fatal("Could not find any suitable physical devices.");
   }
+
+  vkGetPhysicalDeviceProperties(vk_state->physical_device,
+    &vk_state->physical_device_properties);
 }
 
 
@@ -384,7 +391,9 @@ static void init_logical_device(VkState *vk_state) {
       .pQueuePriorities = &queue_priorities,
     };
   }
-  VkPhysicalDeviceFeatures device_features = {};
+  VkPhysicalDeviceFeatures device_features = {
+    .samplerAnisotropy = VK_TRUE,
+  };
   VkDeviceCreateInfo device_info = {
     .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
     .queueCreateInfoCount = n_queue_cis,
@@ -535,7 +544,7 @@ static void init_swapchain(VkState *vk_state, GLFWwindow *window) {
 }
 
 
-static void init_image_views(VkState *vk_state) {
+static void init_swapchain_image_views(VkState *vk_state) {
   range (0, vk_state->n_swapchain_images) {
     VkImageView *image_view = &vk_state->swapchain_image_views[idx];
 
@@ -1146,6 +1155,51 @@ static void init_textures(VkState *vk_state) {
 
   vkDestroyBuffer(vk_state->device, staging_buffer, nullptr);
   vkFreeMemory(vk_state->device, staging_buffer_memory, nullptr);
+
+  // Create texture image view
+  VkImageViewCreateInfo image_view_info = {
+    .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+    .image = vk_state->texture_image,
+    .viewType = VK_IMAGE_VIEW_TYPE_2D,
+    .format = VK_FORMAT_R8G8B8A8_SRGB,
+    .subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+    .subresourceRange.baseMipLevel = 0,
+    .subresourceRange.levelCount = 1,
+    .subresourceRange.baseArrayLayer = 0,
+    .subresourceRange.layerCount = 1,
+  };
+  if (
+    vkCreateImageView(vk_state->device, &image_view_info, nullptr,
+      &vk_state->texture_image_view) != VK_SUCCESS
+  ) {
+    logs::fatal("Could not create texture image view.");
+  }
+
+  // Create sampler
+  VkSamplerCreateInfo sampler_info = {
+    .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+    .magFilter = VK_FILTER_LINEAR,
+    .minFilter = VK_FILTER_LINEAR,
+    .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+    .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+    .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+    .anisotropyEnable = VK_TRUE,
+    .maxAnisotropy = vk_state->physical_device_properties.limits.maxSamplerAnisotropy,
+    .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+    .unnormalizedCoordinates = VK_FALSE,
+    .compareEnable = VK_FALSE,
+    .compareOp = VK_COMPARE_OP_ALWAYS,
+    .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+    .mipLodBias = 0.0f,
+    .minLod = 0.0f,
+    .maxLod = 0.0f,
+  };
+  if (
+    vkCreateSampler(vk_state->device, &sampler_info, nullptr,
+      &vk_state->texture_sampler) != VK_SUCCESS
+  ) {
+    logs::fatal("Could not create texture sampler.");
+  }
 }
 
 
@@ -1340,7 +1394,7 @@ void vulkan::init(VkState *vk_state, GLFWwindow *window) {
   logs::info("Creating swapchain");
   init_swapchain(vk_state, window);
   logs::info("Creating swapchain image views");
-  init_image_views(vk_state);
+  init_swapchain_image_views(vk_state);
   logs::info("Creating render pass");
   init_render_pass(vk_state);
   logs::info("Creating descriptor set layout");
@@ -1384,6 +1438,8 @@ static void destroy_swapchain(VkState *vk_state) {
 void vulkan::destroy(VkState *vk_state) {
   destroy_swapchain(vk_state);
 
+  vkDestroySampler(vk_state->device, vk_state->texture_sampler, nullptr);
+  vkDestroyImageView(vk_state->device, vk_state->texture_image_view, nullptr);
   vkDestroyImage(vk_state->device, vk_state->texture_image, nullptr);
   vkFreeMemory(vk_state->device, vk_state->texture_image_memory, nullptr);
 
@@ -1433,7 +1489,7 @@ void vulkan::recreate_swapchain(VkState *vk_state, GLFWwindow *window) {
   init_swapchain_support_details(&vk_state->swapchain_support_details,
     vk_state->physical_device, vk_state->surface);
   init_swapchain(vk_state, window);
-  init_image_views(vk_state);
+  init_swapchain_image_views(vk_state);
   init_render_pass(vk_state);
   init_pipeline(vk_state);
   init_framebuffers(vk_state);

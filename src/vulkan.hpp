@@ -75,6 +75,7 @@ struct VkState {
   VkInstance instance;
   VkDebugUtilsMessengerEXT debug_messenger;
   VkPhysicalDevice physical_device;
+  VkPhysicalDeviceProperties physical_device_properties;
   QueueFamilyIndices queue_family_indices;
   SwapChainSupportDetails swapchain_support_details;
   VkDevice device;
@@ -107,6 +108,8 @@ struct VkState {
   VkDescriptorSet descriptor_set;
   VkImage texture_image;
   VkDeviceMemory texture_image_memory;
+  VkImageView texture_image_view;
+  VkSampler texture_sampler;
 };
 
 namespace vulkan {
