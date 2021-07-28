@@ -604,28 +604,47 @@ static void init_render_pass(VkState *vk_state) {
     .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
   };
+  VkAttachmentDescription depth_attachment = {
+    .format = VK_FORMAT_D32_SFLOAT,
+    .samples = VK_SAMPLE_COUNT_1_BIT,
+    .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+    .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+    .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+    .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+    .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+  };
   VkAttachmentReference color_attachment_ref = {
     .attachment = 0,
     .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+  };
+  VkAttachmentReference depth_attachment_ref = {
+    .attachment = 1,
+    .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
   };
   VkSubpassDescription subpass = {
     .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
     .colorAttachmentCount = 1,
     .pColorAttachments = &color_attachment_ref,
+    .pDepthStencilAttachment = &depth_attachment_ref,
   };
   VkSubpassDependency dependency = {
     .srcSubpass = VK_SUBPASS_EXTERNAL,
     .dstSubpass = 0,
-    .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+    .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+      VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
     .srcAccessMask = 0,
-    .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-    .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+    .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+      VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+    .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+      VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
   };
 
+  VkAttachmentDescription attachments[] = {color_attachment, depth_attachment};
   VkRenderPassCreateInfo render_pass_info = {
     .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-    .attachmentCount = 1,
-    .pAttachments = &color_attachment,
+    .attachmentCount = LEN(attachments),
+    .pAttachments = attachments,
     .subpassCount = 1,
     .pSubpasses = &subpass,
     .dependencyCount = 1,
@@ -831,6 +850,14 @@ static void init_pipeline(VkState *vk_state) {
     .sampleShadingEnable = VK_FALSE,
     .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
   };
+  VkPipelineDepthStencilStateCreateInfo depth_stencil_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+    .depthTestEnable = VK_TRUE,
+    .depthWriteEnable = VK_TRUE,
+    .depthCompareOp = VK_COMPARE_OP_LESS,
+    .depthBoundsTestEnable = VK_FALSE,
+    .stencilTestEnable = VK_FALSE,
+  };
   VkPipelineColorBlendAttachmentState color_blend_attachment = {
     .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
       VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
@@ -871,7 +898,7 @@ static void init_pipeline(VkState *vk_state) {
     .pViewportState = &viewport_state_info,
     .pRasterizationState = &rasterizer_info,
     .pMultisampleState = &multisampling_info,
-    .pDepthStencilState = nullptr,
+    .pDepthStencilState = &depth_stencil_info,
     .pColorBlendState = &color_blending_info,
     .pDynamicState = nullptr,
     .layout = vk_state->pipeline_layout,
@@ -893,11 +920,14 @@ static void init_pipeline(VkState *vk_state) {
 
 static void init_framebuffers(VkState *vk_state) {
   range (0, vk_state->n_swapchain_images) {
-    VkImageView attachments[] = {vk_state->swapchain_image_views[idx]};
+    VkImageView attachments[] = {
+      vk_state->swapchain_image_views[idx],
+      vk_state->depth_image_view,
+    };
     VkFramebufferCreateInfo framebuffer_info = {
       .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
       .renderPass = vk_state->render_pass,
-      .attachmentCount = 1,
+      .attachmentCount = LEN(attachments),
       .pAttachments = attachments,
       .width = vk_state->swapchain_extent.width,
       .height = vk_state->swapchain_extent.height,
@@ -1107,6 +1137,77 @@ static void copy_buffer_to_image(
 }
 
 
+static void make_image(
+  VkState *vk_state, VkImage *image, VkDeviceMemory *image_memory,
+  u32 width, u32 height,
+  VkFormat format,
+  VkImageTiling tiling,
+  VkImageUsageFlags usage,
+  VkMemoryPropertyFlags properties
+) {
+  // Create VkImage
+  VkImageCreateInfo image_info = {
+    .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+    .imageType = VK_IMAGE_TYPE_2D,
+    .extent.width = width,
+    .extent.height = height,
+    .extent.depth = 1,
+    .mipLevels = 1,
+    .arrayLayers = 1,
+    .format = format,
+    .tiling = tiling,
+    .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    .usage = usage,
+    .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    .samples = VK_SAMPLE_COUNT_1_BIT,
+  };
+  if (vkCreateImage(vk_state->device, &image_info, nullptr, image) != VK_SUCCESS) {
+    logs::fatal("Could not create image.");
+  }
+
+  // Allocate memory
+  VkMemoryRequirements requirements;
+  vkGetImageMemoryRequirements(vk_state->device, *image, &requirements);
+  VkMemoryAllocateInfo alloc_info = {
+    .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+    .allocationSize = requirements.size,
+    .memoryTypeIndex = find_memory_type(vk_state->physical_device,
+      requirements.memoryTypeBits, properties),
+  };
+  if (
+    vkAllocateMemory(vk_state->device, &alloc_info, nullptr, image_memory) != VK_SUCCESS
+  ) {
+    logs::fatal("Could not allocate image memory.");
+  }
+  vkBindImageMemory(vk_state->device, *image, *image_memory, 0);
+}
+
+
+static VkImageView make_image_view(
+  VkState *vk_state, VkImage image, VkFormat format, VkImageAspectFlags aspect_flags
+) {
+  VkImageViewCreateInfo image_view_info = {
+    .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+    .image = image,
+    .viewType = VK_IMAGE_VIEW_TYPE_2D,
+    .format = format,
+    .subresourceRange.aspectMask = aspect_flags,
+    .subresourceRange.baseMipLevel = 0,
+    .subresourceRange.levelCount = 1,
+    .subresourceRange.baseArrayLayer = 0,
+    .subresourceRange.layerCount = 1,
+  };
+  VkImageView image_view;
+  if (
+    vkCreateImageView(vk_state->device, &image_view_info, nullptr,
+      &image_view) != VK_SUCCESS
+  ) {
+    logs::fatal("Could not create texture image view.");
+  }
+  return image_view;
+}
+
+
 static void init_textures(VkState *vk_state) {
   // Load image
   int width, height, n_channels;
@@ -1131,45 +1232,14 @@ static void init_textures(VkState *vk_state) {
   files::free_image(image);
 
   // Create VkImage
-  VkImageCreateInfo image_info = {
-    .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-    .imageType = VK_IMAGE_TYPE_2D,
-    .extent.width = (u32)width,
-    .extent.height = (u32)height,
-    .extent.depth = 1,
-    .mipLevels = 1,
-    .arrayLayers = 1,
-    .format = VK_FORMAT_R8G8B8A8_SRGB,
-    .tiling = VK_IMAGE_TILING_OPTIMAL,
-    .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-    .usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-    .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-    .samples = VK_SAMPLE_COUNT_1_BIT,
-  };
-  if (
-    vkCreateImage(vk_state->device, &image_info, nullptr,
-      &vk_state->texture_image) != VK_SUCCESS
-  ) {
-    logs::fatal("Could not create image.");
-  }
-
-  // Allocate memory
-  VkMemoryRequirements requirements;
-  vkGetImageMemoryRequirements(vk_state->device, vk_state->texture_image, &requirements);
-  VkMemoryAllocateInfo alloc_info = {
-    .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-    .allocationSize = requirements.size,
-    .memoryTypeIndex = find_memory_type(vk_state->physical_device,
-      requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-  };
-  if (
-    vkAllocateMemory(vk_state->device, &alloc_info, nullptr,
-      &vk_state->texture_image_memory) != VK_SUCCESS
-  ) {
-    logs::fatal("Could not allocate image memory.");
-  }
-  vkBindImageMemory(vk_state->device, vk_state->texture_image,
-    vk_state->texture_image_memory, 0);
+  make_image(
+    vk_state, &vk_state->texture_image, &vk_state->texture_image_memory,
+    width, height,
+    VK_FORMAT_R8G8B8A8_SRGB,
+    VK_IMAGE_TILING_OPTIMAL,
+    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+  );
 
   // Copy image
   transition_image_layout(vk_state,
@@ -1192,23 +1262,8 @@ static void init_textures(VkState *vk_state) {
   vkFreeMemory(vk_state->device, staging_buffer_memory, nullptr);
 
   // Create texture image view
-  VkImageViewCreateInfo image_view_info = {
-    .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-    .image = vk_state->texture_image,
-    .viewType = VK_IMAGE_VIEW_TYPE_2D,
-    .format = VK_FORMAT_R8G8B8A8_SRGB,
-    .subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-    .subresourceRange.baseMipLevel = 0,
-    .subresourceRange.levelCount = 1,
-    .subresourceRange.baseArrayLayer = 0,
-    .subresourceRange.layerCount = 1,
-  };
-  if (
-    vkCreateImageView(vk_state->device, &image_view_info, nullptr,
-      &vk_state->texture_image_view) != VK_SUCCESS
-  ) {
-    logs::fatal("Could not create texture image view.");
-  }
+  vk_state->texture_image_view = make_image_view(vk_state, vk_state->texture_image,
+    VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 
   // Create sampler
   VkSamplerCreateInfo sampler_info = {
@@ -1235,6 +1290,18 @@ static void init_textures(VkState *vk_state) {
   ) {
     logs::fatal("Could not create texture sampler.");
   }
+}
+
+
+static void init_depth_buffer(VkState *vk_state) {
+  make_image(vk_state, &vk_state->depth_image, &vk_state->depth_image_memory,
+    vk_state->swapchain_extent.width, vk_state->swapchain_extent.height,
+    VK_FORMAT_D32_SFLOAT,
+    VK_IMAGE_TILING_OPTIMAL,
+    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+  vk_state->depth_image_view = make_image_view(vk_state, vk_state->depth_image,
+    VK_FORMAT_D32_SFLOAT, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
 
@@ -1344,15 +1411,18 @@ static void init_command_buffers(VkState *vk_state) {
       logs::fatal("Could not begin recording command buffer.");
     }
 
-    VkClearValue clear_color = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+    VkClearValue clear_colors[2] = {
+      {{{0.0f, 0.0f, 0.0f, 1.0f}}},
+      {{{1.0f, 0.0f}}},
+    };
     VkRenderPassBeginInfo renderpass_info = {
       .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
       .renderPass = vk_state->render_pass,
       .framebuffer = vk_state->swapchain_framebuffers[idx],
       .renderArea.offset = {0, 0},
       .renderArea.extent = vk_state->swapchain_extent,
-      .clearValueCount = 1,
-      .pClearValues = &clear_color,
+      .clearValueCount = LEN(clear_colors),
+      .pClearValues = clear_colors,
     };
 
     vkCmdBeginRenderPass(command_buffer, &renderpass_info, VK_SUBPASS_CONTENTS_INLINE);
@@ -1436,6 +1506,8 @@ void vulkan::init(VkState *vk_state, GLFWwindow *window) {
   init_descriptor_set_layout(vk_state);
   logs::info("Creating pipeline");
   init_pipeline(vk_state);
+  logs::info("Creating depth buffer");
+  init_depth_buffer(vk_state);
   logs::info("Creating framebuffers");
   init_framebuffers(vk_state);
   logs::info("Creating command pool");
@@ -1454,6 +1526,10 @@ void vulkan::init(VkState *vk_state, GLFWwindow *window) {
 
 
 static void destroy_swapchain(VkState *vk_state) {
+  vkDestroyImageView(vk_state->device, vk_state->depth_image_view, nullptr);
+  vkDestroyImage(vk_state->device, vk_state->depth_image, nullptr);
+  vkFreeMemory(vk_state->device, vk_state->depth_image_memory, nullptr);
+
   range (0, vk_state->n_swapchain_images) {
     vkDestroyFramebuffer(vk_state->device, vk_state->swapchain_framebuffers[idx],
       nullptr);
@@ -1527,6 +1603,7 @@ void vulkan::recreate_swapchain(VkState *vk_state, GLFWwindow *window) {
   init_swapchain_image_views(vk_state);
   init_render_pass(vk_state);
   init_pipeline(vk_state);
+  init_depth_buffer(vk_state);
   init_framebuffers(vk_state);
   init_command_buffers(vk_state);
 }

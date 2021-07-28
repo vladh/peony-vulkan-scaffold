@@ -32,13 +32,21 @@ constexpr char const * const REQUIRED_DEVICE_EXTENSIONS[] = {
 };
 
 constexpr Vertex const VERTICES[] = {
-  {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-  {{ 0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-  {{ 0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-  {{-0.5f,  0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+  {{-0.5f, -0.5f,  0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+  {{ 0.5f, -0.5f,  0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+  {{ 0.5f,  0.5f,  0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+  {{-0.5f,  0.5f,  0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+
+  {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+  {{ 0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+  {{ 0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+  {{-0.5f,  0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
 };
 
-constexpr u32 INDICES[] = {0, 1, 2, 2, 3, 0};
+constexpr u32 INDICES[] = {
+  0, 1, 2, 2, 3, 0,
+  4, 5, 6, 6, 7, 4,
+};
 
 constexpr VkVertexInputBindingDescription const VERTEX_BINDING_DESCRIPTION = {
   .binding = 0,
@@ -117,6 +125,9 @@ struct VkState {
   VkDeviceMemory texture_image_memory;
   VkImageView texture_image_view;
   VkSampler texture_sampler;
+  VkImage depth_image;
+  VkDeviceMemory depth_image_memory;
+  VkImageView depth_image_view;
 };
 
 namespace vulkan {
