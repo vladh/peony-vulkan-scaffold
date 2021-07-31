@@ -22,79 +22,7 @@
 //
 
 
-static void init_descriptor_set_layout(VkState *vk_state) {
-  VkDescriptorSetLayoutBinding const bindings[] = {
-    {
-      .binding = 0,
-      .descriptorCount = 1,
-      .stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS,
-      .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-    },
-    {
-      .binding = 1,
-      .descriptorCount = 1,
-      .stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS,
-      .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-      .pImmutableSamplers = nullptr,
-    },
-  };
-
-  VkDescriptorSetLayoutCreateInfo const layout_info = {
-    .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-    .bindingCount = 2,
-    .pBindings = bindings,
-  };
-
-  if (
-    vkCreateDescriptorSetLayout(vk_state->device, &layout_info, nullptr,
-      &vk_state->descriptor_set_layout) != VK_SUCCESS
-  ) {
-    logs::fatal("Could not create descriptor set layout.");
-  }
-}
-
-
 static void init_descriptors(VkState *vk_state) {
-  // Create descriptor pool
-  VkDescriptorPoolSize const pool_sizes[] = {
-    {
-      .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-      .descriptorCount = 1, // TODO: Change this when we have one UBO per framebuffer
-    },
-    {
-      .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-      .descriptorCount = 1, // TODO: Change this when we have one UBO per framebuffer
-    },
-  };
-
-  VkDescriptorPoolCreateInfo const pool_info = {
-    .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-    .poolSizeCount = 2,
-    .pPoolSizes = pool_sizes,
-    .maxSets = 1, // TODO: Change this when we have one UBO per framebuffer
-  };
-
-  if (
-    vkCreateDescriptorPool(vk_state->device, &pool_info, nullptr,
-      &vk_state->descriptor_pool) != VK_SUCCESS
-  ) {
-    logs::fatal("Could not create descriptor pool.");
-  }
-
-  // Create descriptor sets
-  VkDescriptorSetAllocateInfo const alloc_info = {
-    .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-    .descriptorPool = vk_state->descriptor_pool,
-    .descriptorSetCount = 1,
-    .pSetLayouts = &vk_state->descriptor_set_layout,
-  };
-  if (
-    vkAllocateDescriptorSets(vk_state->device, &alloc_info,
-      &vk_state->descriptor_set) != VK_SUCCESS
-  ) {
-    logs::fatal("Could not allocate descriptor sets.");
-  }
-
   // Create uniform buffer
   // TODO: When we render multiple frames at the same time, we'll want to create
   // a separate UBO for each. Maybe.
@@ -117,10 +45,10 @@ static void init_descriptors(VkState *vk_state) {
     .imageView = vk_state->texture_image_view,
     .sampler = vk_state->texture_sampler,
   };
-  VkWriteDescriptorSet const descriptor_writes[] = {
+  VkWriteDescriptorSet descriptor_writes[] = {
     {
       .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-      .dstSet = vk_state->descriptor_set,
+      .dstSet = nullptr,
       .dstBinding = 0,
       .dstArrayElement = 0,
       .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -129,7 +57,7 @@ static void init_descriptors(VkState *vk_state) {
     },
     {
       .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-      .dstSet = vk_state->descriptor_set,
+      .dstSet = nullptr,
       .dstBinding = 1,
       .dstArrayElement = 0,
       .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -138,8 +66,14 @@ static void init_descriptors(VkState *vk_state) {
     },
   };
 
-  vkUpdateDescriptorSets(vk_state->device, LEN(descriptor_writes),
-    descriptor_writes, 0, nullptr);
+  make_descriptors(
+    vk_state->device,
+    descriptor_writes,
+    LEN(descriptor_writes),
+    &vk_state->descriptor_set_layout,
+    &vk_state->descriptor_pool,
+    &vk_state->descriptor_set
+  );
 }
 
 
@@ -743,14 +677,13 @@ void vulkan::init(VkState *vk_state, GLFWwindow *window) {
   init_logical_device(vk_state);
   init_swapchain(vk_state, window);
   init_render_pass(vk_state);
-  init_descriptor_set_layout(vk_state);
-  init_pipeline(vk_state);
   init_depth_buffer(vk_state);
   init_framebuffers(vk_state);
   init_command_pool(vk_state);
   init_textures(vk_state);
   init_descriptors(vk_state);
   init_buffers(vk_state);
+  init_pipeline(vk_state);
   init_command_buffers(vk_state);
   init_semaphores(vk_state);
 }

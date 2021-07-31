@@ -273,3 +273,85 @@ static void copy_buffer_to_image(
 
   end_command_buffer(device, queue, command_pool, command_buffer);
 }
+
+
+/*
+  This is a shorthand function which creates a descriptor set layout, a descriptor pool,
+  and a descriptor set which it then updates. It accepts an array of
+  VkWriteDescriptorSet, which has sufficient information to create all the other
+  entities.
+*/
+static void make_descriptors(
+  VkDevice device,
+  VkWriteDescriptorSet descriptor_writes[],
+  u32 n_descriptors,
+  VkDescriptorSetLayout *descriptor_set_layout,
+  VkDescriptorPool *descriptor_pool,
+  VkDescriptorSet *descriptor_set
+) {
+  constexpr u32 const MAX_N_DESCRIPTORS = 16;
+  assert(n_descriptors < MAX_N_DESCRIPTORS);
+
+  // Create descriptor set layout
+  {
+    VkDescriptorSetLayoutBinding bindings[MAX_N_DESCRIPTORS] = {};
+    range (0, n_descriptors) {
+      bindings[idx] = {
+        .binding = descriptor_writes[idx].dstBinding,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS,
+        .descriptorType = descriptor_writes[idx].descriptorType,
+      };
+    }
+    VkDescriptorSetLayoutCreateInfo const layout_info = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+      .bindingCount = n_descriptors,
+      .pBindings = bindings,
+    };
+    if (
+      vkCreateDescriptorSetLayout(device, &layout_info, nullptr,
+        descriptor_set_layout) != VK_SUCCESS
+    ) {
+      logs::fatal("Could not create descriptor set layout.");
+    }
+  }
+
+  // Create descriptor pool
+  {
+    VkDescriptorPoolSize pool_sizes[MAX_N_DESCRIPTORS] = {};
+    range (0, n_descriptors) {
+      pool_sizes[idx] = {
+        .type = descriptor_writes[idx].descriptorType,
+        .descriptorCount = 1, // TODO: Change this when we have one UBO per framebuffer
+      };
+    }
+    VkDescriptorPoolCreateInfo const pool_info = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+      .poolSizeCount = n_descriptors,
+      .pPoolSizes = pool_sizes,
+      .maxSets = 1, // TODO: Change this when we have one UBO per framebuffer
+    };
+    if (
+      vkCreateDescriptorPool(device, &pool_info, nullptr, descriptor_pool) != VK_SUCCESS
+    ) {
+      logs::fatal("Could not create descriptor pool.");
+    }
+  }
+
+  // Create descriptor sets
+  {
+    VkDescriptorSetAllocateInfo const alloc_info = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+      .descriptorPool = *descriptor_pool,
+      .descriptorSetCount = 1,
+      .pSetLayouts = descriptor_set_layout,
+    };
+    if (vkAllocateDescriptorSets(device, &alloc_info, descriptor_set) != VK_SUCCESS) {
+      logs::fatal("Could not allocate descriptor sets.");
+    }
+    range (0, n_descriptors) {
+      descriptor_writes[idx].dstSet = *descriptor_set;
+    }
+    vkUpdateDescriptorSets(device, n_descriptors, descriptor_writes, 0, nullptr);
+  }
+}

@@ -105,7 +105,6 @@ struct VkState {
   VkFormat swapchain_image_format;
   VkExtent2D swapchain_extent;
   VkRenderPass render_pass;
-  VkDescriptorSetLayout descriptor_set_layout;
   VkPipelineLayout pipeline_layout;
   VkPipeline pipeline;
   VkCommandPool command_pool;
@@ -119,8 +118,9 @@ struct VkState {
   VkDeviceMemory index_buffer_memory;
   VkBuffer uniform_buffer;
   VkDeviceMemory uniform_buffer_memory;
-  VkDescriptorPool descriptor_pool;
+  VkDescriptorSetLayout descriptor_set_layout;
   VkDescriptorSet descriptor_set;
+  VkDescriptorPool descriptor_pool;
   VkImage texture_image;
   VkDeviceMemory texture_image_memory;
   VkImageView texture_image_view;
