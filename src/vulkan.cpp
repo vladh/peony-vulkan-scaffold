@@ -400,17 +400,19 @@ static void init_command_buffers(VkState *vk_state) {
     vkCmdBeginRenderPass(command_buffer, &renderpass_info, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
       vk_state->pipeline);
-
-    VkBuffer const vertex_buffers[] = {vk_state->vertex_buffer};
-    VkDeviceSize const offsets[] = {0};
-    vkCmdBindVertexBuffers(vk_state->command_buffers[idx], 0, 1,
-      vertex_buffers, offsets);
-    vkCmdBindIndexBuffer(vk_state->command_buffers[idx],
-      vk_state->index_buffer, 0, VK_INDEX_TYPE_UINT32);
-
     vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
       vk_state->pipeline_layout, 0, 1, &vk_state->descriptor_set, 0, nullptr);
-    vkCmdDrawIndexed(command_buffer, LEN(INDICES), 1, 0, 0, 0);
+
+    {
+      VkBuffer const vertex_buffers[] = {vk_state->vertex_buffer};
+      VkDeviceSize const offsets[] = {0};
+      vkCmdBindVertexBuffers(vk_state->command_buffers[idx], 0, 1,
+        vertex_buffers, offsets);
+      vkCmdBindIndexBuffer(vk_state->command_buffers[idx],
+        vk_state->index_buffer, 0, VK_INDEX_TYPE_UINT32);
+      vkCmdDrawIndexed(command_buffer, LEN(INDICES), 1, 0, 0, 0);
+    }
+
     vkCmdEndRenderPass(command_buffer);
     if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
       logs::fatal("Could not record command buffer.");
