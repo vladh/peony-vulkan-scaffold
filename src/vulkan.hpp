@@ -79,7 +79,7 @@ struct QueueFamilyIndices {
   i64 present;
 };
 
-struct SwapChainSupportDetails {
+struct SwapchainSupportDetails {
   VkSurfaceCapabilitiesKHR capabilities;
   VkSurfaceFormatKHR formats[MAX_N_SWAPCHAIN_FORMATS];
   u32 n_formats; VkPresentModeKHR present_modes[MAX_N_SWAPCHAIN_PRESENT_MODES];
@@ -92,7 +92,7 @@ struct VkState {
   VkPhysicalDevice physical_device;
   VkPhysicalDeviceProperties physical_device_properties;
   QueueFamilyIndices queue_family_indices;
-  SwapChainSupportDetails swapchain_support_details;
+  SwapchainSupportDetails swapchain_support_details;
   VkDevice device;
   VkQueue graphics_queue;
   VkQueue present_queue;
@@ -110,8 +110,8 @@ struct VkState {
   VkPipeline pipeline;
   VkCommandPool command_pool;
   VkCommandBuffer command_buffers[MAX_N_SWAPCHAIN_IMAGES];
-  VkSemaphore image_available;
-  VkSemaphore render_finished;
+  VkSemaphore image_available_semaphore;
+  VkSemaphore render_finished_semaphore;
   bool should_recreate_swapchain;
   VkBuffer vertex_buffer;
   VkDeviceMemory vertex_buffer_memory;
