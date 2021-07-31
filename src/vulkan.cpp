@@ -38,31 +38,31 @@ static void init_descriptors(VkState *vk_state) {
   VkDescriptorBufferInfo const buffer_info = {
     .buffer = vk_state->uniform_buffer,
     .offset = 0,
-    .range = sizeof(ShaderCommon),
+    .range  = sizeof(ShaderCommon),
   };
   VkDescriptorImageInfo const image_info = {
     .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-    .imageView = vk_state->texture_image_view,
-    .sampler = vk_state->texture_sampler,
+    .imageView   = vk_state->texture_image_view,
+    .sampler     = vk_state->texture_sampler,
   };
   VkWriteDescriptorSet descriptor_writes[] = {
     {
-      .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-      .dstSet = nullptr,
-      .dstBinding = 0,
+      .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+      .dstSet          = nullptr,
+      .dstBinding      = 0,
       .dstArrayElement = 0,
-      .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+      .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
       .descriptorCount = 1,
-      .pBufferInfo = &buffer_info,
+      .pBufferInfo     = &buffer_info,
     },
     {
-      .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-      .dstSet = nullptr,
-      .dstBinding = 1,
+      .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+      .dstSet          = nullptr,
+      .dstBinding      = 1,
       .dstArrayElement = 0,
-      .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
       .descriptorCount = 1,
-      .pImageInfo = &image_info,
+      .pImageInfo      = &image_info,
     },
   };
 
@@ -118,9 +118,9 @@ static VkShaderModule init_shader_module(
   VkState *vk_state, u8 const *shader, size_t size
 ) {
   VkShaderModuleCreateInfo const shader_module_info = {
-    .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+    .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
     .codeSize = size,
-    .pCode = (u32*)shader,
+    .pCode    = (u32*)shader,
   };
 
   VkShaderModule shader_module;
@@ -137,48 +137,48 @@ static VkShaderModule init_shader_module(
 
 static void init_render_pass(VkState *vk_state) {
   VkAttachmentDescription const color_attachment = {
-    .format = vk_state->swapchain_image_format,
-    .samples = VK_SAMPLE_COUNT_1_BIT,
-    .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-    .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-    .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+    .format         = vk_state->swapchain_image_format,
+    .samples        = VK_SAMPLE_COUNT_1_BIT,
+    .loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR,
+    .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
+    .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
     .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-    .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-    .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+    .initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED,
+    .finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
   };
   VkAttachmentReference const color_attachment_ref = {
     .attachment = 0,
-    .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+    .layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
   };
 
   VkAttachmentDescription const depth_attachment = {
-    .format = VK_FORMAT_D32_SFLOAT,
-    .samples = VK_SAMPLE_COUNT_1_BIT,
-    .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-    .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-    .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+    .format         = VK_FORMAT_D32_SFLOAT,
+    .samples        = VK_SAMPLE_COUNT_1_BIT,
+    .loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR,
+    .storeOp        = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+    .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
     .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-    .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-    .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    .initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED,
+    .finalLayout    = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
   };
   VkAttachmentReference const depth_attachment_ref = {
     .attachment = 1,
-    .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    .layout     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
   };
 
   VkSubpassDescription const subpass = {
-    .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-    .colorAttachmentCount = 1,
-    .pColorAttachments = &color_attachment_ref,
+    .pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS,
+    .colorAttachmentCount    = 1,
+    .pColorAttachments       = &color_attachment_ref,
     .pDepthStencilAttachment = &depth_attachment_ref,
   };
   VkSubpassDependency const dependency = {
-    .srcSubpass = VK_SUBPASS_EXTERNAL,
-    .dstSubpass = 0,
-    .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+    .srcSubpass    = VK_SUBPASS_EXTERNAL,
+    .dstSubpass    = 0,
+    .srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
       VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
     .srcAccessMask = 0,
-    .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+    .dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
       VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
     .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
       VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
@@ -186,13 +186,13 @@ static void init_render_pass(VkState *vk_state) {
 
   VkAttachmentDescription const attachments[] = {color_attachment, depth_attachment};
   VkRenderPassCreateInfo const render_pass_info = {
-    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+    .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
     .attachmentCount = LEN(attachments),
-    .pAttachments = attachments,
-    .subpassCount = 1,
-    .pSubpasses = &subpass,
+    .pAttachments    = attachments,
+    .subpassCount    = 1,
+    .pSubpasses      = &subpass,
     .dependencyCount = 1,
-    .pDependencies = &dependency,
+    .pDependencies   = &dependency,
   };
 
   if (
@@ -207,9 +207,9 @@ static void init_render_pass(VkState *vk_state) {
 static void init_pipeline(VkState *vk_state) {
   // Pipeline layout
   VkPipelineLayoutCreateInfo const pipeline_layout_info = {
-    .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+    .sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
     .setLayoutCount = 1,
-    .pSetLayouts = &vk_state->descriptor_set_layout,
+    .pSetLayouts    = &vk_state->descriptor_set_layout,
   };
   if (
     vkCreatePipelineLayout(vk_state->device, &pipeline_layout_info, nullptr,
@@ -227,10 +227,10 @@ static void init_pipeline(VkState *vk_state) {
   VkShaderModule const vert_shader_module = init_shader_module(vk_state,
     vert_shader, vert_shader_size);
   VkPipelineShaderStageCreateInfo const vert_shader_stage_info = {
-    .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-    .stage = VK_SHADER_STAGE_VERTEX_BIT,
+    .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+    .stage  = VK_SHADER_STAGE_VERTEX_BIT,
     .module = vert_shader_module,
-    .pName = "main",
+    .pName  = "main",
   };
 
   size_t frag_shader_size;
@@ -239,10 +239,10 @@ static void init_pipeline(VkState *vk_state) {
   VkShaderModule const frag_shader_module = init_shader_module(vk_state,
     frag_shader, frag_shader_size);
   VkPipelineShaderStageCreateInfo const frag_shader_stage_info = {
-    .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-    .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+    .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+    .stage  = VK_SHADER_STAGE_FRAGMENT_BIT,
     .module = frag_shader_module,
-    .pName = "main",
+    .pName  = "main",
   };
 
   VkPipelineShaderStageCreateInfo const shader_stages[] = {
@@ -253,21 +253,21 @@ static void init_pipeline(VkState *vk_state) {
   // Pipeline
   VkPipelineVertexInputStateCreateInfo const vertex_input_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-    .vertexBindingDescriptionCount = 1,
-    .pVertexBindingDescriptions = &VERTEX_BINDING_DESCRIPTION,
+    .vertexBindingDescriptionCount   = 1,
+    .pVertexBindingDescriptions      = &VERTEX_BINDING_DESCRIPTION,
     .vertexAttributeDescriptionCount = LEN(VERTEX_ATTRIBUTE_DESCRIPTIONS),
-    .pVertexAttributeDescriptions = VERTEX_ATTRIBUTE_DESCRIPTIONS,
+    .pVertexAttributeDescriptions    = VERTEX_ATTRIBUTE_DESCRIPTIONS,
   };
   VkPipelineInputAssemblyStateCreateInfo const input_assembly_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-    .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+    .topology               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
     .primitiveRestartEnable = VK_FALSE,
   };
   VkViewport const viewport = {
-    .x = 0.0f,
-    .y = 0.0f,
-    .width = (f32)vk_state->swapchain_extent.width,
-    .height = (f32)vk_state->swapchain_extent.height,
+    .x        = 0.0f,
+    .y        = 0.0f,
+    .width    = (f32)vk_state->swapchain_extent.width,
+    .height   = (f32)vk_state->swapchain_extent.height,
     .minDepth = 0.0f,
     .maxDepth = 1.0f,
   };
@@ -276,68 +276,68 @@ static void init_pipeline(VkState *vk_state) {
     .extent = vk_state->swapchain_extent,
   };
   VkPipelineViewportStateCreateInfo const viewport_state_info = {
-    .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+    .sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
     .viewportCount = 1,
-    .pViewports = &viewport,
-    .scissorCount = 1,
-    .pScissors = &scissor,
+    .pViewports    = &viewport,
+    .scissorCount  = 1,
+    .pScissors     = &scissor,
   };
   VkPipelineRasterizationStateCreateInfo const rasterizer_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-    .depthClampEnable = VK_FALSE,
+    .depthClampEnable        = VK_FALSE,
     .rasterizerDiscardEnable = VK_FALSE,
-    .polygonMode = VK_POLYGON_MODE_FILL,
-    .lineWidth = 1.0f,
-    .cullMode = VK_CULL_MODE_BACK_BIT,
-    .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
-    .depthBiasEnable = VK_FALSE,
+    .polygonMode             = VK_POLYGON_MODE_FILL,
+    .lineWidth               = 1.0f,
+    .cullMode                = VK_CULL_MODE_BACK_BIT,
+    .frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+    .depthBiasEnable         = VK_FALSE,
   };
   VkPipelineMultisampleStateCreateInfo const multisampling_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-    .sampleShadingEnable = VK_FALSE,
+    .sampleShadingEnable  = VK_FALSE,
     .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
   };
   VkPipelineDepthStencilStateCreateInfo const depth_stencil_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-    .depthTestEnable = VK_TRUE,
-    .depthWriteEnable = VK_TRUE,
-    .depthCompareOp = VK_COMPARE_OP_LESS,
+    .depthTestEnable       = VK_TRUE,
+    .depthWriteEnable      = VK_TRUE,
+    .depthCompareOp        = VK_COMPARE_OP_LESS,
     .depthBoundsTestEnable = VK_FALSE,
-    .stencilTestEnable = VK_FALSE,
+    .stencilTestEnable     = VK_FALSE,
   };
   VkPipelineColorBlendAttachmentState color_blend_attachment = {
-    .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+    .colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
       VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
-    .blendEnable = VK_TRUE,
+    .blendEnable         = VK_TRUE,
     .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
     .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-    .colorBlendOp = VK_BLEND_OP_ADD,
+    .colorBlendOp        = VK_BLEND_OP_ADD,
     .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
     .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
-    .alphaBlendOp = VK_BLEND_OP_ADD,
+    .alphaBlendOp        = VK_BLEND_OP_ADD,
   };
   VkPipelineColorBlendStateCreateInfo const color_blending_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-    .logicOpEnable = VK_FALSE,
+    .logicOpEnable   = VK_FALSE,
     .attachmentCount = 1,
-    .pAttachments = &color_blend_attachment,
+    .pAttachments    = &color_blend_attachment,
   };
 
   VkGraphicsPipelineCreateInfo const pipeline_info = {
     .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-    .stageCount = 2,
-    .pStages = shader_stages,
-    .pVertexInputState = &vertex_input_info,
+    .stageCount          = 2,
+    .pStages             = shader_stages,
+    .pVertexInputState   = &vertex_input_info,
     .pInputAssemblyState = &input_assembly_info,
-    .pViewportState = &viewport_state_info,
+    .pViewportState      = &viewport_state_info,
     .pRasterizationState = &rasterizer_info,
-    .pMultisampleState = &multisampling_info,
-    .pDepthStencilState = &depth_stencil_info,
-    .pColorBlendState = &color_blending_info,
-    .pDynamicState = nullptr,
-    .layout = vk_state->pipeline_layout,
-    .renderPass = vk_state->render_pass,
-    .subpass = 0,
+    .pMultisampleState   = &multisampling_info,
+    .pDepthStencilState  = &depth_stencil_info,
+    .pColorBlendState    = &color_blending_info,
+    .pDynamicState       = nullptr,
+    .layout              = vk_state->pipeline_layout,
+    .renderPass          = vk_state->render_pass,
+    .subpass             = 0,
   };
 
   if (
@@ -377,13 +377,13 @@ static void init_framebuffers(VkState *vk_state) {
       vk_state->depth_image_view,
     };
     VkFramebufferCreateInfo const framebuffer_info = {
-      .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-      .renderPass = vk_state->render_pass,
+      .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+      .renderPass      = vk_state->render_pass,
       .attachmentCount = LEN(attachments),
-      .pAttachments = attachments,
-      .width = vk_state->swapchain_extent.width,
-      .height = vk_state->swapchain_extent.height,
-      .layers = 1,
+      .pAttachments    = attachments,
+      .width           = vk_state->swapchain_extent.width,
+      .height          = vk_state->swapchain_extent.height,
+      .layers          = 1,
     };
     if (
       vkCreateFramebuffer(vk_state->device, &framebuffer_info, nullptr,
@@ -459,22 +459,22 @@ static void init_textures(VkState *vk_state) {
 
   // Create sampler
   VkSamplerCreateInfo const sampler_info = {
-    .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-    .magFilter = VK_FILTER_LINEAR,
-    .minFilter = VK_FILTER_LINEAR,
-    .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-    .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-    .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-    .anisotropyEnable = VK_TRUE,
-    .maxAnisotropy = vk_state->physical_device_properties.limits.maxSamplerAnisotropy,
-    .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+    .sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+    .magFilter               = VK_FILTER_LINEAR,
+    .minFilter               = VK_FILTER_LINEAR,
+    .addressModeU            = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+    .addressModeV            = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+    .addressModeW            = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+    .anisotropyEnable        = VK_TRUE,
+    .borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
     .unnormalizedCoordinates = VK_FALSE,
-    .compareEnable = VK_FALSE,
-    .compareOp = VK_COMPARE_OP_ALWAYS,
-    .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-    .mipLodBias = 0.0f,
-    .minLod = 0.0f,
-    .maxLod = 0.0f,
+    .compareEnable           = VK_FALSE,
+    .compareOp               = VK_COMPARE_OP_ALWAYS,
+    .mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+    .mipLodBias              = 0.0f,
+    .minLod                  = 0.0f,
+    .maxLod                  = 0.0f,
+    .maxAnisotropy = vk_state->physical_device_properties.limits.maxSamplerAnisotropy,
   };
   if (
     vkCreateSampler(vk_state->device, &sampler_info, nullptr,
@@ -566,9 +566,9 @@ static void init_buffers(VkState *vk_state) {
 
 static void init_command_buffers(VkState *vk_state) {
   VkCommandBufferAllocateInfo const alloc_info = {
-    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-    .commandPool = vk_state->command_pool,
-    .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+    .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+    .commandPool        = vk_state->command_pool,
+    .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
     .commandBufferCount = vk_state->n_swapchain_images,
   };
 
@@ -595,13 +595,13 @@ static void init_command_buffers(VkState *vk_state) {
       {{{1.0f, 0.0f}}},
     };
     VkRenderPassBeginInfo const renderpass_info = {
-      .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-      .renderPass = vk_state->render_pass,
-      .framebuffer = vk_state->swapchain_framebuffers[idx],
+      .sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+      .renderPass        = vk_state->render_pass,
+      .framebuffer       = vk_state->swapchain_framebuffers[idx],
       .renderArea.offset = {0, 0},
       .renderArea.extent = vk_state->swapchain_extent,
-      .clearValueCount = LEN(clear_colors),
-      .pClearValues = clear_colors,
+      .clearValueCount   = LEN(clear_colors),
+      .pClearValues      = clear_colors,
     };
 
     vkCmdBeginRenderPass(command_buffer, &renderpass_info, VK_SUBPASS_CONTENTS_INLINE);
@@ -794,14 +794,14 @@ void vulkan::render(VkState *vk_state, GLFWwindow *window) {
   update_ubo(vk_state);
 
   VkSubmitInfo const submit_info = {
-    .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-    .waitSemaphoreCount = 1,
-    .pWaitSemaphores = wait_semaphores,
-    .pWaitDstStageMask = wait_stages,
-    .commandBufferCount = 1,
-    .pCommandBuffers = &vk_state->command_buffers[idx_image],
+    .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+    .waitSemaphoreCount   = 1,
+    .pWaitSemaphores      = wait_semaphores,
+    .pWaitDstStageMask    = wait_stages,
+    .commandBufferCount   = 1,
+    .pCommandBuffers      = &vk_state->command_buffers[idx_image],
     .signalSemaphoreCount = 1,
-    .pSignalSemaphores = signal_semaphores,
+    .pSignalSemaphores    = signal_semaphores,
   };
 
   if (
@@ -813,12 +813,12 @@ void vulkan::render(VkState *vk_state, GLFWwindow *window) {
 
   VkSwapchainKHR const swapchains[] = {vk_state->swapchain};
   VkPresentInfoKHR const present_info = {
-    .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+    .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
     .waitSemaphoreCount = 1,
-    .pWaitSemaphores = signal_semaphores,
-    .swapchainCount = 1,
-    .pSwapchains = swapchains,
-    .pImageIndices = &idx_image,
+    .pWaitSemaphores    = signal_semaphores,
+    .swapchainCount     = 1,
+    .pSwapchains        = swapchains,
+    .pImageIndices      = &idx_image,
   };
 
   VkResult const present_res = vkQueuePresentKHR(vk_state->present_queue, &present_info);

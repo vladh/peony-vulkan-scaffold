@@ -16,11 +16,11 @@ struct Vertex {
   v2 tex_coords;
 };
 
-static constexpr i64 const NO_QUEUE_FAMILY = -1;
-static constexpr u32 const MAX_N_SWAPCHAIN_FORMATS = 32;
+static constexpr i64 const NO_QUEUE_FAMILY               = -1;
+static constexpr u32 const MAX_N_SWAPCHAIN_FORMATS       = 32;
 static constexpr u32 const MAX_N_SWAPCHAIN_PRESENT_MODES = 32;
-static constexpr u32 const MAX_N_SWAPCHAIN_IMAGES = 8;
-constexpr u32 const MAX_N_REQUIRED_EXTENSIONS = 256;
+static constexpr u32 const MAX_N_SWAPCHAIN_IMAGES        = 8;
+constexpr u32 const MAX_N_REQUIRED_EXTENSIONS            = 256;
 
 constexpr bool const USE_VALIDATION = true;
 constexpr char const * const VALIDATION_LAYERS[] = {"VK_LAYER_KHRONOS_validation"};
@@ -49,28 +49,28 @@ constexpr u32 INDICES[] = {
 };
 
 constexpr VkVertexInputBindingDescription const VERTEX_BINDING_DESCRIPTION = {
-  .binding = 0,
-  .stride = sizeof(Vertex),
+  .binding   = 0,
+  .stride    = sizeof(Vertex),
   .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
 };
 constexpr VkVertexInputAttributeDescription const VERTEX_ATTRIBUTE_DESCRIPTIONS[] = {
   {
-    .binding = 0,
+    .binding  = 0,
     .location = 0,
-    .format = VK_FORMAT_R32G32B32_SFLOAT,
-    .offset = offsetof(Vertex, position),
+    .format   = VK_FORMAT_R32G32B32_SFLOAT,
+    .offset   = offsetof(Vertex, position),
   },
   {
-    .binding = 0,
+    .binding  = 0,
     .location = 1,
-    .format = VK_FORMAT_R32G32B32_SFLOAT,
-    .offset = offsetof(Vertex, color),
+    .format   = VK_FORMAT_R32G32B32_SFLOAT,
+    .offset   = offsetof(Vertex, color),
   },
   {
-    .binding = 0,
+    .binding  = 0,
     .location = 2,
-    .format = VK_FORMAT_R32G32_SFLOAT,
-    .offset = offsetof(Vertex, tex_coords),
+    .format   = VK_FORMAT_R32G32_SFLOAT,
+    .offset   = offsetof(Vertex, tex_coords),
   }
 };
 

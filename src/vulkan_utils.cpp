@@ -32,9 +32,9 @@ static VkCommandBuffer begin_command_buffer(
   VkCommandPool command_pool
 ) {
   VkCommandBufferAllocateInfo const alloc_info = {
-    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-    .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-    .commandPool = command_pool,
+    .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+    .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+    .commandPool        = command_pool,
     .commandBufferCount = 1,
   };
   VkCommandBuffer command_buffer;
@@ -59,9 +59,9 @@ static void end_command_buffer(
   vkEndCommandBuffer(command_buffer);
 
   VkSubmitInfo const submit_info = {
-    .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+    .sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO,
     .commandBufferCount = 1,
-    .pCommandBuffers = &command_buffer,
+    .pCommandBuffers    = &command_buffer,
   };
   vkQueueSubmit(queue, 1, &submit_info, VK_NULL_HANDLE);
 
@@ -76,9 +76,9 @@ void make_buffer(
   VkBuffer *buffer, VkDeviceMemory *memory
 ) {
   VkBufferCreateInfo const buffer_info = {
-    .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-    .size = size,
-    .usage = usage,
+    .sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+    .size        = size,
+    .usage       = usage,
     .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
   };
 
@@ -92,8 +92,8 @@ void make_buffer(
   u32 memory_type = find_memory_type(physical_device, requirements.memoryTypeBits,
     properties);
   VkMemoryAllocateInfo const alloc_info = {
-    .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-    .allocationSize = requirements.size,
+    .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+    .allocationSize  = requirements.size,
     .memoryTypeIndex = memory_type,
   };
 
@@ -131,19 +131,19 @@ static void make_image(
 ) {
   // Create VkImage
   VkImageCreateInfo const image_info = {
-    .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-    .imageType = VK_IMAGE_TYPE_2D,
-    .extent.width = width,
+    .sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+    .imageType     = VK_IMAGE_TYPE_2D,
+    .extent.width  = width,
     .extent.height = height,
-    .extent.depth = 1,
-    .mipLevels = 1,
-    .arrayLayers = 1,
-    .format = format,
-    .tiling = tiling,
+    .extent.depth  = 1,
+    .mipLevels     = 1,
+    .arrayLayers   = 1,
+    .format        = format,
+    .tiling        = tiling,
     .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-    .usage = usage,
-    .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-    .samples = VK_SAMPLE_COUNT_1_BIT,
+    .usage         = usage,
+    .sharingMode   = VK_SHARING_MODE_EXCLUSIVE,
+    .samples       = VK_SAMPLE_COUNT_1_BIT,
   };
   if (vkCreateImage(device, &image_info, nullptr, image) != VK_SUCCESS) {
     logs::fatal("Could not create image.");
@@ -153,8 +153,8 @@ static void make_image(
   VkMemoryRequirements requirements;
   vkGetImageMemoryRequirements(device, *image, &requirements);
   VkMemoryAllocateInfo const alloc_info = {
-    .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-    .allocationSize = requirements.size,
+    .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+    .allocationSize  = requirements.size,
     .memoryTypeIndex = find_memory_type(physical_device,
       requirements.memoryTypeBits, properties),
   };
@@ -171,15 +171,15 @@ static VkImageView make_image_view(
   VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspect_flags
 ) {
   VkImageViewCreateInfo const image_view_info = {
-    .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-    .image = image,
-    .viewType = VK_IMAGE_VIEW_TYPE_2D,
-    .format = format,
-    .subresourceRange.aspectMask = aspect_flags,
-    .subresourceRange.baseMipLevel = 0,
-    .subresourceRange.levelCount = 1,
+    .sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+    .image                           = image,
+    .viewType                        = VK_IMAGE_VIEW_TYPE_2D,
+    .format                          = format,
+    .subresourceRange.aspectMask     = aspect_flags,
+    .subresourceRange.baseMipLevel   = 0,
+    .subresourceRange.levelCount     = 1,
     .subresourceRange.baseArrayLayer = 0,
-    .subresourceRange.layerCount = 1,
+    .subresourceRange.layerCount     = 1,
   };
   VkImageView image_view;
   if (
@@ -201,19 +201,19 @@ static void transition_image_layout(
   VkCommandBuffer command_buffer = begin_command_buffer(device, command_pool);
 
   VkImageMemoryBarrier barrier = {
-    .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-    .oldLayout = old_layout,
-    .newLayout = new_layout,
-    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-    .image = image,
-    .subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-    .subresourceRange.baseMipLevel = 0,
-    .subresourceRange.levelCount = 1,
+    .sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+    .oldLayout                       = old_layout,
+    .newLayout                       = new_layout,
+    .srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED,
+    .dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED,
+    .image                           = image,
+    .subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+    .subresourceRange.baseMipLevel   = 0,
+    .subresourceRange.levelCount     = 1,
     .subresourceRange.baseArrayLayer = 0,
-    .subresourceRange.layerCount = 1,
-    .srcAccessMask = 0, // Filled in later
-    .dstAccessMask = 0, // Filled in later
+    .subresourceRange.layerCount     = 1,
+    .srcAccessMask                   = 0, // Filled in later
+    .dstAccessMask                   = 0, // Filled in later
   };
 
   VkPipelineStageFlags source_stage = {};
@@ -225,8 +225,8 @@ static void transition_image_layout(
   ) {
     barrier.srcAccessMask = 0;
     barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    source_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-    destination_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    source_stage          = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    destination_stage     = VK_PIPELINE_STAGE_TRANSFER_BIT;
 
   } else if (
     old_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
@@ -234,8 +234,8 @@ static void transition_image_layout(
   ) {
     barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
     barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    source_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    destination_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    source_stage          = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    destination_stage     = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 
   } else {
     logs::fatal("Could not complete requested layout transition as it's unsupported.");
@@ -257,15 +257,15 @@ static void copy_buffer_to_image(
   VkCommandBuffer command_buffer = begin_command_buffer(device, command_pool);
 
   VkBufferImageCopy region = {
-    .bufferOffset = 0,
-    .bufferRowLength = 0,
-    .bufferImageHeight = 0,
-    .imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-    .imageSubresource.mipLevel = 0,
+    .bufferOffset                    = 0,
+    .bufferRowLength                 = 0,
+    .bufferImageHeight               = 0,
+    .imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+    .imageSubresource.mipLevel       = 0,
     .imageSubresource.baseArrayLayer = 0,
-    .imageSubresource.layerCount = 1,
-    .imageOffset = {0, 0, 0},
-    .imageExtent = {width, height, 1},
+    .imageSubresource.layerCount     = 1,
+    .imageOffset                     = {0, 0, 0},
+    .imageExtent                     = {width, height, 1},
   };
 
   vkCmdCopyBufferToImage(command_buffer, buffer, image,
@@ -297,16 +297,16 @@ static void make_descriptors(
     VkDescriptorSetLayoutBinding bindings[MAX_N_DESCRIPTORS] = {};
     range (0, n_descriptors) {
       bindings[idx] = {
-        .binding = descriptor_writes[idx].dstBinding,
+        .binding         = descriptor_writes[idx].dstBinding,
         .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS,
-        .descriptorType = descriptor_writes[idx].descriptorType,
+        .stageFlags      = VK_SHADER_STAGE_ALL_GRAPHICS,
+        .descriptorType  = descriptor_writes[idx].descriptorType,
       };
     }
     VkDescriptorSetLayoutCreateInfo const layout_info = {
-      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+      .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
       .bindingCount = n_descriptors,
-      .pBindings = bindings,
+      .pBindings    = bindings,
     };
     if (
       vkCreateDescriptorSetLayout(device, &layout_info, nullptr,
@@ -321,15 +321,15 @@ static void make_descriptors(
     VkDescriptorPoolSize pool_sizes[MAX_N_DESCRIPTORS] = {};
     range (0, n_descriptors) {
       pool_sizes[idx] = {
-        .type = descriptor_writes[idx].descriptorType,
+        .type            = descriptor_writes[idx].descriptorType,
         .descriptorCount = 1, // TODO: Change this when we have one UBO per framebuffer
       };
     }
     VkDescriptorPoolCreateInfo const pool_info = {
-      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+      .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
       .poolSizeCount = n_descriptors,
-      .pPoolSizes = pool_sizes,
-      .maxSets = 1, // TODO: Change this when we have one UBO per framebuffer
+      .pPoolSizes    = pool_sizes,
+      .maxSets       = 1, // TODO: Change this when we have one UBO per framebuffer
     };
     if (
       vkCreateDescriptorPool(device, &pool_info, nullptr, descriptor_pool) != VK_SUCCESS
@@ -341,10 +341,10 @@ static void make_descriptors(
   // Create descriptor sets
   {
     VkDescriptorSetAllocateInfo const alloc_info = {
-      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-      .descriptorPool = *descriptor_pool,
+      .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+      .descriptorPool     = *descriptor_pool,
       .descriptorSetCount = 1,
-      .pSetLayouts = descriptor_set_layout,
+      .pSetLayouts        = descriptor_set_layout,
     };
     if (vkAllocateDescriptorSets(device, &alloc_info, descriptor_set) != VK_SUCCESS) {
       logs::fatal("Could not allocate descriptor sets.");

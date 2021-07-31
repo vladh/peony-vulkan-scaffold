@@ -46,12 +46,12 @@ static bool init_instance(
 ) {
   // Initialise info about our application (its name etc.)
   VkApplicationInfo const app_info = {
-    .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-    .pApplicationName = "Peony",
+    .sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+    .pApplicationName   = "Peony",
     .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
-    .pEngineName = "peony",
-    .engineVersion = VK_MAKE_VERSION(1, 0, 0),
-    .apiVersion = VK_API_VERSION_1_0,
+    .pEngineName        = "peony",
+    .engineVersion      = VK_MAKE_VERSION(1, 0, 0),
+    .apiVersion         = VK_API_VERSION_1_0,
   };
 
   // Initialise other creation parameters such as required extensions
@@ -59,19 +59,19 @@ static bool init_instance(
   u32 n_required_extensions;
   get_required_extensions(required_extensions, &n_required_extensions);
   VkInstanceCreateInfo instance_info = {
-    .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-    .pApplicationInfo = &app_info,
-    .enabledExtensionCount = n_required_extensions,
+    .sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+    .pApplicationInfo        = &app_info,
+    .enabledExtensionCount   = n_required_extensions,
     .ppEnabledExtensionNames = required_extensions,
   };
 
   // Set validation layer creation options
   if (USE_VALIDATION) {
-    instance_info.enabledLayerCount = LEN(VALIDATION_LAYERS);
+    instance_info.enabledLayerCount   = LEN(VALIDATION_LAYERS);
     instance_info.ppEnabledLayerNames = VALIDATION_LAYERS;
-    instance_info.pNext = debug_messenger_info;
+    instance_info.pNext               = debug_messenger_info;
   } else {
-    instance_info.enabledLayerCount = 0;
+    instance_info.enabledLayerCount   = 0;
   }
 
   if (vkCreateInstance(&instance_info, nullptr, &vk_state->instance) != VK_SUCCESS) {
@@ -313,8 +313,8 @@ static void init_physical_device(VkState *vk_state) {
       is_physical_device_suitable(*physical_device,
         queue_family_indices, &swapchain_support_details)
     ) {
-      vk_state->physical_device = *physical_device;
-      vk_state->queue_family_indices = queue_family_indices;
+      vk_state->physical_device           = *physical_device;
+      vk_state->queue_family_indices      = queue_family_indices;
       vk_state->swapchain_support_details = swapchain_support_details;
     }
   }
@@ -352,20 +352,20 @@ static void init_logical_device(VkState *vk_state) {
       break;
     }
     queue_infos[n_queue_infos++] = {
-      .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+      .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
       .queueFamilyIndex = potential_queue,
-      .queueCount = 1,
+      .queueCount       = 1,
       .pQueuePriorities = &queue_priorities,
     };
   }
   VkPhysicalDeviceFeatures const device_features = {.samplerAnisotropy = VK_TRUE};
   VkDeviceCreateInfo const device_info = {
-    .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-    .queueCreateInfoCount = n_queue_infos,
-    .pQueueCreateInfos = queue_infos,
-    .enabledExtensionCount = LEN(REQUIRED_DEVICE_EXTENSIONS),
+    .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+    .queueCreateInfoCount    = n_queue_infos,
+    .pQueueCreateInfos       = queue_infos,
+    .enabledExtensionCount   = LEN(REQUIRED_DEVICE_EXTENSIONS),
     .ppEnabledExtensionNames = REQUIRED_DEVICE_EXTENSIONS,
-    .pEnabledFeatures = &device_features,
+    .pEnabledFeatures        = &device_features,
   };
 
   if (
@@ -398,7 +398,7 @@ static void init_surface(VkState *vk_state, GLFWwindow *window) {
 
 static void init_command_pool(VkState *vk_state) {
   VkCommandPoolCreateInfo const pool_info = {
-    .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+    .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
     .queueFamilyIndex = (u32)vk_state->queue_family_indices.graphics,
   };
 
