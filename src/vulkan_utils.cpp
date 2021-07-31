@@ -355,3 +355,27 @@ static void make_descriptors(
     vkUpdateDescriptorSets(device, n_descriptors, descriptor_writes, 0, nullptr);
   }
 }
+
+
+/*
+  Creates a VkShaderModule from a pointer to the code as u8 and a size.
+*/
+static VkShaderModule make_shader_module(
+  VkDevice device, u8 const *shader, size_t size
+) {
+  VkShaderModuleCreateInfo const shader_module_info = {
+    .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+    .codeSize = size,
+    .pCode    = (u32*)shader,
+  };
+
+  VkShaderModule shader_module;
+  if (
+    vkCreateShaderModule(device, &shader_module_info, nullptr,
+      &shader_module) != VK_SUCCESS
+  ) {
+    logs::fatal("Could not create shader module.");
+  }
+
+  return shader_module;
+}

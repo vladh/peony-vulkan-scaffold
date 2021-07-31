@@ -14,16 +14,11 @@
 
 #include "vulkan_utils.cpp"
 #include "vulkan_swapchain.cpp"
+#include "vulkan_resources.cpp"
 #include "vulkan_general.cpp"
 
 
-//
-// Descriptor stuff
-//
-
-
 static void init_descriptors(VkState *vk_state) {
-  // Create uniform buffer
   // TODO: When we render multiple frames at the same time, we'll want to create
   // a separate UBO for each. Maybe.
   // vulkan-tutorial.com/Uniform_buffers/Descriptor_layout_and_buffer.html
@@ -34,7 +29,6 @@ static void init_descriptors(VkState *vk_state) {
     &vk_state->uniform_buffer,
     &vk_state->uniform_buffer_memory);
 
-  // Populate descriptors
   VkDescriptorBufferInfo const buffer_info = {
     .buffer = vk_state->uniform_buffer,
     .offset = 0,
@@ -106,32 +100,6 @@ static void update_ubo(VkState *vk_state) {
     sizeof(ShaderCommon), 0, &memory);
   memcpy(memory, &ubo, sizeof(ShaderCommon));
   vkUnmapMemory(vk_state->device, vk_state->uniform_buffer_memory);
-}
-
-
-//
-// Pipeline stuff
-//
-
-
-static VkShaderModule init_shader_module(
-  VkState *vk_state, u8 const *shader, size_t size
-) {
-  VkShaderModuleCreateInfo const shader_module_info = {
-    .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-    .codeSize = size,
-    .pCode    = (u32*)shader,
-  };
-
-  VkShaderModule shader_module;
-  if (
-    vkCreateShaderModule(vk_state->device, &shader_module_info, nullptr,
-      &shader_module) != VK_SUCCESS
-  ) {
-    logs::fatal("Could not create shader module.");
-  }
-
-  return shader_module;
 }
 
 
@@ -224,7 +192,7 @@ static void init_pipeline(VkState *vk_state) {
   size_t vert_shader_size;
   u8 *vert_shader = files::load_file_to_pool_u8(&pool,
     "bin/shaders/test.vert.spv", &vert_shader_size);
-  VkShaderModule const vert_shader_module = init_shader_module(vk_state,
+  VkShaderModule const vert_shader_module = make_shader_module(vk_state->device,
     vert_shader, vert_shader_size);
   VkPipelineShaderStageCreateInfo const vert_shader_stage_info = {
     .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -236,7 +204,7 @@ static void init_pipeline(VkState *vk_state) {
   size_t frag_shader_size;
   u8 *frag_shader = files::load_file_to_pool_u8(&pool,
     "bin/shaders/test.frag.spv", &frag_shader_size);
-  VkShaderModule const frag_shader_module = init_shader_module(vk_state,
+  VkShaderModule const frag_shader_module = make_shader_module(vk_state->device,
     frag_shader, frag_shader_size);
   VkPipelineShaderStageCreateInfo const frag_shader_stage_info = {
     .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -352,12 +320,8 @@ static void init_pipeline(VkState *vk_state) {
 }
 
 
-//
-// Specific image buffers
-//
-
-
-static void init_depth_buffer(VkState *vk_state) {
+static void init_framebuffers(VkState *vk_state) {
+  // Depth buffer
   make_image(vk_state->device, vk_state->physical_device,
     &vk_state->depth_image, &vk_state->depth_image_memory,
     vk_state->swapchain_extent.width, vk_state->swapchain_extent.height,
@@ -367,10 +331,8 @@ static void init_depth_buffer(VkState *vk_state) {
     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   vk_state->depth_image_view = make_image_view(vk_state->device,
     vk_state->depth_image, VK_FORMAT_D32_SFLOAT, VK_IMAGE_ASPECT_DEPTH_BIT);
-}
 
-
-static void init_framebuffers(VkState *vk_state) {
+  // Framebuffers
   range (0, vk_state->n_swapchain_images) {
     VkImageView const attachments[] = {
       vk_state->swapchain_image_views[idx],
@@ -393,175 +355,6 @@ static void init_framebuffers(VkState *vk_state) {
     }
   }
 }
-
-
-static void init_textures(VkState *vk_state) {
-  // Load image
-  int width, height, n_channels;
-  unsigned char* image = files::load_image("resources/textures/alpaca.jpg",
-    &width, &height, &n_channels, STBI_rgb_alpha, false);
-  VkDeviceSize image_size = width * height * 4;
-
-  // Copy to staging buffer
-  VkBuffer staging_buffer;
-  VkDeviceMemory staging_buffer_memory;
-  make_buffer(vk_state->device, vk_state->physical_device,
-    image_size,
-    VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-    &staging_buffer,
-    &staging_buffer_memory);
-  void *memory;
-  vkMapMemory(vk_state->device, staging_buffer_memory, 0, image_size, 0, &memory);
-  memcpy(memory, image, (size_t)image_size);
-  vkUnmapMemory(vk_state->device, staging_buffer_memory);
-
-  files::free_image(image);
-
-  // Create VkImage
-  make_image(vk_state->device, vk_state->physical_device,
-    &vk_state->texture_image, &vk_state->texture_image_memory,
-    width, height,
-    VK_FORMAT_R8G8B8A8_SRGB,
-    VK_IMAGE_TILING_OPTIMAL,
-    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-  // Copy image
-  transition_image_layout(vk_state->device,
-    vk_state->graphics_queue,
-    vk_state->command_pool,
-    vk_state->texture_image,
-    VK_FORMAT_R8G8B8A8_SRGB,
-    VK_IMAGE_LAYOUT_UNDEFINED,
-    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-  copy_buffer_to_image(vk_state->device,
-    vk_state->graphics_queue,
-    vk_state->command_pool,
-    staging_buffer,
-    vk_state->texture_image,
-    width,
-    height);
-  transition_image_layout(vk_state->device,
-    vk_state->graphics_queue,
-    vk_state->command_pool,
-    vk_state->texture_image,
-    VK_FORMAT_R8G8B8A8_SRGB,
-    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-  vkDestroyBuffer(vk_state->device, staging_buffer, nullptr);
-  vkFreeMemory(vk_state->device, staging_buffer_memory, nullptr);
-
-  // Create texture image view
-  vk_state->texture_image_view = make_image_view(vk_state->device,
-    vk_state->texture_image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
-
-  // Create sampler
-  VkSamplerCreateInfo const sampler_info = {
-    .sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-    .magFilter               = VK_FILTER_LINEAR,
-    .minFilter               = VK_FILTER_LINEAR,
-    .addressModeU            = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-    .addressModeV            = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-    .addressModeW            = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-    .anisotropyEnable        = VK_TRUE,
-    .borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
-    .unnormalizedCoordinates = VK_FALSE,
-    .compareEnable           = VK_FALSE,
-    .compareOp               = VK_COMPARE_OP_ALWAYS,
-    .mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-    .mipLodBias              = 0.0f,
-    .minLod                  = 0.0f,
-    .maxLod                  = 0.0f,
-    .maxAnisotropy = vk_state->physical_device_properties.limits.maxSamplerAnisotropy,
-  };
-  if (
-    vkCreateSampler(vk_state->device, &sampler_info, nullptr,
-      &vk_state->texture_sampler) != VK_SUCCESS
-  ) {
-    logs::fatal("Could not create texture sampler.");
-  }
-}
-
-
-//
-// Data (vertex/index/ubo etc.) buffers
-//
-
-
-static void init_buffers(VkState *vk_state) {
-  // TODO: #slow Allocate memory only once, and split that up ourselves into the
-  // two buffers using the memory offsets in e.g. `vkCmdBindVertexBuffers()`.
-  // vulkan-tutorial.com/Vertex_buffers/Index_buffer.html
-
-  // Vertex buffer
-  {
-    VkDeviceSize buffer_size = sizeof(VERTICES);
-
-    VkBuffer staging_buffer;
-    VkDeviceMemory staging_buffer_memory;
-    make_buffer(vk_state->device, vk_state->physical_device,
-      buffer_size,
-      VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-      &staging_buffer,
-      &staging_buffer_memory);
-
-    void *memory;
-    vkMapMemory(vk_state->device, staging_buffer_memory, 0, buffer_size, 0, &memory);
-    memcpy(memory, VERTICES, (size_t)buffer_size);
-    vkUnmapMemory(vk_state->device, staging_buffer_memory);
-
-    make_buffer(vk_state->device, vk_state->physical_device,
-      buffer_size,
-      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-      &vk_state->vertex_buffer,
-      &vk_state->vertex_buffer_memory);
-    copy_buffer(vk_state->device, vk_state->command_pool, vk_state->graphics_queue,
-      staging_buffer, vk_state->vertex_buffer, buffer_size);
-
-    vkDestroyBuffer(vk_state->device, staging_buffer, nullptr);
-    vkFreeMemory(vk_state->device, staging_buffer_memory, nullptr);
-  }
-
-  // Index buffer
-  {
-    VkDeviceSize buffer_size = sizeof(INDICES);
-
-    VkBuffer staging_buffer;
-    VkDeviceMemory staging_buffer_memory;
-    make_buffer(vk_state->device, vk_state->physical_device,
-      buffer_size,
-      VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-      &staging_buffer,
-      &staging_buffer_memory);
-
-    void *memory;
-    vkMapMemory(vk_state->device, staging_buffer_memory, 0, buffer_size, 0, &memory);
-    memcpy(memory, INDICES, (size_t)buffer_size);
-    vkUnmapMemory(vk_state->device, staging_buffer_memory);
-
-    make_buffer(vk_state->device, vk_state->physical_device,
-      buffer_size,
-      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-      &vk_state->index_buffer,
-      &vk_state->index_buffer_memory);
-    copy_buffer(vk_state->device, vk_state->command_pool, vk_state->graphics_queue,
-      staging_buffer, vk_state->index_buffer, buffer_size);
-
-    vkDestroyBuffer(vk_state->device, staging_buffer, nullptr);
-    vkFreeMemory(vk_state->device, staging_buffer_memory, nullptr);
-  }
-}
-
-
-//
-// Command buffers
-//
 
 
 static void init_command_buffers(VkState *vk_state) {
@@ -626,11 +419,6 @@ static void init_command_buffers(VkState *vk_state) {
 }
 
 
-//
-// General init/destroy etc.
-//
-
-
 static void init_semaphores(VkState *vk_state) {
   VkSemaphoreCreateInfo const semaphore_info = {
     .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
@@ -677,7 +465,6 @@ void vulkan::init(VkState *vk_state, GLFWwindow *window) {
   init_logical_device(vk_state);
   init_swapchain(vk_state, window);
   init_render_pass(vk_state);
-  init_depth_buffer(vk_state);
   init_framebuffers(vk_state);
   init_command_pool(vk_state);
   init_textures(vk_state);
@@ -765,9 +552,8 @@ void vulkan::recreate_swapchain(VkState *vk_state, GLFWwindow *window) {
     vk_state->physical_device, vk_state->surface);
   init_swapchain(vk_state, window);
   init_render_pass(vk_state);
-  init_pipeline(vk_state);
-  init_depth_buffer(vk_state);
   init_framebuffers(vk_state);
+  init_pipeline(vk_state);
   init_command_buffers(vk_state);
 }
 
