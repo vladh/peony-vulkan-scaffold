@@ -437,7 +437,7 @@ static void init_semaphores(VkState *vk_state) {
 }
 
 
-void vulkan::init(VkState *vk_state, GLFWwindow *window) {
+void vulkan::init(VkState *vk_state, CommonState *common_state) {
   VkDebugUtilsMessengerCreateInfoEXT debug_messenger_info = {};
 
   if (USE_VALIDATION) {
@@ -462,10 +462,10 @@ void vulkan::init(VkState *vk_state, GLFWwindow *window) {
 
   init_instance(vk_state, &debug_messenger_info);
   init_debug_messenger(vk_state, &debug_messenger_info);
-  init_surface(vk_state, window);
+  init_surface(vk_state, common_state->window);
   init_physical_device(vk_state);
   init_logical_device(vk_state);
-  init_swapchain(vk_state, window);
+  init_swapchain(vk_state, common_state->window);
   init_render_pass(vk_state);
   init_framebuffers(vk_state);
   init_command_pool(vk_state);
@@ -533,16 +533,16 @@ void vulkan::destroy(VkState *vk_state) {
 }
 
 
-void vulkan::recreate_swapchain(VkState *vk_state, GLFWwindow *window) {
+void vulkan::recreate_swapchain(VkState *vk_state, CommonState *common_state) {
   logs::info("Recreating swapchain");
 
   // If the width or height is 0, wait until they're both greater than zero.
   // We don't want to do anything while the window size is zero.
   int width = 0;
   int height = 0;
-  glfwGetFramebufferSize(window, &width, &height);
+  glfwGetFramebufferSize(common_state->window, &width, &height);
   while (width == 0 || height == 0) {
-    glfwGetFramebufferSize(window, &width, &height);
+    glfwGetFramebufferSize(common_state->window, &width, &height);
     glfwWaitEvents();
   }
 
@@ -552,7 +552,7 @@ void vulkan::recreate_swapchain(VkState *vk_state, GLFWwindow *window) {
 
   init_swapchain_support_details(&vk_state->swapchain_support_details,
     vk_state->physical_device, vk_state->surface);
-  init_swapchain(vk_state, window);
+  init_swapchain(vk_state, common_state->window);
   init_render_pass(vk_state);
   init_framebuffers(vk_state);
   init_pipeline(vk_state);
@@ -560,14 +560,14 @@ void vulkan::recreate_swapchain(VkState *vk_state, GLFWwindow *window) {
 }
 
 
-void vulkan::render(VkState *vk_state, GLFWwindow *window) {
+void vulkan::render(VkState *vk_state, CommonState *common_state) {
   u32 idx_image;
   VkResult acquire_image_res = vkAcquireNextImageKHR(vk_state->device,
     vk_state->swapchain, UINT64_MAX, vk_state->image_available_semaphore, VK_NULL_HANDLE,
     &idx_image);
 
   if (acquire_image_res == VK_ERROR_OUT_OF_DATE_KHR) {
-    recreate_swapchain(vk_state, window);
+    recreate_swapchain(vk_state, common_state);
     return;
   } else if (acquire_image_res != VK_SUCCESS && acquire_image_res != VK_SUBOPTIMAL_KHR) {
     logs::fatal("Could not acquire swap chain image.");
@@ -615,7 +615,7 @@ void vulkan::render(VkState *vk_state, GLFWwindow *window) {
     present_res == VK_ERROR_OUT_OF_DATE_KHR || present_res == VK_SUBOPTIMAL_KHR ||
     vk_state->should_recreate_swapchain
   ) {
-    recreate_swapchain(vk_state, window);
+    recreate_swapchain(vk_state, common_state);
     vk_state->should_recreate_swapchain = false;
   } else if (present_res != VK_SUCCESS) {
     logs::fatal("Could not present swap chain image.");

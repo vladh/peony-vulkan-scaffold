@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
 #include "types.hpp"
+#include "common.hpp"
 
 struct ShaderCommon {
   m4 model;
@@ -23,8 +24,7 @@ static constexpr u32 const MAX_N_SWAPCHAIN_IMAGES        = 8;
 constexpr u32 const MAX_N_REQUIRED_EXTENSIONS            = 256;
 
 constexpr bool const USE_VALIDATION = true;
-constexpr char const * const VALIDATION_LAYERS[] = {"VK_LAYER_KHRONOS_validation"};
-constexpr char const * const REQUIRED_DEVICE_EXTENSIONS[] = {
+constexpr char const * const VALIDATION_LAYERS[] = {"VK_LAYER_KHRONOS_validation"}; constexpr char const * const REQUIRED_DEVICE_EXTENSIONS[] = {
   VK_KHR_SWAPCHAIN_EXTENSION_NAME,
   #if PLATFORM & PLATFORM_MACOS
     "VK_KHR_portability_subset",
@@ -98,7 +98,6 @@ struct VkState {
   VkQueue present_queue;
   VkSurfaceKHR surface;
   VkSwapchainKHR swapchain;
-  VkImage swapchain_images[MAX_N_SWAPCHAIN_IMAGES];
   VkImageView swapchain_image_views[MAX_N_SWAPCHAIN_IMAGES];
   VkFramebuffer swapchain_framebuffers[MAX_N_SWAPCHAIN_IMAGES];
   u32 n_swapchain_images;
@@ -131,9 +130,9 @@ struct VkState {
 };
 
 namespace vulkan {
-  void init(VkState *vk_state, GLFWwindow *window);
-  void recreate_swapchain(VkState *vk_state, GLFWwindow *window);
+  void init(VkState *vk_state, CommonState *common_state);
+  void recreate_swapchain(VkState *vk_state, CommonState *common_state);
   void destroy(VkState *vk_state);
-  void render(VkState *vk_state, GLFWwindow *window);
+  void render(VkState *vk_state, CommonState *common_state);
   void wait(VkState *vk_state);
 }

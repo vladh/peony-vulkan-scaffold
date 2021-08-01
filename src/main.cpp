@@ -5,14 +5,17 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#include "vulkan.hpp"
 #include "types.hpp"
 #include "intrinsics.hpp"
+#include "common.hpp"
+#include "vulkan.hpp"
+#include "engine.hpp"
 
 
 struct State {
-  GLFWwindow *window;
+  CommonState common_state;
   VkState vk_state;
+  EngineState engine_state;
 };
 
 
@@ -39,9 +42,10 @@ static void destroy_window(GLFWwindow *window) {
 
 
 static void run_main_loop(State *state) {
-  while (!glfwWindowShouldClose(state->window)) {
+  while (!glfwWindowShouldClose(state->common_state.window)) {
     glfwPollEvents();
-    vulkan::render(&state->vk_state, state->window);
+    engine::update(&state->engine_state, &state->common_state);
+    vulkan::render(&state->vk_state, &state->common_state);
     vulkan::wait(&state->vk_state);
   }
 }
@@ -51,10 +55,10 @@ int main() {
   State *state = (State*)calloc(1, sizeof(State));
   defer { free(state); };
 
-  init_window(&state->window, state);
-  defer { destroy_window(state->window); };
+  init_window(&state->common_state.window, state);
+  defer { destroy_window(state->common_state.window); };
 
-  vulkan::init(&state->vk_state, state->window);
+  vulkan::init(&state->vk_state, &state->common_state);
   defer { vulkan::destroy(&state->vk_state); };
 
   run_main_loop(state);

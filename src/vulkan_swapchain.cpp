@@ -138,10 +138,11 @@ static void init_swapchain(VkState *vk_state, GLFWwindow *window) {
     logs::fatal("Could not create swapchain.");
   }
 
+  VkImage swapchain_images[MAX_N_SWAPCHAIN_IMAGES];
   vkGetSwapchainImagesKHR(vk_state->device,
     vk_state->swapchain, &vk_state->n_swapchain_images, nullptr);
   vkGetSwapchainImagesKHR(vk_state->device,
-    vk_state->swapchain, &vk_state->n_swapchain_images, vk_state->swapchain_images);
+    vk_state->swapchain, &vk_state->n_swapchain_images, swapchain_images);
 
   vk_state->swapchain_image_format = surface_format.format;
   vk_state->swapchain_extent = extent;
@@ -152,7 +153,7 @@ static void init_swapchain(VkState *vk_state, GLFWwindow *window) {
 
     VkImageViewCreateInfo const image_view_info = {
       .sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-      .image                           = vk_state->swapchain_images[idx],
+      .image                           = swapchain_images[idx],
       .viewType                        = VK_IMAGE_VIEW_TYPE_2D,
       .format                          = vk_state->swapchain_image_format,
       .components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY,
