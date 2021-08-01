@@ -15,6 +15,7 @@ static constexpr i64 const NO_QUEUE_FAMILY               = -1;
 static constexpr u32 const MAX_N_SWAPCHAIN_FORMATS       = 32;
 static constexpr u32 const MAX_N_SWAPCHAIN_PRESENT_MODES = 32;
 static constexpr u32 const MAX_N_SWAPCHAIN_IMAGES        = 8;
+static constexpr u32 const N_PARALLEL_FRAMES             = 3;
 constexpr u32 const MAX_N_REQUIRED_EXTENSIONS            = 256;
 
 constexpr bool const USE_VALIDATION = true;
@@ -76,8 +77,19 @@ struct QueueFamilyIndices {
 struct SwapchainSupportDetails {
   VkSurfaceCapabilitiesKHR capabilities;
   VkSurfaceFormatKHR formats[MAX_N_SWAPCHAIN_FORMATS];
-  u32 n_formats; VkPresentModeKHR present_modes[MAX_N_SWAPCHAIN_PRESENT_MODES];
+  u32 n_formats;
+  VkPresentModeKHR present_modes[MAX_N_SWAPCHAIN_PRESENT_MODES];
   u32 n_present_modes;
+};
+
+struct FrameResources {
+  VkCommandBuffer command_buffer;
+  VkSemaphore image_available_semaphore;
+  VkSemaphore render_finished_semaphore;
+  VkFence frame_rendered_fence;
+  VkBuffer uniform_buffer;
+  VkDeviceMemory uniform_buffer_memory;
+  VkDescriptorSet descriptor_set;
 };
 
 struct VkState {
@@ -92,6 +104,10 @@ struct VkState {
   VkQueue present_queue;
   VkSurfaceKHR surface;
   VkSwapchainKHR swapchain;
+  FrameResources frame_resources[N_PARALLEL_FRAMES];
+  u32 idx_frame;
+  VkDescriptorSetLayout descriptor_set_layout;
+  VkDescriptorPool descriptor_pool;
   VkImageView swapchain_image_views[MAX_N_SWAPCHAIN_IMAGES];
   VkFramebuffer swapchain_framebuffers[MAX_N_SWAPCHAIN_IMAGES];
   u32 n_swapchain_images;
@@ -100,19 +116,11 @@ struct VkState {
   VkPipelineLayout pipeline_layout;
   VkPipeline pipeline;
   VkCommandPool command_pool;
-  VkCommandBuffer command_buffers[MAX_N_SWAPCHAIN_IMAGES];
-  VkSemaphore image_available_semaphore;
-  VkSemaphore render_finished_semaphore;
   bool should_recreate_swapchain;
   VkBuffer vertex_buffer;
   VkDeviceMemory vertex_buffer_memory;
   VkBuffer index_buffer;
   VkDeviceMemory index_buffer_memory;
-  VkBuffer uniform_buffer;
-  VkDeviceMemory uniform_buffer_memory;
-  VkDescriptorSetLayout descriptor_set_layout;
-  VkDescriptorSet descriptor_set;
-  VkDescriptorPool descriptor_pool;
   VkImage texture_image;
   VkDeviceMemory texture_image_memory;
   VkImageView texture_image_view;
