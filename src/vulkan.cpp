@@ -5,6 +5,7 @@
 #include "../src_external/pstr.h"
 
 #include "glm.hpp"
+#include "common.hpp"
 #include "vulkan.hpp"
 #include "logs.hpp"
 #include "intrinsics.hpp"
@@ -23,7 +24,7 @@ static void init_descriptors(VkState *vk_state) {
   // a separate UBO for each. Maybe.
   // vulkan-tutorial.com/Uniform_buffers/Descriptor_layout_and_buffer.html
   make_buffer(vk_state->device, vk_state->physical_device,
-    sizeof(ShaderCommon),
+    sizeof(CoreSceneState),
     VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
     &vk_state->uniform_buffer,
@@ -32,7 +33,7 @@ static void init_descriptors(VkState *vk_state) {
   VkDescriptorBufferInfo const buffer_info = {
     .buffer = vk_state->uniform_buffer,
     .offset = 0,
-    .range  = sizeof(ShaderCommon),
+    .range  = sizeof(CoreSceneState),
   };
   VkDescriptorImageInfo const image_info = {
     .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -68,38 +69,6 @@ static void init_descriptors(VkState *vk_state) {
     &vk_state->descriptor_pool,
     &vk_state->descriptor_set
   );
-}
-
-
-static void update_ubo(VkState *vk_state) {
-  ShaderCommon ubo = {
-    .model = glm::rotate(
-      glm::mat4(1.0f),
-      0.0f * glm::radians(90.0f),
-      glm::vec3(0.0f, 0.0f, 1.0f)
-    ),
-    .view = glm::lookAt(
-      glm::vec3(2.0f, 2.0f, 2.0f),
-      glm::vec3(0.0f, 0.0f, 0.0f),
-      glm::vec3(0.0f, 0.0f, 1.0f)
-    ),
-    .projection = glm::perspective(
-      glm::radians(45.0f),
-      (f32)vk_state->swapchain_extent.width / (f32)vk_state->swapchain_extent.height,
-      0.01f,
-      20.0f
-    ),
-  };
-
-  // In OpenGL (which GLM was designed for), the y coordinate of the clip coordinates
-  // is inverted. This is not true in Vulkan, so we invert it back.
-  ubo.projection[1][1] *= -1;
-
-  void *memory;
-  vkMapMemory(vk_state->device, vk_state->uniform_buffer_memory, 0,
-    sizeof(ShaderCommon), 0, &memory);
-  memcpy(memory, &ubo, sizeof(ShaderCommon));
-  vkUnmapMemory(vk_state->device, vk_state->uniform_buffer_memory);
 }
 
 
@@ -172,7 +141,7 @@ static void init_render_pass(VkState *vk_state) {
 }
 
 
-static void init_pipeline(VkState *vk_state) {
+static void init_pipeline(VkState *vk_state, VkExtent2D extent) {
   // Pipeline layout
   VkPipelineLayoutCreateInfo const pipeline_layout_info = {
     .sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -234,14 +203,14 @@ static void init_pipeline(VkState *vk_state) {
   VkViewport const viewport = {
     .x        = 0.0f,
     .y        = 0.0f,
-    .width    = (f32)vk_state->swapchain_extent.width,
-    .height   = (f32)vk_state->swapchain_extent.height,
+    .width    = (f32)extent.width,
+    .height   = (f32)extent.height,
     .minDepth = 0.0f,
     .maxDepth = 1.0f,
   };
   VkRect2D const scissor = {
     .offset = {0, 0},
-    .extent = vk_state->swapchain_extent,
+    .extent = extent,
   };
   VkPipelineViewportStateCreateInfo const viewport_state_info = {
     .sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
@@ -320,11 +289,11 @@ static void init_pipeline(VkState *vk_state) {
 }
 
 
-static void init_framebuffers(VkState *vk_state) {
+static void init_framebuffers(VkState *vk_state, VkExtent2D extent) {
   // Depth buffer
   make_image(vk_state->device, vk_state->physical_device,
     &vk_state->depth_image, &vk_state->depth_image_memory,
-    vk_state->swapchain_extent.width, vk_state->swapchain_extent.height,
+    extent.width, extent.height,
     VK_FORMAT_D32_SFLOAT,
     VK_IMAGE_TILING_OPTIMAL,
     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
@@ -343,8 +312,8 @@ static void init_framebuffers(VkState *vk_state) {
       .renderPass      = vk_state->render_pass,
       .attachmentCount = LEN(attachments),
       .pAttachments    = attachments,
-      .width           = vk_state->swapchain_extent.width,
-      .height          = vk_state->swapchain_extent.height,
+      .width           = extent.width,
+      .height          = extent.height,
       .layers          = 1,
     };
     if (
@@ -357,7 +326,7 @@ static void init_framebuffers(VkState *vk_state) {
 }
 
 
-static void init_command_buffers(VkState *vk_state) {
+static void init_command_buffers(VkState *vk_state, VkExtent2D extent) {
   VkCommandBufferAllocateInfo const alloc_info = {
     .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
     .commandPool        = vk_state->command_pool,
@@ -392,7 +361,7 @@ static void init_command_buffers(VkState *vk_state) {
       .renderPass        = vk_state->render_pass,
       .framebuffer       = vk_state->swapchain_framebuffers[idx],
       .renderArea.offset = {0, 0},
-      .renderArea.extent = vk_state->swapchain_extent,
+      .renderArea.extent = extent,
       .clearValueCount   = LEN(clear_colors),
       .pClearValues      = clear_colors,
     };
@@ -465,15 +434,15 @@ void vulkan::init(VkState *vk_state, CommonState *common_state) {
   init_surface(vk_state, common_state->window);
   init_physical_device(vk_state);
   init_logical_device(vk_state);
-  init_swapchain(vk_state, common_state->window);
+  init_swapchain(vk_state, common_state->window, &common_state->extent);
   init_render_pass(vk_state);
-  init_framebuffers(vk_state);
+  init_framebuffers(vk_state, common_state->extent);
   init_command_pool(vk_state);
   init_textures(vk_state);
   init_descriptors(vk_state);
   init_buffers(vk_state);
-  init_pipeline(vk_state);
-  init_command_buffers(vk_state);
+  init_pipeline(vk_state, common_state->extent);
+  init_command_buffers(vk_state, common_state->extent);
   init_semaphores(vk_state);
 }
 
@@ -552,15 +521,16 @@ void vulkan::recreate_swapchain(VkState *vk_state, CommonState *common_state) {
 
   init_swapchain_support_details(&vk_state->swapchain_support_details,
     vk_state->physical_device, vk_state->surface);
-  init_swapchain(vk_state, common_state->window);
+  init_swapchain(vk_state, common_state->window, &common_state->extent);
   init_render_pass(vk_state);
-  init_framebuffers(vk_state);
-  init_pipeline(vk_state);
-  init_command_buffers(vk_state);
+  init_framebuffers(vk_state, common_state->extent);
+  init_pipeline(vk_state, common_state->extent);
+  init_command_buffers(vk_state, common_state->extent);
 }
 
 
 void vulkan::render(VkState *vk_state, CommonState *common_state) {
+  // Acquire image
   u32 idx_image;
   VkResult acquire_image_res = vkAcquireNextImageKHR(vk_state->device,
     vk_state->swapchain, UINT64_MAX, vk_state->image_available_semaphore, VK_NULL_HANDLE,
@@ -579,8 +549,14 @@ void vulkan::render(VkState *vk_state, CommonState *common_state) {
   };
   VkSemaphore const signal_semaphores[] = {vk_state->render_finished_semaphore};
 
-  update_ubo(vk_state);
+  // Update UBO
+  void *memory;
+  vkMapMemory(vk_state->device, vk_state->uniform_buffer_memory, 0,
+    sizeof(CoreSceneState), 0, &memory);
+  memcpy(memory, &common_state->core_scene_state, sizeof(CoreSceneState));
+  vkUnmapMemory(vk_state->device, vk_state->uniform_buffer_memory);
 
+  // Draw into image
   VkSubmitInfo const submit_info = {
     .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
     .waitSemaphoreCount   = 1,
@@ -599,6 +575,7 @@ void vulkan::render(VkState *vk_state, CommonState *common_state) {
     logs::fatal("Could not submit draw command buffer.");
   }
 
+  // Present image
   VkSwapchainKHR const swapchains[] = {vk_state->swapchain};
   VkPresentInfoKHR const present_info = {
     .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,

@@ -5,12 +5,6 @@
 #include "types.hpp"
 #include "common.hpp"
 
-struct ShaderCommon {
-  m4 model;
-  m4 view;
-  m4 projection;
-};
-
 struct Vertex {
   v3 position;
   v3 color;
@@ -102,7 +96,6 @@ struct VkState {
   VkFramebuffer swapchain_framebuffers[MAX_N_SWAPCHAIN_IMAGES];
   u32 n_swapchain_images;
   VkFormat swapchain_image_format;
-  VkExtent2D swapchain_extent;
   VkRenderPass render_pass;
   VkPipelineLayout pipeline_layout;
   VkPipeline pipeline;

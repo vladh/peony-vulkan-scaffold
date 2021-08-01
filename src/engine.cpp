@@ -4,8 +4,8 @@
 #include "engine.hpp"
 
 
-void engine::update(EngineState *engine_state, CommonState *common_state) {
-  *engine_state = {
+void engine::update(CommonState *common_state) {
+  common_state->core_scene_state = {
     .model = glm::rotate(
       glm::mat4(1.0f),
       0.0f * glm::radians(90.0f),
@@ -26,5 +26,5 @@ void engine::update(EngineState *engine_state, CommonState *common_state) {
 
   // In OpenGL (which GLM was designed for), the y coordinate of the clip coordinates
   // is inverted. This is not true in Vulkan, so we invert it back.
-  engine_state->projection[1][1] *= -1;
+  common_state->core_scene_state.projection[1][1] *= -1;
 }

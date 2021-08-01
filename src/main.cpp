@@ -15,7 +15,6 @@
 struct State {
   CommonState common_state;
   VkState vk_state;
-  EngineState engine_state;
 };
 
 
@@ -44,7 +43,7 @@ static void destroy_window(GLFWwindow *window) {
 static void run_main_loop(State *state) {
   while (!glfwWindowShouldClose(state->common_state.window)) {
     glfwPollEvents();
-    engine::update(&state->engine_state, &state->common_state);
+    engine::update(&state->common_state);
     vulkan::render(&state->vk_state, &state->common_state);
     vulkan::wait(&state->vk_state);
   }

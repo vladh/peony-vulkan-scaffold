@@ -81,16 +81,16 @@ static void init_swapchain_support_details(
 }
 
 
-static void init_swapchain(VkState *vk_state, GLFWwindow *window) {
+static void init_swapchain(VkState *vk_state, GLFWwindow *window, VkExtent2D *extent) {
   // Create the swapchain itself
   SwapchainSupportDetails *details       = &vk_state->swapchain_support_details;
   VkSurfaceCapabilitiesKHR *capabilities = &details->capabilities;
   QueueFamilyIndices *indices            = &vk_state->queue_family_indices;
 
-  VkSurfaceFormatKHR surface_format      = choose_swap_surface_format(details);
-  VkPresentModeKHR present_mode          = choose_swap_present_mode(details);
-  VkExtent2D extent                      = choose_swap_extent(details, window);
-  logs::info("Extent is %d x %d", extent.width, extent.height);
+  VkSurfaceFormatKHR surface_format = choose_swap_surface_format(details);
+  VkPresentModeKHR present_mode     = choose_swap_present_mode(details);
+  *extent                           = choose_swap_extent(details, window);
+  logs::info("Extent is %d x %d", extent->width, extent->height);
 
   // Just get one more than the minimum. We can probably tune this later.
   u32 image_count = capabilities->minImageCount + 1;
@@ -104,7 +104,7 @@ static void init_swapchain(VkState *vk_state, GLFWwindow *window) {
     .minImageCount    = image_count,
     .imageFormat      = surface_format.format,
     .imageColorSpace  = surface_format.colorSpace,
-    .imageExtent      = extent,
+    .imageExtent      = *extent,
     .imageArrayLayers = 1,
     .imageUsage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
     .preTransform     = capabilities->currentTransform,
@@ -145,7 +145,6 @@ static void init_swapchain(VkState *vk_state, GLFWwindow *window) {
     vk_state->swapchain, &vk_state->n_swapchain_images, swapchain_images);
 
   vk_state->swapchain_image_format = surface_format.format;
-  vk_state->swapchain_extent = extent;
 
   // Create image views for the swapchain
   range (0, vk_state->n_swapchain_images) {
