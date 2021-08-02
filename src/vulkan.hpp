@@ -84,7 +84,6 @@ struct SwapchainSupportDetails {
 };
 
 struct FrameResources {
-  VkCommandBuffer command_buffer;
   VkSemaphore image_available_semaphore;
   VkSemaphore render_finished_semaphore;
   VkFence frame_rendered_fence;
@@ -119,6 +118,7 @@ struct VkState {
   VkSwapchainKHR swapchain;
   VkImageView swapchain_image_views[MAX_N_SWAPCHAIN_IMAGES];
   VkFramebuffer swapchain_framebuffers[MAX_N_SWAPCHAIN_IMAGES];
+  VkCommandBuffer command_buffers[MAX_N_SWAPCHAIN_IMAGES];
   u32 n_swapchain_images;
   VkFormat swapchain_image_format;
   bool should_recreate_swapchain;

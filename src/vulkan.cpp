@@ -26,9 +26,10 @@
 #include "vulkan_general.cpp"
 
 
-static void init_descriptors(VkState *vk_state) {
-  // Create descriptor set layout
+static void init_descriptor_set_layouts(VkState *vk_state) {
   u32 n_descriptors = 2;
+
+  // Create descriptor set layout
   VkDescriptorSetLayoutBinding bindings[] = {
     descriptor_set_layout_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
     descriptor_set_layout_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
@@ -37,6 +38,11 @@ static void init_descriptors(VkState *vk_state) {
     descriptor_set_layout_create_info(n_descriptors, bindings);
   check_vk_result(vkCreateDescriptorSetLayout(vk_state->device, &layout_info, nullptr,
     &vk_state->main_render_stage.descriptor_set_layout));
+}
+
+
+static void init_descriptors(VkState *vk_state) {
+  u32 n_descriptors = 2;
 
   // Create descriptor pool
   VkDescriptorPoolSize pool_sizes[] = {
@@ -304,17 +310,17 @@ static void init_framebuffers(VkState *vk_state, VkExtent2D extent) {
 static void init_command_buffers(VkState *vk_state, VkExtent2D extent) {
   range (0, vk_state->n_swapchain_images) {
     FrameResources *frame_resources = &vk_state->frame_resources[idx];
+    VkCommandBuffer *command_buffer = &vk_state->command_buffers[idx];
 
     // Allocate command buffer
     VkCommandBufferAllocateInfo const alloc_info =
       command_buffer_allocate_info(vk_state->command_pool);
     check_vk_result(vkAllocateCommandBuffers(vk_state->device, &alloc_info,
-      &frame_resources->command_buffer));
+      command_buffer));
 
     // Begin command buffer
-    VkCommandBuffer const command_buffer = frame_resources->command_buffer;
     VkCommandBufferBeginInfo const buffer_info = command_buffer_begin_info();
-    check_vk_result(vkBeginCommandBuffer(command_buffer, &buffer_info));
+    check_vk_result(vkBeginCommandBuffer(*command_buffer, &buffer_info));
 
     // Begin render pass
     VkClearValue const clear_colors[] = {
@@ -330,28 +336,28 @@ static void init_command_buffers(VkState *vk_state, VkExtent2D extent) {
       .clearValueCount   = LEN(clear_colors),
       .pClearValues      = clear_colors,
     };
-    vkCmdBeginRenderPass(command_buffer, &renderpass_info, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBeginRenderPass(*command_buffer, &renderpass_info, VK_SUBPASS_CONTENTS_INLINE);
 
     // Bind pipeline and descriptor sets
-    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    vkCmdBindPipeline(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
       vk_state->main_render_stage.pipeline);
-    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    vkCmdBindDescriptorSets(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
       vk_state->main_render_stage.pipeline_layout, 0, 1,
       &frame_resources->descriptor_set, 0, nullptr);
 
     // Bind vertex and index buffers
     VkBuffer const vertex_buffers[] = {vk_state->vertex_buffer};
     VkDeviceSize const offsets[] = {0};
-    vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers, offsets);
-    vkCmdBindIndexBuffer(command_buffer, vk_state->index_buffer, 0,
+    vkCmdBindVertexBuffers(*command_buffer, 0, 1, vertex_buffers, offsets);
+    vkCmdBindIndexBuffer(*command_buffer, vk_state->index_buffer, 0,
       VK_INDEX_TYPE_UINT32);
 
     // Draw
-    vkCmdDrawIndexed(command_buffer, LEN(INDICES), 1, 0, 0, 0);
+    vkCmdDrawIndexed(*command_buffer, LEN(INDICES), 1, 0, 0, 0);
 
     // End render pass and command buffer
-    vkCmdEndRenderPass(command_buffer);
-    check_vk_result(vkEndCommandBuffer(command_buffer));
+    vkCmdEndRenderPass(*command_buffer);
+    check_vk_result(vkEndCommandBuffer(*command_buffer));
   }
 }
 
@@ -411,6 +417,7 @@ void vulkan::init(VkState *vk_state, CommonState *common_state) {
   init_framebuffers(vk_state, common_state->extent);
   init_command_pool(vk_state);
   init_textures(vk_state);
+  init_descriptor_set_layouts(vk_state);
   init_descriptors(vk_state);
   init_buffers(vk_state);
   init_pipeline(vk_state, common_state->extent);
@@ -428,17 +435,24 @@ static void destroy_swapchain(VkState *vk_state) {
     vkDestroyFramebuffer(vk_state->device, vk_state->swapchain_framebuffers[idx],
       nullptr);
     vkFreeCommandBuffers(vk_state->device, vk_state->command_pool,
-      1, &vk_state->frame_resources[idx].command_buffer);
+      1, &vk_state->command_buffers[idx]);
   }
   vkDestroyPipeline(vk_state->device, vk_state->main_render_stage.pipeline, nullptr);
   vkDestroyPipelineLayout(vk_state->device, vk_state->main_render_stage.pipeline_layout,
     nullptr);
   vkDestroyRenderPass(vk_state->device, vk_state->main_render_stage.render_pass,
     nullptr);
+
   range (0, vk_state->n_swapchain_images) {
+    FrameResources *frame_resources = &vk_state->frame_resources[idx];
     vkDestroyImageView(vk_state->device, vk_state->swapchain_image_views[idx], nullptr);
+    vkDestroyBuffer(vk_state->device, frame_resources->uniform_buffer, nullptr);
+    vkFreeMemory(vk_state->device, frame_resources->uniform_buffer_memory, nullptr);
   }
+
   vkDestroySwapchainKHR(vk_state->device, vk_state->swapchain, nullptr);
+  vkDestroyDescriptorPool(vk_state->device, vk_state->main_render_stage.descriptor_pool,
+    nullptr);
 }
 
 
@@ -458,15 +472,8 @@ void vulkan::destroy(VkState *vk_state) {
   vkDestroyBuffer(vk_state->device, vk_state->index_buffer, nullptr);
   vkFreeMemory(vk_state->device, vk_state->index_buffer_memory, nullptr);
 
-  vkDestroyDescriptorPool(vk_state->device, vk_state->main_render_stage.descriptor_pool,
-    nullptr);
-
   range (0, vk_state->n_swapchain_images) {
     FrameResources *frame_resources = &vk_state->frame_resources[idx];
-
-    vkDestroyBuffer(vk_state->device, frame_resources->uniform_buffer, nullptr);
-    vkFreeMemory(vk_state->device, frame_resources->uniform_buffer_memory, nullptr);
-
     vkDestroySemaphore(vk_state->device, frame_resources->render_finished_semaphore,
       nullptr);
     vkDestroySemaphore(vk_state->device, frame_resources->image_available_semaphore,
@@ -508,6 +515,7 @@ void vulkan::recreate_swapchain(VkState *vk_state, CommonState *common_state) {
   init_swapchain(vk_state, common_state->window, &common_state->extent);
   init_render_pass(vk_state);
   init_framebuffers(vk_state, common_state->extent);
+  init_descriptors(vk_state);
   init_pipeline(vk_state, common_state->extent);
   init_command_buffers(vk_state, common_state->extent);
 }
@@ -555,7 +563,7 @@ void vulkan::render(VkState *vk_state, CommonState *common_state) {
     .pWaitSemaphores      = wait_semaphores,
     .pWaitDstStageMask    = wait_stages,
     .commandBufferCount   = 1,
-    .pCommandBuffers      = &frame_resources->command_buffer,
+    .pCommandBuffers      = &vk_state->command_buffers[idx_image],
     .signalSemaphoreCount = 1,
     .pSignalSemaphores    = signal_semaphores,
   };
