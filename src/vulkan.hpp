@@ -93,7 +93,16 @@ struct FrameResources {
   VkDescriptorSet descriptor_set;
 };
 
+struct RenderStage {
+  VkDescriptorSetLayout descriptor_set_layout;
+  VkDescriptorPool descriptor_pool;
+  VkRenderPass render_pass;
+  VkPipelineLayout pipeline_layout;
+  VkPipeline pipeline;
+};
+
 struct VkState {
+  // General Vulkan stuff
   VkInstance instance;
   VkDebugUtilsMessengerEXT debug_messenger;
   VkPhysicalDevice physical_device;
@@ -104,20 +113,20 @@ struct VkState {
   VkQueue graphics_queue;
   VkQueue present_queue;
   VkSurfaceKHR surface;
+  VkCommandPool command_pool;
+
+  // Swapchain stuff
   VkSwapchainKHR swapchain;
-  FrameResources frame_resources[N_PARALLEL_FRAMES];
-  u32 idx_frame;
-  VkDescriptorSetLayout descriptor_set_layout;
-  VkDescriptorPool descriptor_pool;
   VkImageView swapchain_image_views[MAX_N_SWAPCHAIN_IMAGES];
   VkFramebuffer swapchain_framebuffers[MAX_N_SWAPCHAIN_IMAGES];
   u32 n_swapchain_images;
   VkFormat swapchain_image_format;
-  VkRenderPass render_pass;
-  VkPipelineLayout pipeline_layout;
-  VkPipeline pipeline;
-  VkCommandPool command_pool;
   bool should_recreate_swapchain;
+
+  // Frame resources
+  FrameResources frame_resources[N_PARALLEL_FRAMES];
+
+  // Scene resources
   VkBuffer vertex_buffer;
   VkDeviceMemory vertex_buffer_memory;
   VkBuffer index_buffer;
@@ -126,9 +135,15 @@ struct VkState {
   VkDeviceMemory texture_image_memory;
   VkImageView texture_image_view;
   VkSampler texture_sampler;
+
+  // Rendering resources and information
+  u32 idx_frame;
   VkImage depth_image;
   VkDeviceMemory depth_image_memory;
   VkImageView depth_image_view;
+
+  // Render stages
+  RenderStage main_render_stage;
 };
 
 namespace vulkan {

@@ -36,7 +36,7 @@ static void init_descriptors(VkState *vk_state) {
   VkDescriptorSetLayoutCreateInfo const layout_info =
     descriptor_set_layout_create_info(n_descriptors, bindings);
   check_vk_result(vkCreateDescriptorSetLayout(vk_state->device, &layout_info, nullptr,
-    &vk_state->descriptor_set_layout));
+    &vk_state->main_render_stage.descriptor_set_layout));
 
   // Create descriptor pool
   VkDescriptorPoolSize pool_sizes[] = {
@@ -48,7 +48,7 @@ static void init_descriptors(VkState *vk_state) {
   VkDescriptorPoolCreateInfo const pool_info = descriptor_pool_create_info(
     vk_state->n_swapchain_images, n_descriptors, pool_sizes);
   check_vk_result(vkCreateDescriptorPool(vk_state->device, &pool_info, nullptr,
-    &vk_state->descriptor_pool));
+    &vk_state->main_render_stage.descriptor_pool));
 
   // Image info is always the same
   VkDescriptorImageInfo const image_info = {
@@ -76,7 +76,8 @@ static void init_descriptors(VkState *vk_state) {
 
     // Create descriptor sets
     VkDescriptorSetAllocateInfo const alloc_info = descriptor_set_allocate_info(
-      vk_state->descriptor_pool, &vk_state->descriptor_set_layout);
+      vk_state->main_render_stage.descriptor_pool,
+      &vk_state->main_render_stage.descriptor_set_layout);
     check_vk_result(vkAllocateDescriptorSets(vk_state->device, &alloc_info,
       &frame_resources->descriptor_set));
 
@@ -152,16 +153,16 @@ static void init_render_pass(VkState *vk_state) {
   };
 
   check_vk_result(vkCreateRenderPass(vk_state->device, &render_pass_info, nullptr,
-    &vk_state->render_pass));
+    &vk_state->main_render_stage.render_pass));
 }
 
 
 static void init_pipeline(VkState *vk_state, VkExtent2D extent) {
   // Pipeline layout
   VkPipelineLayoutCreateInfo const pipeline_layout_info =
-    pipeline_layout_create_info(&vk_state->descriptor_set_layout);
+    pipeline_layout_create_info(&vk_state->main_render_stage.descriptor_set_layout);
   check_vk_result(vkCreatePipelineLayout(vk_state->device, &pipeline_layout_info,
-    nullptr, &vk_state->pipeline_layout));
+    nullptr, &vk_state->main_render_stage.pipeline_layout));
 
   // Shaders
   MemoryPool pool = {};
@@ -254,13 +255,13 @@ static void init_pipeline(VkState *vk_state, VkExtent2D extent) {
     .pDepthStencilState  = &depth_stencil_info,
     .pColorBlendState    = &color_blending_info,
     .pDynamicState       = nullptr,
-    .layout              = vk_state->pipeline_layout,
-    .renderPass          = vk_state->render_pass,
+    .layout              = vk_state->main_render_stage.pipeline_layout,
+    .renderPass          = vk_state->main_render_stage.render_pass,
     .subpass             = 0,
   };
 
   check_vk_result(vkCreateGraphicsPipelines(vk_state->device, VK_NULL_HANDLE, 1,
-    &pipeline_info, nullptr, &vk_state->pipeline));
+    &pipeline_info, nullptr, &vk_state->main_render_stage.pipeline));
 
   vkDestroyShaderModule(vk_state->device, vert_shader_module, nullptr);
   vkDestroyShaderModule(vk_state->device, frag_shader_module, nullptr);
@@ -287,7 +288,7 @@ static void init_framebuffers(VkState *vk_state, VkExtent2D extent) {
     };
     VkFramebufferCreateInfo const framebuffer_info = {
       .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-      .renderPass      = vk_state->render_pass,
+      .renderPass      = vk_state->main_render_stage.render_pass,
       .attachmentCount = LEN(attachments),
       .pAttachments    = attachments,
       .width           = extent.width,
@@ -322,7 +323,7 @@ static void init_command_buffers(VkState *vk_state, VkExtent2D extent) {
     };
     VkRenderPassBeginInfo const renderpass_info = {
       .sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-      .renderPass        = vk_state->render_pass,
+      .renderPass        = vk_state->main_render_stage.render_pass,
       .framebuffer       = vk_state->swapchain_framebuffers[idx],
       .renderArea.offset = {0, 0},
       .renderArea.extent = extent,
@@ -333,9 +334,10 @@ static void init_command_buffers(VkState *vk_state, VkExtent2D extent) {
 
     // Bind pipeline and descriptor sets
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-      vk_state->pipeline);
+      vk_state->main_render_stage.pipeline);
     vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-      vk_state->pipeline_layout, 0, 1, &frame_resources->descriptor_set, 0, nullptr);
+      vk_state->main_render_stage.pipeline_layout, 0, 1,
+      &frame_resources->descriptor_set, 0, nullptr);
 
     // Bind vertex and index buffers
     VkBuffer const vertex_buffers[] = {vk_state->vertex_buffer};
@@ -428,9 +430,11 @@ static void destroy_swapchain(VkState *vk_state) {
     vkFreeCommandBuffers(vk_state->device, vk_state->command_pool,
       1, &vk_state->frame_resources[idx].command_buffer);
   }
-  vkDestroyPipeline(vk_state->device, vk_state->pipeline, nullptr);
-  vkDestroyPipelineLayout(vk_state->device, vk_state->pipeline_layout, nullptr);
-  vkDestroyRenderPass(vk_state->device, vk_state->render_pass, nullptr);
+  vkDestroyPipeline(vk_state->device, vk_state->main_render_stage.pipeline, nullptr);
+  vkDestroyPipelineLayout(vk_state->device, vk_state->main_render_stage.pipeline_layout,
+    nullptr);
+  vkDestroyRenderPass(vk_state->device, vk_state->main_render_stage.render_pass,
+    nullptr);
   range (0, vk_state->n_swapchain_images) {
     vkDestroyImageView(vk_state->device, vk_state->swapchain_image_views[idx], nullptr);
   }
@@ -447,14 +451,15 @@ void vulkan::destroy(VkState *vk_state) {
   vkFreeMemory(vk_state->device, vk_state->texture_image_memory, nullptr);
 
   vkDestroyDescriptorSetLayout(vk_state->device,
-    vk_state->descriptor_set_layout, nullptr);
+    vk_state->main_render_stage.descriptor_set_layout, nullptr);
 
   vkDestroyBuffer(vk_state->device, vk_state->vertex_buffer, nullptr);
   vkFreeMemory(vk_state->device, vk_state->vertex_buffer_memory, nullptr);
   vkDestroyBuffer(vk_state->device, vk_state->index_buffer, nullptr);
   vkFreeMemory(vk_state->device, vk_state->index_buffer_memory, nullptr);
 
-  vkDestroyDescriptorPool(vk_state->device, vk_state->descriptor_pool, nullptr);
+  vkDestroyDescriptorPool(vk_state->device, vk_state->main_render_stage.descriptor_pool,
+    nullptr);
 
   range (0, vk_state->n_swapchain_images) {
     FrameResources *frame_resources = &vk_state->frame_resources[idx];
@@ -469,7 +474,8 @@ void vulkan::destroy(VkState *vk_state) {
     vkDestroyFence(vk_state->device, frame_resources->frame_rendered_fence, nullptr);
   }
 
-  vkDestroyCommandPool(vk_state->device, vk_state->command_pool, nullptr);
+  vkDestroyCommandPool(vk_state->device, vk_state->command_pool,
+    nullptr);
   vkDestroyDevice(vk_state->device, nullptr);
   if (USE_VALIDATION) {
     DestroyDebugUtilsMessengerEXT(vk_state->instance, vk_state->debug_messenger,
@@ -553,7 +559,6 @@ void vulkan::render(VkState *vk_state, CommonState *common_state) {
     .signalSemaphoreCount = 1,
     .pSignalSemaphores    = signal_semaphores,
   };
-
   check_vk_result(vkQueueSubmit(vk_state->graphics_queue, 1, &submit_info,
     frame_resources->frame_rendered_fence));
 
