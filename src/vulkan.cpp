@@ -303,24 +303,19 @@ static void init_framebuffers(VkState *vk_state, VkExtent2D extent) {
 static void init_command_buffers(VkState *vk_state, VkExtent2D extent) {
   range (0, vk_state->n_swapchain_images) {
     FrameResources *frame_resources = &vk_state->frame_resources[idx];
-    VkCommandBufferAllocateInfo const alloc_info = {
-      .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-      .commandPool        = vk_state->command_pool,
-      .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-      .commandBufferCount = 1,
-    };
 
+    // Allocate command buffer
+    VkCommandBufferAllocateInfo const alloc_info =
+      command_buffer_allocate_info(vk_state->command_pool);
     check_vk_result(vkAllocateCommandBuffers(vk_state->device, &alloc_info,
-      &vk_state->frame_resources[idx].command_buffer));
+      &frame_resources->command_buffer));
 
-    VkCommandBuffer const command_buffer = vk_state->frame_resources[idx].command_buffer;
-
-    VkCommandBufferBeginInfo const buffer_info = {
-      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-    };
-
+    // Begin command buffer
+    VkCommandBuffer const command_buffer = frame_resources->command_buffer;
+    VkCommandBufferBeginInfo const buffer_info = command_buffer_begin_info();
     check_vk_result(vkBeginCommandBuffer(command_buffer, &buffer_info));
 
+    // Begin render pass
     VkClearValue const clear_colors[] = {
       {{{0.0f, 0.0f, 0.0f, 1.0f}}},
       {{{1.0f, 0.0f}}},
@@ -334,29 +329,32 @@ static void init_command_buffers(VkState *vk_state, VkExtent2D extent) {
       .clearValueCount   = LEN(clear_colors),
       .pClearValues      = clear_colors,
     };
-
     vkCmdBeginRenderPass(command_buffer, &renderpass_info, VK_SUBPASS_CONTENTS_INLINE);
+
+    // Bind pipeline and descriptor sets
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
       vk_state->pipeline);
     vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
       vk_state->pipeline_layout, 0, 1, &frame_resources->descriptor_set, 0, nullptr);
 
-    {
-      VkBuffer const vertex_buffers[] = {vk_state->vertex_buffer};
-      VkDeviceSize const offsets[] = {0};
-      vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers, offsets);
-      vkCmdBindIndexBuffer(command_buffer, vk_state->index_buffer, 0,
-        VK_INDEX_TYPE_UINT32);
-      vkCmdDrawIndexed(command_buffer, LEN(INDICES), 1, 0, 0, 0);
-    }
+    // Bind vertex and index buffers
+    VkBuffer const vertex_buffers[] = {vk_state->vertex_buffer};
+    VkDeviceSize const offsets[] = {0};
+    vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers, offsets);
+    vkCmdBindIndexBuffer(command_buffer, vk_state->index_buffer, 0,
+      VK_INDEX_TYPE_UINT32);
 
+    // Draw
+    vkCmdDrawIndexed(command_buffer, LEN(INDICES), 1, 0, 0, 0);
+
+    // End render pass and command buffer
     vkCmdEndRenderPass(command_buffer);
     check_vk_result(vkEndCommandBuffer(command_buffer));
   }
 }
 
 
-static void init_frame_resources(VkState *vk_state) {
+static void init_synchronization(VkState *vk_state) {
   // Command buffer is initialised separately
   VkSemaphoreCreateInfo const semaphore_info = {
     .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
@@ -415,7 +413,7 @@ void vulkan::init(VkState *vk_state, CommonState *common_state) {
   init_buffers(vk_state);
   init_pipeline(vk_state, common_state->extent);
   init_command_buffers(vk_state, common_state->extent);
-  init_frame_resources(vk_state);
+  init_synchronization(vk_state);
 }
 
 

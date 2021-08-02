@@ -4,7 +4,26 @@
 */
 
 
-VkPipelineViewportStateCreateInfo pipeline_viewport_state_create_info(
+static VkCommandBufferBeginInfo command_buffer_begin_info() {
+  return {
+    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+  };
+}
+
+
+static VkCommandBufferAllocateInfo command_buffer_allocate_info(
+  VkCommandPool commandPool
+) {
+  return {
+    .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+    .commandPool        = commandPool,
+    .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+    .commandBufferCount = 1,
+  };
+}
+
+
+static VkPipelineViewportStateCreateInfo pipeline_viewport_state_create_info(
   const VkViewport* pViewports,
   const VkRect2D* pScissors
 ) {
@@ -18,7 +37,7 @@ VkPipelineViewportStateCreateInfo pipeline_viewport_state_create_info(
 }
 
 
-VkPipelineLayoutCreateInfo pipeline_layout_create_info(
+static VkPipelineLayoutCreateInfo pipeline_layout_create_info(
   const VkDescriptorSetLayout* pSetLayouts
 ) {
   return {
@@ -29,7 +48,7 @@ VkPipelineLayoutCreateInfo pipeline_layout_create_info(
 }
 
 
-VkPipelineShaderStageCreateInfo pipeline_shader_stage_create_info_vert(
+static VkPipelineShaderStageCreateInfo pipeline_shader_stage_create_info_vert(
   VkShaderModule shader_module
 ) {
   return {
@@ -41,7 +60,7 @@ VkPipelineShaderStageCreateInfo pipeline_shader_stage_create_info_vert(
 }
 
 
-VkPipelineShaderStageCreateInfo pipeline_shader_stage_create_info_frag(
+static VkPipelineShaderStageCreateInfo pipeline_shader_stage_create_info_frag(
   VkShaderModule shader_module
 ) {
   return {
@@ -53,7 +72,7 @@ VkPipelineShaderStageCreateInfo pipeline_shader_stage_create_info_frag(
 }
 
 
-VkDescriptorSetAllocateInfo descriptor_set_allocate_info(
+static VkDescriptorSetAllocateInfo descriptor_set_allocate_info(
   VkDescriptorPool descriptorPool,
   const VkDescriptorSetLayout* pSetLayouts
 ) {
@@ -66,7 +85,7 @@ VkDescriptorSetAllocateInfo descriptor_set_allocate_info(
 }
 
 
-VkWriteDescriptorSet write_descriptor_set_buffer(
+static VkWriteDescriptorSet write_descriptor_set_buffer(
   VkDescriptorSet dstSet,
   uint32_t dstBinding,
   const VkDescriptorBufferInfo* pBufferInfo
@@ -83,7 +102,7 @@ VkWriteDescriptorSet write_descriptor_set_buffer(
 }
 
 
-VkWriteDescriptorSet write_descriptor_set_image(
+static VkWriteDescriptorSet write_descriptor_set_image(
   VkDescriptorSet dstSet,
   uint32_t dstBinding,
   const VkDescriptorImageInfo* pImageInfo
@@ -100,7 +119,7 @@ VkWriteDescriptorSet write_descriptor_set_image(
 }
 
 
-VkDescriptorPoolSize descriptor_pool_size(
+static VkDescriptorPoolSize descriptor_pool_size(
   VkDescriptorType type,
   u32 descriptorCount
 ) {
@@ -111,7 +130,7 @@ VkDescriptorPoolSize descriptor_pool_size(
 }
 
 
-VkDescriptorPoolCreateInfo descriptor_pool_create_info(
+static VkDescriptorPoolCreateInfo descriptor_pool_create_info(
   u32 maxSets,
   u32 poolSizeCount,
   const VkDescriptorPoolSize* pPoolSizes
@@ -125,7 +144,7 @@ VkDescriptorPoolCreateInfo descriptor_pool_create_info(
 }
 
 
-VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info(
+static VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info(
   u32 bindingCount,
   const VkDescriptorSetLayoutBinding* pBindings
 ) {
@@ -137,7 +156,7 @@ VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info(
 }
 
 
-VkDescriptorSetLayoutBinding descriptor_set_layout_binding(
+static VkDescriptorSetLayoutBinding descriptor_set_layout_binding(
   u32 binding,
   VkDescriptorType descriptorType
 ) {
@@ -150,7 +169,7 @@ VkDescriptorSetLayoutBinding descriptor_set_layout_binding(
 }
 
 
-VkDescriptorSetLayoutBinding descriptor_set_layout_binding(
+static VkDescriptorSetLayoutBinding descriptor_set_layout_binding(
   u32 binding,
   VkDescriptorType descriptorType,
   VkShaderStageFlags stageFlags
