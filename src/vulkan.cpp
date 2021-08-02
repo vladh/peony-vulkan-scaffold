@@ -1,3 +1,9 @@
+/*
+  Functions that use Vulkan to interact with the GPU and eventually render stuff
+  on screen.
+*/
+
+
 #include <stdint.h>
 #include <vulkan/vulkan.h>
 #define GLFW_INCLUDE_VULKAN
@@ -14,6 +20,7 @@
 #include "files.hpp"
 
 #include "vulkan_utils.cpp"
+#include "vulkan_structs.cpp"
 #include "vulkan_swapchain.cpp"
 #include "vulkan_resources.cpp"
 #include "vulkan_general.cpp"
@@ -23,54 +30,25 @@ static void init_descriptors(VkState *vk_state) {
   // Create descriptor set layout
   u32 n_descriptors = 2;
   VkDescriptorSetLayoutBinding bindings[] = {
-    {
-      .binding         = 0,
-      .descriptorCount = 1,
-      .stageFlags      = VK_SHADER_STAGE_ALL_GRAPHICS,
-      .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-    },
-    {
-      .binding         = 1,
-      .descriptorCount = 1,
-      .stageFlags      = VK_SHADER_STAGE_ALL_GRAPHICS,
-      .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-    }
+    descriptor_set_layout_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+    descriptor_set_layout_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
   };
-  VkDescriptorSetLayoutCreateInfo const layout_info = {
-    .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-    .bindingCount = n_descriptors,
-    .pBindings    = bindings,
-  };
-  if (
-    vkCreateDescriptorSetLayout(vk_state->device, &layout_info, nullptr,
-      &vk_state->descriptor_set_layout) != VK_SUCCESS
-  ) {
-    logs::fatal("Could not create descriptor set layout.");
-  }
+  VkDescriptorSetLayoutCreateInfo const layout_info =
+    descriptor_set_layout_create_info(n_descriptors, bindings);
+  check_vk_result(vkCreateDescriptorSetLayout(vk_state->device, &layout_info, nullptr,
+    &vk_state->descriptor_set_layout));
 
   // Create descriptor pool
   VkDescriptorPoolSize pool_sizes[] = {
-    {
-      .type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-      .descriptorCount = vk_state->n_swapchain_images,
-    },
-    {
-      .type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-      .descriptorCount = vk_state->n_swapchain_images,
-    }
+    descriptor_pool_size(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+      vk_state->n_swapchain_images),
+    descriptor_pool_size(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      vk_state->n_swapchain_images),
   };
-  VkDescriptorPoolCreateInfo const pool_info = {
-    .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-    .poolSizeCount = n_descriptors,
-    .pPoolSizes    = pool_sizes,
-    .maxSets       = vk_state->n_swapchain_images,
-  };
-  if (
-    vkCreateDescriptorPool(vk_state->device, &pool_info, nullptr,
-      &vk_state->descriptor_pool) != VK_SUCCESS
-  ) {
-    logs::fatal("Could not create descriptor pool.");
-  }
+  VkDescriptorPoolCreateInfo const pool_info = descriptor_pool_create_info(
+    vk_state->n_swapchain_images, n_descriptors, pool_sizes);
+  check_vk_result(vkCreateDescriptorPool(vk_state->device, &pool_info, nullptr,
+    &vk_state->descriptor_pool));
 
   // Image info is always the same
   VkDescriptorImageInfo const image_info = {
@@ -84,7 +62,7 @@ static void init_descriptors(VkState *vk_state) {
     FrameResources *frame_resources = &vk_state->frame_resources[idx];
 
     // Create uniform buffer
-    make_buffer(vk_state->device, vk_state->physical_device,
+    create_buffer(vk_state->device, vk_state->physical_device,
       sizeof(CoreSceneState),
       VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -97,37 +75,15 @@ static void init_descriptors(VkState *vk_state) {
     };
 
     // Create descriptor sets
-    VkDescriptorSetAllocateInfo const alloc_info = {
-      .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-      .descriptorPool     = vk_state->descriptor_pool,
-      .descriptorSetCount = 1,
-      .pSetLayouts        = &vk_state->descriptor_set_layout,
-    };
-    if (vkAllocateDescriptorSets(vk_state->device, &alloc_info,
-        &frame_resources->descriptor_set) != VK_SUCCESS) {
-      logs::fatal("Could not allocate descriptor sets.");
-    }
+    VkDescriptorSetAllocateInfo const alloc_info = descriptor_set_allocate_info(
+      vk_state->descriptor_pool, &vk_state->descriptor_set_layout);
+    check_vk_result(vkAllocateDescriptorSets(vk_state->device, &alloc_info,
+      &frame_resources->descriptor_set));
 
     // Update descriptor sets
     VkWriteDescriptorSet descriptor_writes[] = {
-      {
-        .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstSet          = frame_resources->descriptor_set,
-        .dstBinding      = 0,
-        .dstArrayElement = 0,
-        .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        .descriptorCount = 1,
-        .pBufferInfo     = &buffer_info,
-      },
-      {
-        .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstSet          = frame_resources->descriptor_set,
-        .dstBinding      = 1,
-        .dstArrayElement = 0,
-        .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .descriptorCount = 1,
-        .pImageInfo      = &image_info,
-      },
+      write_descriptor_set_buffer(frame_resources->descriptor_set, 0, &buffer_info),
+      write_descriptor_set_image(frame_resources->descriptor_set, 1, &image_info),
     };
     vkUpdateDescriptorSets(vk_state->device, n_descriptors, descriptor_writes, 0,
       nullptr);
@@ -195,12 +151,8 @@ static void init_render_pass(VkState *vk_state) {
     .pDependencies   = &dependency,
   };
 
-  if (
-    vkCreateRenderPass(vk_state->device, &render_pass_info, nullptr,
-      &vk_state->render_pass) != VK_SUCCESS
-  ) {
-    logs::fatal("Could not create render pass.");
-  }
+  check_vk_result(vkCreateRenderPass(vk_state->device, &render_pass_info, nullptr,
+    &vk_state->render_pass));
 }
 
 
@@ -211,12 +163,8 @@ static void init_pipeline(VkState *vk_state, VkExtent2D extent) {
     .setLayoutCount = 1,
     .pSetLayouts    = &vk_state->descriptor_set_layout,
   };
-  if (
-    vkCreatePipelineLayout(vk_state->device, &pipeline_layout_info, nullptr,
-      &vk_state->pipeline_layout) != VK_SUCCESS
-  ) {
-    logs::fatal("Could not create pipeline layout.");
-  }
+  check_vk_result(vkCreatePipelineLayout(vk_state->device, &pipeline_layout_info,
+    nullptr, &vk_state->pipeline_layout));
 
   // Shaders
   MemoryPool pool = {};
@@ -224,30 +172,28 @@ static void init_pipeline(VkState *vk_state, VkExtent2D extent) {
   size_t vert_shader_size;
   u8 *vert_shader = files::load_file_to_pool_u8(&pool,
     "bin/shaders/test.vert.spv", &vert_shader_size);
-  VkShaderModule const vert_shader_module = make_shader_module(vk_state->device,
+  VkShaderModule const vert_shader_module = create_shader_module(vk_state->device,
     vert_shader, vert_shader_size);
-  VkPipelineShaderStageCreateInfo const vert_shader_stage_info = {
-    .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-    .stage  = VK_SHADER_STAGE_VERTEX_BIT,
-    .module = vert_shader_module,
-    .pName  = "main",
-  };
 
   size_t frag_shader_size;
   u8 *frag_shader = files::load_file_to_pool_u8(&pool,
     "bin/shaders/test.frag.spv", &frag_shader_size);
-  VkShaderModule const frag_shader_module = make_shader_module(vk_state->device,
+  VkShaderModule const frag_shader_module = create_shader_module(vk_state->device,
     frag_shader, frag_shader_size);
-  VkPipelineShaderStageCreateInfo const frag_shader_stage_info = {
-    .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-    .stage  = VK_SHADER_STAGE_FRAGMENT_BIT,
-    .module = frag_shader_module,
-    .pName  = "main",
-  };
 
   VkPipelineShaderStageCreateInfo const shader_stages[] = {
-    vert_shader_stage_info,
-    frag_shader_stage_info,
+    {
+      .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+      .stage  = VK_SHADER_STAGE_VERTEX_BIT,
+      .module = vert_shader_module,
+      .pName  = "main",
+    },
+    {
+      .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+      .stage  = VK_SHADER_STAGE_FRAGMENT_BIT,
+      .module = frag_shader_module,
+      .pName  = "main",
+    },
   };
 
   // Pipeline
@@ -340,12 +286,8 @@ static void init_pipeline(VkState *vk_state, VkExtent2D extent) {
     .subpass             = 0,
   };
 
-  if (
-    vkCreateGraphicsPipelines(vk_state->device, VK_NULL_HANDLE, 1, &pipeline_info,
-      nullptr, &vk_state->pipeline) != VK_SUCCESS
-  ) {
-    logs::fatal("Could not create graphics pipeline.");
-  }
+  check_vk_result(vkCreateGraphicsPipelines(vk_state->device, VK_NULL_HANDLE, 1,
+    &pipeline_info, nullptr, &vk_state->pipeline));
 
   vkDestroyShaderModule(vk_state->device, vert_shader_module, nullptr);
   vkDestroyShaderModule(vk_state->device, frag_shader_module, nullptr);
@@ -354,14 +296,14 @@ static void init_pipeline(VkState *vk_state, VkExtent2D extent) {
 
 static void init_framebuffers(VkState *vk_state, VkExtent2D extent) {
   // Depth buffer
-  make_image(vk_state->device, vk_state->physical_device,
+  create_image(vk_state->device, vk_state->physical_device,
     &vk_state->depth_image, &vk_state->depth_image_memory,
     extent.width, extent.height,
     VK_FORMAT_D32_SFLOAT,
     VK_IMAGE_TILING_OPTIMAL,
     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-  vk_state->depth_image_view = make_image_view(vk_state->device,
+  vk_state->depth_image_view = create_image_view(vk_state->device,
     vk_state->depth_image, VK_FORMAT_D32_SFLOAT, VK_IMAGE_ASPECT_DEPTH_BIT);
 
   // Framebuffers
@@ -379,12 +321,8 @@ static void init_framebuffers(VkState *vk_state, VkExtent2D extent) {
       .height          = extent.height,
       .layers          = 1,
     };
-    if (
-      vkCreateFramebuffer(vk_state->device, &framebuffer_info, nullptr,
-        &vk_state->swapchain_framebuffers[idx]) != VK_SUCCESS
-    ) {
-      logs::fatal("Could not create framebuffer.");
-    }
+    check_vk_result(vkCreateFramebuffer(vk_state->device, &framebuffer_info, nullptr,
+      &vk_state->swapchain_framebuffers[idx]));
   }
 }
 
@@ -399,13 +337,8 @@ static void init_command_buffers(VkState *vk_state, VkExtent2D extent) {
       .commandBufferCount = 1,
     };
 
-    if (
-      vkAllocateCommandBuffers(vk_state->device, &alloc_info,
-        &vk_state->frame_resources[idx].command_buffer)
-      != VK_SUCCESS
-    ) {
-      logs::fatal("Could not allocate command buffers.");
-    }
+    check_vk_result(vkAllocateCommandBuffers(vk_state->device, &alloc_info,
+      &vk_state->frame_resources[idx].command_buffer));
 
     VkCommandBuffer const command_buffer = vk_state->frame_resources[idx].command_buffer;
 
@@ -413,9 +346,7 @@ static void init_command_buffers(VkState *vk_state, VkExtent2D extent) {
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
     };
 
-    if (vkBeginCommandBuffer(command_buffer, &buffer_info) != VK_SUCCESS) {
-      logs::fatal("Could not begin recording command buffer.");
-    }
+    check_vk_result(vkBeginCommandBuffer(command_buffer, &buffer_info));
 
     VkClearValue const clear_colors[] = {
       {{{0.0f, 0.0f, 0.0f, 1.0f}}},
@@ -447,9 +378,7 @@ static void init_command_buffers(VkState *vk_state, VkExtent2D extent) {
     }
 
     vkCmdEndRenderPass(command_buffer);
-    if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
-      logs::fatal("Could not record command buffer.");
-    }
+    check_vk_result(vkEndCommandBuffer(command_buffer));
   }
 }
 
@@ -466,16 +395,12 @@ static void init_frame_resources(VkState *vk_state) {
 
   range (0, vk_state->n_swapchain_images) {
     FrameResources *frame_resources = &vk_state->frame_resources[idx];
-    if (
-      vkCreateSemaphore(vk_state->device, &semaphore_info, nullptr,
-        &frame_resources->image_available_semaphore) != VK_SUCCESS ||
-      vkCreateSemaphore(vk_state->device, &semaphore_info, nullptr,
-        &frame_resources->render_finished_semaphore) != VK_SUCCESS ||
-      vkCreateFence(vk_state->device, &fence_info, nullptr,
-        &frame_resources->frame_rendered_fence) != VK_SUCCESS
-    ) {
-      logs::fatal("Could not create semaphores.");
-    }
+    check_vk_result(vkCreateSemaphore(vk_state->device, &semaphore_info, nullptr,
+      &frame_resources->image_available_semaphore));
+    check_vk_result(vkCreateSemaphore(vk_state->device, &semaphore_info, nullptr,
+      &frame_resources->render_finished_semaphore));
+    check_vk_result(vkCreateFence(vk_state->device, &fence_info, nullptr,
+      &frame_resources->frame_rendered_fence));
   }
 }
 
@@ -658,12 +583,8 @@ void vulkan::render(VkState *vk_state, CommonState *common_state) {
     .pSignalSemaphores    = signal_semaphores,
   };
 
-  if (
-    vkQueueSubmit(vk_state->graphics_queue, 1, &submit_info,
-      frame_resources->frame_rendered_fence) != VK_SUCCESS
-  ) {
-    logs::fatal("Could not submit draw command buffer.");
-  }
+  check_vk_result(vkQueueSubmit(vk_state->graphics_queue, 1, &submit_info,
+    frame_resources->frame_rendered_fence));
 
   // Present image
   VkSwapchainKHR const swapchains[] = {vk_state->swapchain};

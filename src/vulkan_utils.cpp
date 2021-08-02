@@ -6,6 +6,11 @@
 */
 
 
+void check_vk_result(VkResult result) {
+  assert(result == VK_SUCCESS);
+}
+
+
 static u32 find_memory_type(
   VkPhysicalDevice physical_device, u32 type_filter,
   VkMemoryPropertyFlags desired_properties
@@ -70,7 +75,7 @@ static void end_command_buffer(
 }
 
 
-void make_buffer(
+void create_buffer(
   VkDevice device, VkPhysicalDevice physical_device,
   VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
   VkBuffer *buffer, VkDeviceMemory *memory
@@ -118,7 +123,7 @@ static void copy_buffer(
 }
 
 
-static void make_image(
+static void create_image(
   VkDevice device,
   VkPhysicalDevice physical_device,
   VkImage *image,
@@ -167,7 +172,7 @@ static void make_image(
 }
 
 
-static VkImageView make_image_view(
+static VkImageView create_image_view(
   VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspect_flags
 ) {
   VkImageViewCreateInfo const image_view_info = {
@@ -278,7 +283,7 @@ static void copy_buffer_to_image(
 /*
   Creates a VkShaderModule from a pointer to the code as u8 and a size.
 */
-static VkShaderModule make_shader_module(
+static VkShaderModule create_shader_module(
   VkDevice device, u8 const *shader, size_t size
 ) {
   VkShaderModuleCreateInfo const shader_module_info = {

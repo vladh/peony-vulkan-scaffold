@@ -13,7 +13,7 @@ static void init_textures(VkState *vk_state) {
   // Copy to staging buffer
   VkBuffer staging_buffer;
   VkDeviceMemory staging_buffer_memory;
-  make_buffer(vk_state->device, vk_state->physical_device,
+  create_buffer(vk_state->device, vk_state->physical_device,
     image_size,
     VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -27,7 +27,7 @@ static void init_textures(VkState *vk_state) {
   files::free_image(image);
 
   // Create VkImage
-  make_image(vk_state->device, vk_state->physical_device,
+  create_image(vk_state->device, vk_state->physical_device,
     &vk_state->texture_image, &vk_state->texture_image_memory,
     width, height,
     VK_FORMAT_R8G8B8A8_SRGB,
@@ -62,7 +62,7 @@ static void init_textures(VkState *vk_state) {
   vkFreeMemory(vk_state->device, staging_buffer_memory, nullptr);
 
   // Create texture image view
-  vk_state->texture_image_view = make_image_view(vk_state->device,
+  vk_state->texture_image_view = create_image_view(vk_state->device,
     vk_state->texture_image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 
   // Create sampler
@@ -104,7 +104,7 @@ static void init_buffers(VkState *vk_state) {
 
     VkBuffer staging_buffer;
     VkDeviceMemory staging_buffer_memory;
-    make_buffer(vk_state->device, vk_state->physical_device,
+    create_buffer(vk_state->device, vk_state->physical_device,
       buffer_size,
       VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -116,7 +116,7 @@ static void init_buffers(VkState *vk_state) {
     memcpy(memory, VERTICES, (size_t)buffer_size);
     vkUnmapMemory(vk_state->device, staging_buffer_memory);
 
-    make_buffer(vk_state->device, vk_state->physical_device,
+    create_buffer(vk_state->device, vk_state->physical_device,
       buffer_size,
       VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -135,7 +135,7 @@ static void init_buffers(VkState *vk_state) {
 
     VkBuffer staging_buffer;
     VkDeviceMemory staging_buffer_memory;
-    make_buffer(vk_state->device, vk_state->physical_device,
+    create_buffer(vk_state->device, vk_state->physical_device,
       buffer_size,
       VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -147,7 +147,7 @@ static void init_buffers(VkState *vk_state) {
     memcpy(memory, INDICES, (size_t)buffer_size);
     vkUnmapMemory(vk_state->device, staging_buffer_memory);
 
-    make_buffer(vk_state->device, vk_state->physical_device,
+    create_buffer(vk_state->device, vk_state->physical_device,
       buffer_size,
       VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
