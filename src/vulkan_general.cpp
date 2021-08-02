@@ -219,6 +219,8 @@ static bool are_required_extensions_supported(VkPhysicalDevice physical_device) 
       }
     }
     if (!did_find_extension) {
+      logs::warning("Unsupported required extension: %s",
+        REQUIRED_DEVICE_EXTENSIONS[idx_required]);
       return false;
     }
   }
@@ -234,7 +236,7 @@ static void print_physical_device_info(
 ) {
   VkPhysicalDeviceProperties properties;
   vkGetPhysicalDeviceProperties(physical_device, &properties);
-  logs::info("Found physical device: %s (%d)", properties.deviceName, physical_device);
+  logs::info("Found physical device: %s", properties.deviceName);
   logs::info("  Queue families");
   logs::info("    graphics: %d", queue_family_indices.graphics);
   logs::info("    present: %d", queue_family_indices.present);
@@ -270,14 +272,36 @@ static bool is_physical_device_suitable(
   QueueFamilyIndices queue_family_indices,
   SwapchainSupportDetails *swapchain_support_details
 ) {
+  VkPhysicalDeviceProperties properties;
+  vkGetPhysicalDeviceProperties(physical_device, &properties);
+  logs::info("Testing physical device: %s", properties.deviceName);
+
   VkPhysicalDeviceFeatures supported_features;
   vkGetPhysicalDeviceFeatures(physical_device, &supported_features);
 
-  return are_queue_family_indices_complete(queue_family_indices) &&
-    are_required_extensions_supported(physical_device) &&
-    swapchain_support_details->n_formats > 0 &&
-    swapchain_support_details->n_present_modes > 0 &&
-    supported_features.samplerAnisotropy;
+  if (!are_queue_family_indices_complete(queue_family_indices)) {
+    logs::info("...but queue family indices were not complete");
+    return false;
+  }
+  if (!are_required_extensions_supported(physical_device)) {
+    logs::info("...but required extensions were not supported");
+    return false;
+  }
+  if (!(swapchain_support_details->n_formats > 0)) {
+    logs::info("...but there were no available swapchain formats");
+    return false;
+  }
+  if (!(swapchain_support_details->n_present_modes > 0)) {
+    logs::info("...but there were no available present modes");
+    return false;
+  }
+  if (!supported_features.samplerAnisotropy) {
+    logs::info("...but sampler anisotropy was not supported");
+    return false;
+  }
+
+  logs::info("Physical device is suitable");
+  return true;
 }
 
 
@@ -313,9 +337,13 @@ static void init_physical_device(VkState *vk_state) {
       is_physical_device_suitable(*physical_device,
         queue_family_indices, &swapchain_support_details)
     ) {
+      VkPhysicalDeviceProperties properties;
+      vkGetPhysicalDeviceProperties(*physical_device, &properties);
+      logs::info("Using physical device: %s", properties.deviceName);
       vk_state->physical_device           = *physical_device;
       vk_state->queue_family_indices      = queue_family_indices;
       vk_state->swapchain_support_details = swapchain_support_details;
+      break;
     }
   }
 

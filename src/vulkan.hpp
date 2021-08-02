@@ -19,7 +19,8 @@ static constexpr u32 const N_PARALLEL_FRAMES             = 3;
 constexpr u32 const MAX_N_REQUIRED_EXTENSIONS            = 256;
 
 constexpr bool const USE_VALIDATION = true;
-constexpr char const * const VALIDATION_LAYERS[] = {"VK_LAYER_KHRONOS_validation"}; constexpr char const * const REQUIRED_DEVICE_EXTENSIONS[] = {
+constexpr char const * const VALIDATION_LAYERS[] = {"VK_LAYER_KHRONOS_validation"};
+constexpr char const * const REQUIRED_DEVICE_EXTENSIONS[] = {
   VK_KHR_SWAPCHAIN_EXTENSION_NAME,
   #if PLATFORM & PLATFORM_MACOS
     "VK_KHR_portability_subset",
