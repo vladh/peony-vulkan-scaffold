@@ -158,42 +158,20 @@ static void init_render_pass(VkState *vk_state) {
 
 static void init_pipeline(VkState *vk_state, VkExtent2D extent) {
   // Pipeline layout
-  VkPipelineLayoutCreateInfo const pipeline_layout_info = {
-    .sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-    .setLayoutCount = 1,
-    .pSetLayouts    = &vk_state->descriptor_set_layout,
-  };
+  VkPipelineLayoutCreateInfo const pipeline_layout_info =
+    pipeline_layout_create_info(&vk_state->descriptor_set_layout);
   check_vk_result(vkCreatePipelineLayout(vk_state->device, &pipeline_layout_info,
     nullptr, &vk_state->pipeline_layout));
 
   // Shaders
   MemoryPool pool = {};
-
-  size_t vert_shader_size;
-  u8 *vert_shader = files::load_file_to_pool_u8(&pool,
-    "bin/shaders/test.vert.spv", &vert_shader_size);
-  VkShaderModule const vert_shader_module = create_shader_module(vk_state->device,
-    vert_shader, vert_shader_size);
-
-  size_t frag_shader_size;
-  u8 *frag_shader = files::load_file_to_pool_u8(&pool,
-    "bin/shaders/test.frag.spv", &frag_shader_size);
-  VkShaderModule const frag_shader_module = create_shader_module(vk_state->device,
-    frag_shader, frag_shader_size);
-
+  VkShaderModule const vert_shader_module = create_shader_module_from_file(
+    vk_state->device, &pool, "bin/shaders/test.vert.spv");
+  VkShaderModule const frag_shader_module = create_shader_module_from_file(
+    vk_state->device, &pool, "bin/shaders/test.frag.spv");
   VkPipelineShaderStageCreateInfo const shader_stages[] = {
-    {
-      .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-      .stage  = VK_SHADER_STAGE_VERTEX_BIT,
-      .module = vert_shader_module,
-      .pName  = "main",
-    },
-    {
-      .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-      .stage  = VK_SHADER_STAGE_FRAGMENT_BIT,
-      .module = frag_shader_module,
-      .pName  = "main",
-    },
+    pipeline_shader_stage_create_info_vert(vert_shader_module),
+    pipeline_shader_stage_create_info_frag(frag_shader_module),
   };
 
   // Pipeline
@@ -221,13 +199,8 @@ static void init_pipeline(VkState *vk_state, VkExtent2D extent) {
     .offset = {0, 0},
     .extent = extent,
   };
-  VkPipelineViewportStateCreateInfo const viewport_state_info = {
-    .sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-    .viewportCount = 1,
-    .pViewports    = &viewport,
-    .scissorCount  = 1,
-    .pScissors     = &scissor,
-  };
+  VkPipelineViewportStateCreateInfo const viewport_state_info =
+    pipeline_viewport_state_create_info(&viewport, &scissor);
   VkPipelineRasterizationStateCreateInfo const rasterizer_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
     .depthClampEnable        = VK_FALSE,

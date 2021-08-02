@@ -4,6 +4,55 @@
 */
 
 
+VkPipelineViewportStateCreateInfo pipeline_viewport_state_create_info(
+  const VkViewport* pViewports,
+  const VkRect2D* pScissors
+) {
+  return {
+    .sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+    .viewportCount = 1,
+    .pViewports    = pViewports,
+    .scissorCount  = 1,
+    .pScissors     = pScissors,
+  };
+}
+
+
+VkPipelineLayoutCreateInfo pipeline_layout_create_info(
+  const VkDescriptorSetLayout* pSetLayouts
+) {
+  return {
+    .sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+    .setLayoutCount = 1,
+    .pSetLayouts    = pSetLayouts,
+  };
+}
+
+
+VkPipelineShaderStageCreateInfo pipeline_shader_stage_create_info_vert(
+  VkShaderModule shader_module
+) {
+  return {
+    .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+    .stage  = VK_SHADER_STAGE_VERTEX_BIT,
+    .module = shader_module,
+    .pName  = "main",
+  };
+}
+
+
+VkPipelineShaderStageCreateInfo pipeline_shader_stage_create_info_frag(
+  VkShaderModule shader_module
+) {
+  return {
+    .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+    .stage  = VK_SHADER_STAGE_FRAGMENT_BIT,
+    .module = shader_module,
+    .pName  = "main",
+  };
+}
+
+
 VkDescriptorSetAllocateInfo descriptor_set_allocate_info(
   VkDescriptorPool descriptorPool,
   const VkDescriptorSetLayout* pSetLayouts

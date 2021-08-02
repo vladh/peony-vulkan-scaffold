@@ -280,9 +280,6 @@ static void copy_buffer_to_image(
 }
 
 
-/*
-  Creates a VkShaderModule from a pointer to the code as u8 and a size.
-*/
 static VkShaderModule create_shader_module(
   VkDevice device, u8 const *shader, size_t size
 ) {
@@ -301,4 +298,13 @@ static VkShaderModule create_shader_module(
   }
 
   return shader_module;
+}
+
+
+static VkShaderModule create_shader_module_from_file(
+  VkDevice device, MemoryPool *pool, char const *path
+) {
+  size_t shader_size;
+  u8 *shader = files::load_file_to_pool_u8(pool, path, &shader_size);
+  return create_shader_module(device, shader, shader_size);
 }
