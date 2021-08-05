@@ -11,7 +11,8 @@ COMPILER_FLAGS = \
 	-D_FORTIFY_SOURCE=2 -ggdb3 -Og -Wall -Werror -Wextra -pedantic \
 	-std=c++2a \
 	-Wno-deprecated-volatile -Wno-unused-function -Wno-unknown-pragmas -Wno-comment \
-	-Wno-unused-parameter -Wno-sign-compare -Wno-unused
+	-Wno-unused-parameter -Wno-sign-compare -Wno-missing-field-initializers \
+	-Wno-unused-result -Wno-class-memaccess -Wno-unused-but-set-variable
 
 LINKER_FLAGS = \
 	-L/usr/local/opt/glfw/lib \
