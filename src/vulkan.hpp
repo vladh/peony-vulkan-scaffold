@@ -98,6 +98,7 @@ struct RenderStage {
   VkRenderPass render_pass;
   VkPipelineLayout pipeline_layout;
   VkPipeline pipeline;
+  VkCommandBuffer command_buffer;
 };
 
 struct VkState {
