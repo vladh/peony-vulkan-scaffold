@@ -58,9 +58,9 @@ static void init_descriptors(VkState *vk_state) {
 
   // Image info is always the same
   VkDescriptorImageInfo const image_info = {
-    .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-    .imageView   = vk_state->texture_image_view,
     .sampler     = vk_state->texture_sampler,
+    .imageView   = vk_state->texture_image_view,
+    .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
   };
 
   // Create uniform buffers and descriptors
@@ -140,9 +140,9 @@ static void init_render_pass(VkState *vk_state) {
     .dstSubpass    = 0,
     .srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
       VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-    .srcAccessMask = 0,
     .dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
       VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+    .srcAccessMask = 0,
     .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
       VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
   };
@@ -213,15 +213,15 @@ static void init_pipeline(VkState *vk_state, VkExtent2D extent) {
     .depthClampEnable        = VK_FALSE,
     .rasterizerDiscardEnable = VK_FALSE,
     .polygonMode             = VK_POLYGON_MODE_FILL,
-    .lineWidth               = 1.0f,
     .cullMode                = VK_CULL_MODE_BACK_BIT,
     .frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE,
     .depthBiasEnable         = VK_FALSE,
+    .lineWidth               = 1.0f,
   };
   VkPipelineMultisampleStateCreateInfo const multisampling_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-    .sampleShadingEnable  = VK_FALSE,
     .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+    .sampleShadingEnable  = VK_FALSE,
   };
   VkPipelineDepthStencilStateCreateInfo const depth_stencil_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
@@ -232,8 +232,6 @@ static void init_pipeline(VkState *vk_state, VkExtent2D extent) {
     .stencilTestEnable     = VK_FALSE,
   };
   VkPipelineColorBlendAttachmentState color_blend_attachment = {
-    .colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-      VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
     .blendEnable         = VK_TRUE,
     .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
     .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
@@ -241,6 +239,8 @@ static void init_pipeline(VkState *vk_state, VkExtent2D extent) {
     .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
     .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
     .alphaBlendOp        = VK_BLEND_OP_ADD,
+    .colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+      VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
   };
   VkPipelineColorBlendStateCreateInfo const color_blending_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
@@ -328,13 +328,15 @@ static void init_command_buffers(VkState *vk_state, VkExtent2D extent) {
       {{{1.0f, 0.0f}}},
     };
     VkRenderPassBeginInfo const renderpass_info = {
-      .sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-      .renderPass        = vk_state->main_render_stage.render_pass,
-      .framebuffer       = vk_state->swapchain_framebuffers[idx],
-      .renderArea.offset = {0, 0},
-      .renderArea.extent = extent,
-      .clearValueCount   = LEN(clear_colors),
-      .pClearValues      = clear_colors,
+      .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+      .renderPass      = vk_state->main_render_stage.render_pass,
+      .framebuffer     = vk_state->swapchain_framebuffers[idx],
+      .renderArea = {
+        .offset        = {0, 0},
+        .extent        = extent,
+      },
+      .clearValueCount = LEN(clear_colors),
+      .pClearValues    = clear_colors,
     };
     vkCmdBeginRenderPass(*command_buffer, &renderpass_info, VK_SUBPASS_CONTENTS_INLINE);
 

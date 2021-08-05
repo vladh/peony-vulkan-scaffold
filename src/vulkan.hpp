@@ -51,20 +51,20 @@ constexpr VkVertexInputBindingDescription const VERTEX_BINDING_DESCRIPTION = {
 };
 constexpr VkVertexInputAttributeDescription const VERTEX_ATTRIBUTE_DESCRIPTIONS[] = {
   {
-    .binding  = 0,
     .location = 0,
+    .binding  = 0,
     .format   = VK_FORMAT_R32G32B32_SFLOAT,
     .offset   = offsetof(Vertex, position),
   },
   {
-    .binding  = 0,
     .location = 1,
+    .binding  = 0,
     .format   = VK_FORMAT_R32G32B32_SFLOAT,
     .offset   = offsetof(Vertex, color),
   },
   {
-    .binding  = 0,
     .location = 2,
+    .binding  = 0,
     .format   = VK_FORMAT_R32G32_SFLOAT,
     .offset   = offsetof(Vertex, tex_coords),
   }

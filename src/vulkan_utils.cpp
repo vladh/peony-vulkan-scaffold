@@ -38,8 +38,8 @@ static VkCommandBuffer begin_command_buffer(
 ) {
   VkCommandBufferAllocateInfo const alloc_info = {
     .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-    .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
     .commandPool        = command_pool,
+    .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
     .commandBufferCount = 1,
   };
   VkCommandBuffer command_buffer;
@@ -138,17 +138,19 @@ static void create_image(
   VkImageCreateInfo const image_info = {
     .sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
     .imageType     = VK_IMAGE_TYPE_2D,
-    .extent.width  = width,
-    .extent.height = height,
-    .extent.depth  = 1,
+    .format        = format,
+    .extent = {
+      .width       = width,
+      .height      = height,
+      .depth       = 1,
+    },
     .mipLevels     = 1,
     .arrayLayers   = 1,
-    .format        = format,
+    .samples       = VK_SAMPLE_COUNT_1_BIT,
     .tiling        = tiling,
-    .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     .usage         = usage,
     .sharingMode   = VK_SHARING_MODE_EXCLUSIVE,
-    .samples       = VK_SAMPLE_COUNT_1_BIT,
+    .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
   };
   if (vkCreateImage(device, &image_info, nullptr, image) != VK_SUCCESS) {
     logs::fatal("Could not create image.");
@@ -176,15 +178,17 @@ static VkImageView create_image_view(
   VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspect_flags
 ) {
   VkImageViewCreateInfo const image_view_info = {
-    .sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-    .image                           = image,
-    .viewType                        = VK_IMAGE_VIEW_TYPE_2D,
-    .format                          = format,
-    .subresourceRange.aspectMask     = aspect_flags,
-    .subresourceRange.baseMipLevel   = 0,
-    .subresourceRange.levelCount     = 1,
-    .subresourceRange.baseArrayLayer = 0,
-    .subresourceRange.layerCount     = 1,
+    .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+    .image            = image,
+    .viewType         = VK_IMAGE_VIEW_TYPE_2D,
+    .format           = format,
+    .subresourceRange = {
+      .aspectMask     = aspect_flags,
+      .baseMipLevel   = 0,
+      .levelCount     = 1,
+      .baseArrayLayer = 0,
+      .layerCount     = 1,
+    },
   };
   VkImageView image_view;
   if (
@@ -206,19 +210,21 @@ static void transition_image_layout(
   VkCommandBuffer command_buffer = begin_command_buffer(device, command_pool);
 
   VkImageMemoryBarrier barrier = {
-    .sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-    .oldLayout                       = old_layout,
-    .newLayout                       = new_layout,
-    .srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED,
-    .dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED,
-    .image                           = image,
-    .subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
-    .subresourceRange.baseMipLevel   = 0,
-    .subresourceRange.levelCount     = 1,
-    .subresourceRange.baseArrayLayer = 0,
-    .subresourceRange.layerCount     = 1,
-    .srcAccessMask                   = 0, // Filled in later
-    .dstAccessMask                   = 0, // Filled in later
+    .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+    .srcAccessMask       = 0, // Filled in later
+    .dstAccessMask       = 0, // Filled in later
+    .oldLayout           = old_layout,
+    .newLayout           = new_layout,
+    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+    .image               = image,
+    .subresourceRange = {
+      .aspectMask        = VK_IMAGE_ASPECT_COLOR_BIT,
+      .baseMipLevel      = 0,
+      .levelCount        = 1,
+      .baseArrayLayer    = 0,
+      .layerCount        = 1,
+    },
   };
 
   VkPipelineStageFlags source_stage = {};
@@ -262,15 +268,17 @@ static void copy_buffer_to_image(
   VkCommandBuffer command_buffer = begin_command_buffer(device, command_pool);
 
   VkBufferImageCopy region = {
-    .bufferOffset                    = 0,
-    .bufferRowLength                 = 0,
-    .bufferImageHeight               = 0,
-    .imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
-    .imageSubresource.mipLevel       = 0,
-    .imageSubresource.baseArrayLayer = 0,
-    .imageSubresource.layerCount     = 1,
-    .imageOffset                     = {0, 0, 0},
-    .imageExtent                     = {width, height, 1},
+    .bufferOffset      = 0,
+    .bufferRowLength   = 0,
+    .bufferImageHeight = 0,
+    .imageSubresource = {
+      .aspectMask      = VK_IMAGE_ASPECT_COLOR_BIT,
+      .mipLevel        = 0,
+      .baseArrayLayer  = 0,
+      .layerCount      = 1,
+    },
+    .imageOffset       = {0, 0, 0},
+    .imageExtent       = {width, height, 1},
   };
 
   vkCmdCopyBufferToImage(command_buffer, buffer, image,

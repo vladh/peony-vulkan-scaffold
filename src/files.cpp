@@ -18,7 +18,8 @@ unsigned char* files::load_image(
   unsigned char *image_data = stbi_load(path, width, height, n_channels,
     desired_channels);
   if (!image_data) {
-    logs::fatal("Could not open file %s.", path);
+    logs::fatal("Could not open file %s: (strerror: %s) (stbi_failure_reason: %s)",
+      path, strerror(errno), stbi_failure_reason());
   }
   return image_data;
 }

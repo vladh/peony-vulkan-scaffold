@@ -95,8 +95,8 @@ static VkWriteDescriptorSet write_descriptor_set_buffer(
     .dstSet          = dstSet,
     .dstBinding      = dstBinding,
     .dstArrayElement = 0,
-    .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
     .descriptorCount = 1,
+    .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
     .pBufferInfo     = pBufferInfo,
   };
 }
@@ -112,8 +112,8 @@ static VkWriteDescriptorSet write_descriptor_set_image(
     .dstSet          = dstSet,
     .dstBinding      = dstBinding,
     .dstArrayElement = 0,
-    .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
     .descriptorCount = 1,
+    .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
     .pImageInfo      = pImageInfo,
   };
 }
@@ -137,9 +137,9 @@ static VkDescriptorPoolCreateInfo descriptor_pool_create_info(
 ) {
   return {
     .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+    .maxSets       = maxSets,
     .poolSizeCount = poolSizeCount,
     .pPoolSizes    = pPoolSizes,
-    .maxSets       = maxSets,
   };
 }
 
@@ -162,9 +162,9 @@ static VkDescriptorSetLayoutBinding descriptor_set_layout_binding(
 ) {
   return {
     .binding         = binding,
+    .descriptorType  = descriptorType,
     .descriptorCount = 1,
     .stageFlags      = VK_SHADER_STAGE_ALL_GRAPHICS,
-    .descriptorType  = descriptorType,
   };
 }
 
@@ -176,8 +176,8 @@ static VkDescriptorSetLayoutBinding descriptor_set_layout_binding(
 ) {
   return {
     .binding         = binding,
+    .descriptorType  = descriptorType,
     .descriptorCount = 1,
     .stageFlags      = stageFlags,
-    .descriptorType  = descriptorType,
   };
 }

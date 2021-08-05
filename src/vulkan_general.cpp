@@ -404,11 +404,11 @@ static void init_logical_device(VkState *vk_state) {
   }
 
   vkGetDeviceQueue(vk_state->device,
-    vk_state->queue_family_indices.graphics,
+    (u32)vk_state->queue_family_indices.graphics,
     0,
     &vk_state->graphics_queue);
   vkGetDeviceQueue(vk_state->device,
-    vk_state->queue_family_indices.present,
+    (u32)vk_state->queue_family_indices.present,
     0,
     &vk_state->present_queue);
 }
