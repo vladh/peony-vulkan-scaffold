@@ -427,6 +427,7 @@ static void init_surface(VkState *vk_state, GLFWwindow *window) {
 static void init_command_pool(VkState *vk_state) {
   VkCommandPoolCreateInfo const pool_info = {
     .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+    .flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
     .queueFamilyIndex = (u32)vk_state->queue_family_indices.graphics,
   };
 

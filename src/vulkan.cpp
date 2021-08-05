@@ -47,12 +47,12 @@ static void init_descriptors(VkState *vk_state) {
   // Create descriptor pool
   VkDescriptorPoolSize pool_sizes[] = {
     descriptor_pool_size(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-      vk_state->n_swapchain_images),
+      N_PARALLEL_FRAMES),
     descriptor_pool_size(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-      vk_state->n_swapchain_images),
+      N_PARALLEL_FRAMES),
   };
   VkDescriptorPoolCreateInfo const pool_info = descriptor_pool_create_info(
-    vk_state->n_swapchain_images, n_descriptors, pool_sizes);
+    N_PARALLEL_FRAMES, n_descriptors, pool_sizes);
   check_vk_result(vkCreateDescriptorPool(vk_state->device, &pool_info, nullptr,
     &vk_state->main_render_stage.descriptor_pool));
 
@@ -64,7 +64,7 @@ static void init_descriptors(VkState *vk_state) {
   };
 
   // Create uniform buffers and descriptors
-  range (0, vk_state->n_swapchain_images) {
+  range (0, N_PARALLEL_FRAMES) {
     FrameResources *frame_resources = &vk_state->frame_resources[idx];
 
     // Create uniform buffer
@@ -307,59 +307,74 @@ static void init_framebuffers(VkState *vk_state, VkExtent2D extent) {
 }
 
 
+static void record_command_buffer(
+  VkState *vk_state,
+  VkExtent2D extent,
+  u32 idx_frame,
+  u32 idx_image
+) {
+  FrameResources *frame_resources = &vk_state->frame_resources[idx_frame];
+  VkCommandBuffer *command_buffer = &frame_resources->command_buffer;
+  VkDescriptorSet *descriptor_set = &frame_resources->descriptor_set;
+
+  // Reset commmand buffer
+  vkResetCommandBuffer(*command_buffer, 0);
+
+  // Begin command buffer
+  VkCommandBufferBeginInfo const buffer_info = command_buffer_begin_info();
+  check_vk_result(vkBeginCommandBuffer(*command_buffer, &buffer_info));
+
+  // Begin render pass
+  VkClearValue const clear_colors[] = {
+    {{{0.0f, 0.0f, 0.0f, 1.0f}}},
+    {{{1.0f, 0.0f}}},
+  };
+  VkRenderPassBeginInfo const renderpass_info = {
+    .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+    .renderPass      = vk_state->main_render_stage.render_pass,
+    .framebuffer     = vk_state->swapchain_framebuffers[idx_image],
+    .renderArea = {
+      .offset        = {0, 0},
+      .extent        = extent,
+    },
+    .clearValueCount = LEN(clear_colors),
+    .pClearValues    = clear_colors,
+  };
+  vkCmdBeginRenderPass(*command_buffer, &renderpass_info, VK_SUBPASS_CONTENTS_INLINE);
+
+  // Bind pipeline and descriptor sets
+  vkCmdBindPipeline(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    vk_state->main_render_stage.pipeline);
+  vkCmdBindDescriptorSets(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    vk_state->main_render_stage.pipeline_layout, 0, 1,
+    descriptor_set, 0, nullptr);
+
+  // Bind vertex and index buffers
+  VkBuffer const vertex_buffers[] = {vk_state->vertex_buffer};
+  VkDeviceSize const offsets[] = {0};
+  vkCmdBindVertexBuffers(*command_buffer, 0, 1, vertex_buffers, offsets);
+  vkCmdBindIndexBuffer(*command_buffer, vk_state->index_buffer, 0,
+    VK_INDEX_TYPE_UINT32);
+
+  // Draw
+  vkCmdDrawIndexed(*command_buffer, LEN(INDICES), 1, 0, 0, 0);
+
+  // End render pass and command buffer
+  vkCmdEndRenderPass(*command_buffer);
+  check_vk_result(vkEndCommandBuffer(*command_buffer));
+}
+
+
 static void init_command_buffers(VkState *vk_state, VkExtent2D extent) {
-  range (0, vk_state->n_swapchain_images) {
+  range (0, N_PARALLEL_FRAMES) {
     FrameResources *frame_resources = &vk_state->frame_resources[idx];
-    VkCommandBuffer *command_buffer = &vk_state->command_buffers[idx];
+    VkCommandBuffer *command_buffer = &frame_resources->command_buffer;
 
     // Allocate command buffer
     VkCommandBufferAllocateInfo const alloc_info =
       command_buffer_allocate_info(vk_state->command_pool);
     check_vk_result(vkAllocateCommandBuffers(vk_state->device, &alloc_info,
       command_buffer));
-
-    // Begin command buffer
-    VkCommandBufferBeginInfo const buffer_info = command_buffer_begin_info();
-    check_vk_result(vkBeginCommandBuffer(*command_buffer, &buffer_info));
-
-    // Begin render pass
-    VkClearValue const clear_colors[] = {
-      {{{0.0f, 0.0f, 0.0f, 1.0f}}},
-      {{{1.0f, 0.0f}}},
-    };
-    VkRenderPassBeginInfo const renderpass_info = {
-      .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-      .renderPass      = vk_state->main_render_stage.render_pass,
-      .framebuffer     = vk_state->swapchain_framebuffers[idx],
-      .renderArea = {
-        .offset        = {0, 0},
-        .extent        = extent,
-      },
-      .clearValueCount = LEN(clear_colors),
-      .pClearValues    = clear_colors,
-    };
-    vkCmdBeginRenderPass(*command_buffer, &renderpass_info, VK_SUBPASS_CONTENTS_INLINE);
-
-    // Bind pipeline and descriptor sets
-    vkCmdBindPipeline(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-      vk_state->main_render_stage.pipeline);
-    vkCmdBindDescriptorSets(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-      vk_state->main_render_stage.pipeline_layout, 0, 1,
-      &frame_resources->descriptor_set, 0, nullptr);
-
-    // Bind vertex and index buffers
-    VkBuffer const vertex_buffers[] = {vk_state->vertex_buffer};
-    VkDeviceSize const offsets[] = {0};
-    vkCmdBindVertexBuffers(*command_buffer, 0, 1, vertex_buffers, offsets);
-    vkCmdBindIndexBuffer(*command_buffer, vk_state->index_buffer, 0,
-      VK_INDEX_TYPE_UINT32);
-
-    // Draw
-    vkCmdDrawIndexed(*command_buffer, LEN(INDICES), 1, 0, 0, 0);
-
-    // End render pass and command buffer
-    vkCmdEndRenderPass(*command_buffer);
-    check_vk_result(vkEndCommandBuffer(*command_buffer));
   }
 }
 
@@ -374,7 +389,7 @@ static void init_synchronization(VkState *vk_state) {
     .flags = VK_FENCE_CREATE_SIGNALED_BIT,
   };
 
-  range (0, vk_state->n_swapchain_images) {
+  range (0, N_PARALLEL_FRAMES) {
     FrameResources *frame_resources = &vk_state->frame_resources[idx];
     check_vk_result(vkCreateSemaphore(vk_state->device, &semaphore_info, nullptr,
       &frame_resources->image_available_semaphore));
@@ -436,8 +451,7 @@ static void destroy_swapchain(VkState *vk_state) {
   range (0, vk_state->n_swapchain_images) {
     vkDestroyFramebuffer(vk_state->device, vk_state->swapchain_framebuffers[idx],
       nullptr);
-    vkFreeCommandBuffers(vk_state->device, vk_state->command_pool,
-      1, &vk_state->command_buffers[idx]);
+    vkDestroyImageView(vk_state->device, vk_state->swapchain_image_views[idx], nullptr);
   }
   vkDestroyPipeline(vk_state->device, vk_state->main_render_stage.pipeline, nullptr);
   vkDestroyPipelineLayout(vk_state->device, vk_state->main_render_stage.pipeline_layout,
@@ -445,9 +459,10 @@ static void destroy_swapchain(VkState *vk_state) {
   vkDestroyRenderPass(vk_state->device, vk_state->main_render_stage.render_pass,
     nullptr);
 
-  range (0, vk_state->n_swapchain_images) {
+  range (0, N_PARALLEL_FRAMES) {
     FrameResources *frame_resources = &vk_state->frame_resources[idx];
-    vkDestroyImageView(vk_state->device, vk_state->swapchain_image_views[idx], nullptr);
+    vkFreeCommandBuffers(vk_state->device, vk_state->command_pool,
+      1, &frame_resources->command_buffer);
     vkDestroyBuffer(vk_state->device, frame_resources->uniform_buffer, nullptr);
     vkFreeMemory(vk_state->device, frame_resources->uniform_buffer_memory, nullptr);
   }
@@ -474,7 +489,7 @@ void vulkan::destroy(VkState *vk_state) {
   vkDestroyBuffer(vk_state->device, vk_state->index_buffer, nullptr);
   vkFreeMemory(vk_state->device, vk_state->index_buffer_memory, nullptr);
 
-  range (0, vk_state->n_swapchain_images) {
+  range (0, N_PARALLEL_FRAMES) {
     FrameResources *frame_resources = &vk_state->frame_resources[idx];
     vkDestroySemaphore(vk_state->device, frame_resources->render_finished_semaphore,
       nullptr);
@@ -528,7 +543,6 @@ void vulkan::render(VkState *vk_state, CommonState *common_state) {
 
   vkWaitForFences(vk_state->device, 1, &frame_resources->frame_rendered_fence, VK_TRUE,
     UINT64_MAX);
-  vkResetFences(vk_state->device, 1, &frame_resources->frame_rendered_fence);
 
   // Acquire image
   u32 idx_image;
@@ -545,11 +559,8 @@ void vulkan::render(VkState *vk_state, CommonState *common_state) {
     logs::fatal("Could not acquire swap chain image.");
   }
 
-  VkSemaphore const wait_semaphores[] = {frame_resources->image_available_semaphore};
-  VkPipelineStageFlags const wait_stages[] = {
-    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-  };
-  VkSemaphore const signal_semaphores[] = {frame_resources->render_finished_semaphore};
+  // Rerecord command buffer
+  record_command_buffer(vk_state, common_state->extent, vk_state->idx_frame, idx_image);
 
   // Update UBO
   void *memory;
@@ -559,16 +570,22 @@ void vulkan::render(VkState *vk_state, CommonState *common_state) {
   vkUnmapMemory(vk_state->device, frame_resources->uniform_buffer_memory);
 
   // Draw into image
+  VkSemaphore const wait_semaphores[] = {frame_resources->image_available_semaphore};
+  VkPipelineStageFlags const wait_stages[] = {
+    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+  };
+  VkSemaphore const signal_semaphores[] = {frame_resources->render_finished_semaphore};
   VkSubmitInfo const submit_info = {
     .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
     .waitSemaphoreCount   = 1,
     .pWaitSemaphores      = wait_semaphores,
     .pWaitDstStageMask    = wait_stages,
     .commandBufferCount   = 1,
-    .pCommandBuffers      = &vk_state->command_buffers[idx_image],
+    .pCommandBuffers      = &frame_resources->command_buffer,
     .signalSemaphoreCount = 1,
     .pSignalSemaphores    = signal_semaphores,
   };
+  vkResetFences(vk_state->device, 1, &frame_resources->frame_rendered_fence);
   check_vk_result(vkQueueSubmit(vk_state->graphics_queue, 1, &submit_info,
     frame_resources->frame_rendered_fence));
 

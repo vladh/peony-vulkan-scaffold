@@ -90,6 +90,7 @@ struct FrameResources {
   VkBuffer uniform_buffer;
   VkDeviceMemory uniform_buffer_memory;
   VkDescriptorSet descriptor_set;
+  VkCommandBuffer command_buffer;
 };
 
 struct RenderStage {
@@ -98,7 +99,6 @@ struct RenderStage {
   VkRenderPass render_pass;
   VkPipelineLayout pipeline_layout;
   VkPipeline pipeline;
-  VkCommandBuffer command_buffer;
 };
 
 struct VkState {
@@ -119,7 +119,6 @@ struct VkState {
   VkSwapchainKHR swapchain;
   VkImageView swapchain_image_views[MAX_N_SWAPCHAIN_IMAGES];
   VkFramebuffer swapchain_framebuffers[MAX_N_SWAPCHAIN_IMAGES];
-  VkCommandBuffer command_buffers[MAX_N_SWAPCHAIN_IMAGES];
   u32 n_swapchain_images;
   VkFormat swapchain_image_format;
   bool should_recreate_swapchain;
