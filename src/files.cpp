@@ -4,6 +4,7 @@
   All rights reserved.
 */
 
+#include <errno.h>
 #include "logs.hpp"
 #include "memory.hpp"
 #include "stb.hpp"
