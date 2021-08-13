@@ -7,7 +7,7 @@
 
 struct Vertex {
   v3 position;
-  v3 color;
+  v3 normal;
   v2 tex_coords;
 };
 
@@ -28,15 +28,15 @@ constexpr char const * const REQUIRED_DEVICE_EXTENSIONS[] = {
 };
 
 constexpr Vertex const VERTICES[] = {
-  {{-0.5f, -0.5f,  0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+  {{-0.5f, -0.5f,  0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
   {{ 0.5f, -0.5f,  0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-  {{ 0.5f,  0.5f,  0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-  {{-0.5f,  0.5f,  0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+  {{ 0.5f,  0.5f,  0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
+  {{-0.5f,  0.5f,  0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
 
-  {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+  {{-0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
   {{ 0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-  {{ 0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-  {{-0.5f,  0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+  {{ 0.5f,  0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
+  {{-0.5f,  0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
 };
 
 constexpr u32 INDICES[] = {
@@ -60,7 +60,7 @@ constexpr VkVertexInputAttributeDescription const VERTEX_ATTRIBUTE_DESCRIPTIONS[
     .location = 1,
     .binding  = 0,
     .format   = VK_FORMAT_R32G32B32_SFLOAT,
-    .offset   = offsetof(Vertex, color),
+    .offset   = offsetof(Vertex, normal),
   },
   {
     .location = 2,
@@ -101,6 +101,12 @@ struct RenderStage {
   VkPipeline pipeline;
 };
 
+struct ImageResources {
+  VkImage image;
+  VkDeviceMemory memory;
+  VkImageView view;
+};
+
 struct VkState {
   // General Vulkan stuff
   VkInstance instance;
@@ -138,9 +144,11 @@ struct VkState {
 
   // Rendering resources and information
   u32 idx_frame;
-  VkImage depth_image;
-  VkDeviceMemory depth_image_memory;
-  VkImageView depth_image_view;
+  ImageResources depthbuffer;
+  ImageResources g_position;
+  ImageResources g_normal;
+  ImageResources g_albedo;
+  ImageResources g_pbr;
 
   // Render stages
   RenderStage main_render_stage;

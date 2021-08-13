@@ -5,7 +5,8 @@
 #include <GLFW/glfw3.h>
 
 struct CoreSceneState {
-  m4 model;
+  m4 model_matrix;
+  m4 model_normal_matrix; // actually m3, we are using m4 for padding
   m4 view;
   m4 projection;
 };

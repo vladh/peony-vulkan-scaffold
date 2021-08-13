@@ -4,6 +4,45 @@
 */
 
 
+static VkPipelineColorBlendAttachmentState pipeline_color_blend_attachment_state() {
+  return {
+    .blendEnable         = VK_TRUE,
+    .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+    .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+    .colorBlendOp        = VK_BLEND_OP_ADD,
+    .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
+    .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+    .alphaBlendOp        = VK_BLEND_OP_ADD,
+    .colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+      VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+  };
+}
+
+
+static VkAttachmentReference attachment_reference(u32 attachment, VkImageLayout layout) {
+  return {
+    .attachment = attachment,
+    .layout     = layout,
+  };
+}
+
+
+static VkAttachmentDescription attachment_description(
+  VkFormat format, VkImageLayout finalLayout
+) {
+  return {
+    .format         = format,
+    .samples        = VK_SAMPLE_COUNT_1_BIT,
+    .loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR,
+    .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
+    .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+    .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+    .initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED,
+    .finalLayout    = finalLayout,
+  };
+}
+
+
 static VkCommandBufferBeginInfo command_buffer_begin_info() {
   return {
     .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,

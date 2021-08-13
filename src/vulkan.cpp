@@ -99,41 +99,45 @@ static void init_descriptors(VkState *vk_state) {
 
 
 static void init_render_pass(VkState *vk_state) {
-  VkAttachmentDescription const color_attachment = {
-    .format         = vk_state->swapchain_image_format,
-    .samples        = VK_SAMPLE_COUNT_1_BIT,
-    .loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR,
-    .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
-    .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-    .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-    .initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED,
-    .finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-  };
-  VkAttachmentReference const color_attachment_ref = {
-    .attachment = 0,
-    .layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+  VkAttachmentDescription const g_position_attachment = attachment_description(
+    VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+  VkAttachmentReference const g_position_ref = attachment_reference(
+    0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+  VkAttachmentDescription const g_normal_attachment = attachment_description(
+    VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+  VkAttachmentReference const g_normal_ref = attachment_reference(
+    1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+  VkAttachmentDescription const g_albedo_attachment = attachment_description(
+    VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+  VkAttachmentReference const g_albedo_ref = attachment_reference(
+    2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+  VkAttachmentDescription const g_pbr_attachment = attachment_description(
+    VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+  VkAttachmentReference const g_pbr_ref = attachment_reference(
+    3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+  VkAttachmentDescription const depthbuffer_attachment = attachment_description(
+    VK_FORMAT_D32_SFLOAT, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+  VkAttachmentReference const depthbuffer_attachment_ref = attachment_reference(
+    4, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
+  VkAttachmentReference const color_attachment_refs[] = {
+    g_position_ref, g_normal_ref, g_albedo_ref, g_pbr_ref
   };
 
-  VkAttachmentDescription const depth_attachment = {
-    .format         = VK_FORMAT_D32_SFLOAT,
-    .samples        = VK_SAMPLE_COUNT_1_BIT,
-    .loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR,
-    .storeOp        = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-    .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-    .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-    .initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED,
-    .finalLayout    = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-  };
-  VkAttachmentReference const depth_attachment_ref = {
-    .attachment = 1,
-    .layout     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+  VkAttachmentDescription const attachments[] = {
+    g_position_attachment, g_normal_attachment, g_albedo_attachment, g_pbr_attachment,
+    depthbuffer_attachment
   };
 
   VkSubpassDescription const subpass = {
     .pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS,
-    .colorAttachmentCount    = 1,
-    .pColorAttachments       = &color_attachment_ref,
-    .pDepthStencilAttachment = &depth_attachment_ref,
+    .colorAttachmentCount    = LEN(color_attachment_refs),
+    .pColorAttachments       = color_attachment_refs,
+    .pDepthStencilAttachment = &depthbuffer_attachment_ref,
   };
   VkSubpassDependency const dependency = {
     .srcSubpass    = VK_SUBPASS_EXTERNAL,
@@ -147,7 +151,6 @@ static void init_render_pass(VkState *vk_state) {
       VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
   };
 
-  VkAttachmentDescription const attachments[] = {color_attachment, depth_attachment};
   VkRenderPassCreateInfo const render_pass_info = {
     .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
     .attachmentCount = LEN(attachments),
@@ -173,9 +176,9 @@ static void init_pipeline(VkState *vk_state, VkExtent2D extent) {
   // Shaders
   MemoryPool pool = {};
   VkShaderModule const vert_shader_module = create_shader_module_from_file(
-    vk_state->device, &pool, "bin/shaders/test.vert.spv");
+    vk_state->device, &pool, "bin/shaders/standard.vert.spv");
   VkShaderModule const frag_shader_module = create_shader_module_from_file(
-    vk_state->device, &pool, "bin/shaders/test.frag.spv");
+    vk_state->device, &pool, "bin/shaders/standard.frag.spv");
   VkPipelineShaderStageCreateInfo const shader_stages[] = {
     pipeline_shader_stage_create_info_vert(vert_shader_module),
     pipeline_shader_stage_create_info_frag(frag_shader_module),
@@ -231,22 +234,17 @@ static void init_pipeline(VkState *vk_state, VkExtent2D extent) {
     .depthBoundsTestEnable = VK_FALSE,
     .stencilTestEnable     = VK_FALSE,
   };
-  VkPipelineColorBlendAttachmentState color_blend_attachment = {
-    .blendEnable         = VK_TRUE,
-    .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
-    .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-    .colorBlendOp        = VK_BLEND_OP_ADD,
-    .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
-    .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
-    .alphaBlendOp        = VK_BLEND_OP_ADD,
-    .colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-      VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+  VkPipelineColorBlendAttachmentState color_blend_attachments[] = {
+    pipeline_color_blend_attachment_state(),
+    pipeline_color_blend_attachment_state(),
+    pipeline_color_blend_attachment_state(),
+    pipeline_color_blend_attachment_state(),
   };
   VkPipelineColorBlendStateCreateInfo const color_blending_info = {
     .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
     .logicOpEnable   = VK_FALSE,
-    .attachmentCount = 1,
-    .pAttachments    = &color_blend_attachment,
+    .attachmentCount = LEN(color_blend_attachments),
+    .pAttachments    = color_blend_attachments,
   };
 
   VkGraphicsPipelineCreateInfo const pipeline_info = {
@@ -275,22 +273,65 @@ static void init_pipeline(VkState *vk_state, VkExtent2D extent) {
 
 
 static void init_framebuffers(VkState *vk_state, VkExtent2D extent) {
+  // g_position
+  create_image_resources(&vk_state->g_position,
+    vk_state->device, vk_state->physical_device,
+    extent.width, extent.height,
+    VK_FORMAT_B8G8R8A8_SRGB,
+    VK_IMAGE_TILING_OPTIMAL,
+    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+    VK_IMAGE_ASPECT_COLOR_BIT);
+
+  // g_normal
+  create_image_resources(&vk_state->g_normal,
+    vk_state->device, vk_state->physical_device,
+    extent.width, extent.height,
+    VK_FORMAT_B8G8R8A8_SRGB,
+    VK_IMAGE_TILING_OPTIMAL,
+    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+    VK_IMAGE_ASPECT_COLOR_BIT);
+
+  // g_albedo
+  create_image_resources(&vk_state->g_albedo,
+    vk_state->device, vk_state->physical_device,
+    extent.width, extent.height,
+    VK_FORMAT_B8G8R8A8_SRGB,
+    VK_IMAGE_TILING_OPTIMAL,
+    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+    VK_IMAGE_ASPECT_COLOR_BIT);
+
+  // g_pbr
+  create_image_resources(&vk_state->g_pbr,
+    vk_state->device, vk_state->physical_device,
+    extent.width, extent.height,
+    VK_FORMAT_B8G8R8A8_SRGB,
+    VK_IMAGE_TILING_OPTIMAL,
+    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+    VK_IMAGE_ASPECT_COLOR_BIT);
+
   // Depth buffer
-  create_image(vk_state->device, vk_state->physical_device,
-    &vk_state->depth_image, &vk_state->depth_image_memory,
+  create_image_resources(&vk_state->depthbuffer,
+    vk_state->device, vk_state->physical_device,
     extent.width, extent.height,
     VK_FORMAT_D32_SFLOAT,
     VK_IMAGE_TILING_OPTIMAL,
     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-  vk_state->depth_image_view = create_image_view(vk_state->device,
-    vk_state->depth_image, VK_FORMAT_D32_SFLOAT, VK_IMAGE_ASPECT_DEPTH_BIT);
+    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+    VK_IMAGE_ASPECT_DEPTH_BIT);
 
   // Framebuffers
   range (0, vk_state->n_swapchain_images) {
     VkImageView const attachments[] = {
-      vk_state->swapchain_image_views[idx],
-      vk_state->depth_image_view,
+      /* vk_state->swapchain_image_views[idx], */
+      vk_state->g_position.view,
+      vk_state->g_normal.view,
+      vk_state->g_albedo.view,
+      vk_state->g_pbr.view,
+      vk_state->depthbuffer.view,
     };
     VkFramebufferCreateInfo const framebuffer_info = {
       .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
@@ -326,6 +367,9 @@ static void record_command_buffer(
 
   // Begin render pass
   VkClearValue const clear_colors[] = {
+    {{{0.0f, 0.0f, 0.0f, 1.0f}}},
+    {{{0.0f, 0.0f, 0.0f, 1.0f}}},
+    {{{0.0f, 0.0f, 0.0f, 1.0f}}},
     {{{0.0f, 0.0f, 0.0f, 1.0f}}},
     {{{1.0f, 0.0f}}},
   };
@@ -444,9 +488,11 @@ void vulkan::init(VkState *vk_state, CommonState *common_state) {
 
 
 static void destroy_swapchain(VkState *vk_state) {
-  vkDestroyImageView(vk_state->device, vk_state->depth_image_view, nullptr);
-  vkDestroyImage(vk_state->device, vk_state->depth_image, nullptr);
-  vkFreeMemory(vk_state->device, vk_state->depth_image_memory, nullptr);
+  destroy_image_resources(&vk_state->depthbuffer, vk_state->device);
+  destroy_image_resources(&vk_state->g_position, vk_state->device);
+  destroy_image_resources(&vk_state->g_normal, vk_state->device);
+  destroy_image_resources(&vk_state->g_albedo, vk_state->device);
+  destroy_image_resources(&vk_state->g_pbr, vk_state->device);
 
   range (0, vk_state->n_swapchain_images) {
     vkDestroyFramebuffer(vk_state->device, vk_state->swapchain_framebuffers[idx],

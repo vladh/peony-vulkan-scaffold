@@ -201,6 +201,33 @@ static VkImageView create_image_view(
 }
 
 
+static void create_image_resources(
+  ImageResources *image_resources,
+  VkDevice device,
+  VkPhysicalDevice physical_device,
+  u32 width, u32 height,
+  VkFormat format,
+  VkImageTiling tiling,
+  VkImageUsageFlags usage,
+  VkMemoryPropertyFlags properties,
+  VkImageAspectFlags aspect_flags
+) {
+  create_image(device, physical_device,
+    &image_resources->image, &image_resources->memory,
+    width, height,
+    format, tiling, usage, properties);
+  image_resources->view = create_image_view(device, image_resources->image, format,
+    aspect_flags);
+}
+
+
+static void destroy_image_resources(ImageResources *image_resources, VkDevice device) {
+  vkDestroyImageView(device, image_resources->view, nullptr);
+  vkDestroyImage(device, image_resources->image, nullptr);
+  vkFreeMemory(device, image_resources->memory, nullptr);
+}
+
+
 static void transition_image_layout(
   VkDevice device,
   VkQueue queue,

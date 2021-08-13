@@ -6,13 +6,12 @@
 
 void engine::update(CommonState *common_state) {
   f64 t = glfwGetTime();
-  logs::info("%f", (f32)sin(t));
+  m4 model_matrix = glm::rotate(glm::mat4(1.0f), (f32)sin(t),
+      glm::vec3(0.0f, 0.0f, 1.0f));
+  m3 model_normal_matrix = m3(transpose(inverse(model_matrix)));
   common_state->core_scene_state = {
-    .model = glm::rotate(
-      glm::mat4(1.0f),
-      (f32)sin(t),
-      glm::vec3(0.0f, 0.0f, 1.0f)
-    ),
+    .model_matrix = model_matrix,
+    .model_normal_matrix = model_normal_matrix,
     .view = glm::lookAt(
       glm::vec3(2.0f, 2.0f, 2.0f),
       glm::vec3(0.0f, 0.0f, 0.0f),
