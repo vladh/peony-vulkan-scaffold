@@ -36,8 +36,8 @@ static void init_descriptor_set_layouts(VkState *vk_state) {
   };
   VkDescriptorSetLayoutCreateInfo const layout_info =
     descriptor_set_layout_create_info(n_descriptors, bindings);
-  check_vk_result(vkCreateDescriptorSetLayout(vk_state->device, &layout_info, nullptr,
-    &vk_state->main_render_stage.descriptor_set_layout));
+  check_vk_result(vkCreateDescriptorSetLayout(vk_state->device, &layout_info,
+    nullptr, &vk_state->main_render_stage.descriptor_set_layout));
 }
 
 
@@ -89,11 +89,13 @@ static void init_descriptors(VkState *vk_state) {
 
     // Update descriptor sets
     VkWriteDescriptorSet descriptor_writes[] = {
-      write_descriptor_set_buffer(frame_resources->descriptor_set, 0, &buffer_info),
-      write_descriptor_set_image(frame_resources->descriptor_set, 1, &image_info),
+      write_descriptor_set_buffer(frame_resources->descriptor_set, 0,
+        &buffer_info),
+      write_descriptor_set_image(frame_resources->descriptor_set, 1,
+        &image_info),
     };
-    vkUpdateDescriptorSets(vk_state->device, n_descriptors, descriptor_writes, 0,
-      nullptr);
+    vkUpdateDescriptorSets(vk_state->device, n_descriptors, descriptor_writes,
+      0, nullptr);
   }
 }
 
@@ -129,8 +131,8 @@ static void init_render_pass(VkState *vk_state) {
   };
 
   VkAttachmentDescription const attachments[] = {
-    g_position_attachment, g_normal_attachment, g_albedo_attachment, g_pbr_attachment,
-    depthbuffer_attachment
+    g_position_attachment, g_normal_attachment, g_albedo_attachment,
+    g_pbr_attachment, depthbuffer_attachment
   };
 
   VkSubpassDescription const subpass = {
@@ -161,15 +163,16 @@ static void init_render_pass(VkState *vk_state) {
     .pDependencies   = &dependency,
   };
 
-  check_vk_result(vkCreateRenderPass(vk_state->device, &render_pass_info, nullptr,
-    &vk_state->main_render_stage.render_pass));
+  check_vk_result(vkCreateRenderPass(vk_state->device, &render_pass_info,
+    nullptr, &vk_state->main_render_stage.render_pass));
 }
 
 
 static void init_pipeline(VkState *vk_state, VkExtent2D extent) {
   // Pipeline layout
   VkPipelineLayoutCreateInfo const pipeline_layout_info =
-    pipeline_layout_create_info(&vk_state->main_render_stage.descriptor_set_layout);
+    pipeline_layout_create_info(
+      &vk_state->main_render_stage.descriptor_set_layout);
   check_vk_result(vkCreatePipelineLayout(vk_state->device, &pipeline_layout_info,
     nullptr, &vk_state->main_render_stage.pipeline_layout));
 
@@ -342,8 +345,8 @@ static void init_framebuffers(VkState *vk_state, VkExtent2D extent) {
       .height          = extent.height,
       .layers          = 1,
     };
-    check_vk_result(vkCreateFramebuffer(vk_state->device, &framebuffer_info, nullptr,
-      &vk_state->swapchain_framebuffers[idx]));
+    check_vk_result(vkCreateFramebuffer(vk_state->device, &framebuffer_info,
+      nullptr, &vk_state->swapchain_framebuffers[idx]));
   }
 }
 
@@ -384,7 +387,8 @@ static void record_command_buffer(
     .clearValueCount = LEN(clear_colors),
     .pClearValues    = clear_colors,
   };
-  vkCmdBeginRenderPass(*command_buffer, &renderpass_info, VK_SUBPASS_CONTENTS_INLINE);
+  vkCmdBeginRenderPass(*command_buffer, &renderpass_info,
+    VK_SUBPASS_CONTENTS_INLINE);
 
   // Bind pipeline and descriptor sets
   vkCmdBindPipeline(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -497,11 +501,13 @@ static void destroy_swapchain(VkState *vk_state) {
   range (0, vk_state->n_swapchain_images) {
     vkDestroyFramebuffer(vk_state->device, vk_state->swapchain_framebuffers[idx],
       nullptr);
-    vkDestroyImageView(vk_state->device, vk_state->swapchain_image_views[idx], nullptr);
+    vkDestroyImageView(vk_state->device, vk_state->swapchain_image_views[idx],
+      nullptr);
   }
-  vkDestroyPipeline(vk_state->device, vk_state->main_render_stage.pipeline, nullptr);
-  vkDestroyPipelineLayout(vk_state->device, vk_state->main_render_stage.pipeline_layout,
+  vkDestroyPipeline(vk_state->device, vk_state->main_render_stage.pipeline,
     nullptr);
+  vkDestroyPipelineLayout(vk_state->device,
+    vk_state->main_render_stage.pipeline_layout, nullptr);
   vkDestroyRenderPass(vk_state->device, vk_state->main_render_stage.render_pass,
     nullptr);
 
@@ -509,13 +515,15 @@ static void destroy_swapchain(VkState *vk_state) {
     FrameResources *frame_resources = &vk_state->frame_resources[idx];
     vkFreeCommandBuffers(vk_state->device, vk_state->command_pool,
       1, &frame_resources->command_buffer);
-    vkDestroyBuffer(vk_state->device, frame_resources->uniform_buffer, nullptr);
-    vkFreeMemory(vk_state->device, frame_resources->uniform_buffer_memory, nullptr);
+    vkDestroyBuffer(vk_state->device, frame_resources->uniform_buffer,
+      nullptr);
+    vkFreeMemory(vk_state->device, frame_resources->uniform_buffer_memory,
+      nullptr);
   }
 
   vkDestroySwapchainKHR(vk_state->device, vk_state->swapchain, nullptr);
-  vkDestroyDescriptorPool(vk_state->device, vk_state->main_render_stage.descriptor_pool,
-    nullptr);
+  vkDestroyDescriptorPool(vk_state->device,
+    vk_state->main_render_stage.descriptor_pool, nullptr);
 }
 
 
@@ -537,11 +545,12 @@ void vulkan::destroy(VkState *vk_state) {
 
   range (0, N_PARALLEL_FRAMES) {
     FrameResources *frame_resources = &vk_state->frame_resources[idx];
-    vkDestroySemaphore(vk_state->device, frame_resources->render_finished_semaphore,
+    vkDestroySemaphore(vk_state->device,
+      frame_resources->render_finished_semaphore, nullptr);
+    vkDestroySemaphore(vk_state->device,
+      frame_resources->image_available_semaphore, nullptr);
+    vkDestroyFence(vk_state->device, frame_resources->frame_rendered_fence,
       nullptr);
-    vkDestroySemaphore(vk_state->device, frame_resources->image_available_semaphore,
-      nullptr);
-    vkDestroyFence(vk_state->device, frame_resources->frame_rendered_fence, nullptr);
   }
 
   vkDestroyCommandPool(vk_state->device, vk_state->command_pool,
@@ -585,10 +594,11 @@ void vulkan::recreate_swapchain(VkState *vk_state, CommonState *common_state) {
 
 
 void vulkan::render(VkState *vk_state, CommonState *common_state) {
-  FrameResources *frame_resources = &vk_state->frame_resources[vk_state->idx_frame];
+  FrameResources *frame_resources =
+    &vk_state->frame_resources[vk_state->idx_frame];
 
-  vkWaitForFences(vk_state->device, 1, &frame_resources->frame_rendered_fence, VK_TRUE,
-    UINT64_MAX);
+  vkWaitForFences(vk_state->device, 1, &frame_resources->frame_rendered_fence,
+    VK_TRUE, UINT64_MAX);
 
   // Acquire image
   u32 idx_image;
@@ -606,7 +616,8 @@ void vulkan::render(VkState *vk_state, CommonState *common_state) {
   }
 
   // Rerecord command buffer
-  record_command_buffer(vk_state, common_state->extent, vk_state->idx_frame, idx_image);
+  record_command_buffer(vk_state, common_state->extent, vk_state->idx_frame,
+    idx_image);
 
   // Update UBO
   void *memory;
@@ -616,11 +627,15 @@ void vulkan::render(VkState *vk_state, CommonState *common_state) {
   vkUnmapMemory(vk_state->device, frame_resources->uniform_buffer_memory);
 
   // Draw into image
-  VkSemaphore const wait_semaphores[] = {frame_resources->image_available_semaphore};
+  VkSemaphore const wait_semaphores[] = {
+    frame_resources->image_available_semaphore
+  };
   VkPipelineStageFlags const wait_stages[] = {
     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
   };
-  VkSemaphore const signal_semaphores[] = {frame_resources->render_finished_semaphore};
+  VkSemaphore const signal_semaphores[] = {
+    frame_resources->render_finished_semaphore
+  };
   VkSubmitInfo const submit_info = {
     .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
     .waitSemaphoreCount   = 1,
@@ -646,7 +661,8 @@ void vulkan::render(VkState *vk_state, CommonState *common_state) {
     .pImageIndices      = &idx_image,
   };
 
-  VkResult const present_res = vkQueuePresentKHR(vk_state->present_queue, &present_info);
+  VkResult const present_res = vkQueuePresentKHR(vk_state->present_queue,
+    &present_info);
 
   if (
     present_res == VK_ERROR_OUT_OF_DATE_KHR || present_res == VK_SUBOPTIMAL_KHR ||
