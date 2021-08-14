@@ -19,7 +19,9 @@ static constexpr u32 const N_PARALLEL_FRAMES             = 3;
 constexpr u32 const MAX_N_REQUIRED_EXTENSIONS            = 256;
 
 constexpr bool const USE_VALIDATION = true;
-constexpr char const * const VALIDATION_LAYERS[] = {"VK_LAYER_KHRONOS_validation"};
+constexpr char const * const VALIDATION_LAYERS[] = {
+  "VK_LAYER_KHRONOS_validation"
+};
 constexpr char const * const REQUIRED_DEVICE_EXTENSIONS[] = {
   VK_KHR_SWAPCHAIN_EXTENSION_NAME,
   #if PLATFORM & PLATFORM_MACOS
@@ -85,20 +87,21 @@ struct SwapchainSupportDetails {
 
 struct FrameResources {
   VkSemaphore image_available_semaphore;
-  VkSemaphore render_finished_semaphore;
   VkFence frame_rendered_fence;
   VkBuffer uniform_buffer;
   VkDeviceMemory uniform_buffer_memory;
   VkDescriptorSet descriptor_set;
-  VkCommandBuffer command_buffer;
+  VkCommandBuffer deferred_command_buffer;
+  VkCommandBuffer main_command_buffer;
 };
 
 struct RenderStage {
-  VkDescriptorSetLayout descriptor_set_layout;
   VkDescriptorPool descriptor_pool;
   VkRenderPass render_pass;
   VkPipelineLayout pipeline_layout;
   VkPipeline pipeline;
+  VkFramebuffer framebuffers[MAX_N_SWAPCHAIN_IMAGES];
+  VkSemaphore render_finished_semaphore;
 };
 
 struct ImageResources {
@@ -124,7 +127,6 @@ struct VkState {
   // Swapchain stuff
   VkSwapchainKHR swapchain;
   VkImageView swapchain_image_views[MAX_N_SWAPCHAIN_IMAGES];
-  VkFramebuffer swapchain_framebuffers[MAX_N_SWAPCHAIN_IMAGES];
   u32 n_swapchain_images;
   VkFormat swapchain_image_format;
   bool should_recreate_swapchain;
@@ -144,6 +146,7 @@ struct VkState {
 
   // Rendering resources and information
   u32 idx_frame;
+  VkDescriptorSetLayout descriptor_set_layout;
   ImageResources depthbuffer;
   ImageResources g_position;
   ImageResources g_normal;
@@ -151,7 +154,8 @@ struct VkState {
   ImageResources g_pbr;
 
   // Render stages
-  RenderStage main_render_stage;
+  RenderStage deferred_stage;
+  RenderStage main_stage;
 };
 
 namespace vulkan {
