@@ -7,7 +7,7 @@ COMPILER_FLAGS = \
 	-I/usr/include/GLFW/include \
 	-I/usr/include/assimp/include \
 	-I/usr/include/freetype2 \
-	-I$(HOME)/.local/opt/vulkansdk/include \
+	-I$(HOME)/.local/include \
 	-D_FORTIFY_SOURCE=2 -ggdb3 -Og -Wall -Werror -Wextra -pedantic \
 	-std=c++2a \
 	-Wno-deprecated-volatile -Wno-unused-function -Wno-unknown-pragmas -Wno-comment \
@@ -16,7 +16,7 @@ COMPILER_FLAGS = \
 
 LINKER_FLAGS = \
   -L/usr/lib/x86_64-linux-gnu \
-	-L$(HOME)/.local/opt/vulkansdk/lib \
+	-L$(HOME)/.local/lib \
 	-lvulkan -lfreetype -lglfw -lassimp -lm -ldl -pthread
 
 unity: shaders
