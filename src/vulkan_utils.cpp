@@ -87,24 +87,20 @@ void create_buffer(
     .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
   };
 
-  if (vkCreateBuffer(device, &buffer_info, nullptr, buffer) != VK_SUCCESS) {
-    logs::fatal("Could not create buffer.");
-  }
+  check_vk_result(vkCreateBuffer(device, &buffer_info, nullptr, buffer));
 
   VkMemoryRequirements requirements;
   vkGetBufferMemoryRequirements(device, *buffer, &requirements);
 
-  u32 memory_type = find_memory_type(physical_device, requirements.memoryTypeBits,
-    properties);
+  u32 memory_type = find_memory_type(physical_device,
+    requirements.memoryTypeBits, properties);
   VkMemoryAllocateInfo const alloc_info = {
     .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
     .allocationSize  = requirements.size,
     .memoryTypeIndex = memory_type,
   };
 
-  if (vkAllocateMemory(device, &alloc_info, nullptr, memory) != VK_SUCCESS) {
-    logs::fatal("Could not allocate buffer memory.");
-  }
+  check_vk_result(vkAllocateMemory(device, &alloc_info, nullptr, memory));
 
   vkBindBufferMemory(device, *buffer, *memory, 0);
 }
@@ -152,9 +148,7 @@ static void create_image(
     .sharingMode   = VK_SHARING_MODE_EXCLUSIVE,
     .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
   };
-  if (vkCreateImage(device, &image_info, nullptr, image) != VK_SUCCESS) {
-    logs::fatal("Could not create image.");
-  }
+  check_vk_result(vkCreateImage(device, &image_info, nullptr, image));
 
   // Allocate memory
   VkMemoryRequirements requirements;
@@ -165,11 +159,7 @@ static void create_image(
     .memoryTypeIndex = find_memory_type(physical_device,
       requirements.memoryTypeBits, properties),
   };
-  if (
-    vkAllocateMemory(device, &alloc_info, nullptr, image_memory) != VK_SUCCESS
-  ) {
-    logs::fatal("Could not allocate image memory.");
-  }
+  check_vk_result(vkAllocateMemory(device, &alloc_info, nullptr, image_memory));
   vkBindImageMemory(device, *image, *image_memory, 0);
 }
 
@@ -191,12 +181,8 @@ static VkImageView create_image_view(
     },
   };
   VkImageView image_view;
-  if (
-    vkCreateImageView(device, &image_view_info, nullptr,
-      &image_view) != VK_SUCCESS
-  ) {
-    logs::fatal("Could not create texture image view.");
-  }
+  check_vk_result(vkCreateImageView(device, &image_view_info, nullptr,
+    &image_view));
   return image_view;
 }
 
@@ -325,12 +311,8 @@ static VkShaderModule create_shader_module(
   };
 
   VkShaderModule shader_module;
-  if (
-    vkCreateShaderModule(device, &shader_module_info, nullptr,
-      &shader_module) != VK_SUCCESS
-  ) {
-    logs::fatal("Could not create shader module.");
-  }
+  check_vk_result(vkCreateShaderModule(device, &shader_module_info, nullptr,
+    &shader_module));
 
   return shader_module;
 }

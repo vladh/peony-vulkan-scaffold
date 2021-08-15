@@ -1,3 +1,91 @@
+static void init_main_synchronization(VkState *vk_state) {
+  VkSemaphoreCreateInfo const semaphore_info = {
+    .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+  };
+  check_vk_result(vkCreateSemaphore(vk_state->device, &semaphore_info, nullptr,
+    &vk_state->main_stage.render_finished_semaphore));
+}
+
+
+static void init_main_command_buffer(VkState *vk_state, VkExtent2D extent) {
+  range (0, N_PARALLEL_FRAMES) {
+    FrameResources *frame_resources = &vk_state->frame_resources[idx];
+
+    VkCommandBufferAllocateInfo const alloc_info =
+      command_buffer_allocate_info(vk_state->command_pool);
+    check_vk_result(vkAllocateCommandBuffers(vk_state->device, &alloc_info,
+      &frame_resources->main_command_buffer));
+  }
+}
+
+
+static void init_main_descriptor_set_layout(VkState *vk_state) {
+  u32 n_descriptors = 2;
+
+  // Create descriptor set layout
+  VkDescriptorSetLayoutBinding bindings[] = {
+    descriptor_set_layout_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+    descriptor_set_layout_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+  };
+  VkDescriptorSetLayoutCreateInfo const layout_info =
+    descriptor_set_layout_create_info(n_descriptors, bindings);
+  check_vk_result(vkCreateDescriptorSetLayout(vk_state->device, &layout_info,
+    nullptr, &vk_state->main_stage.descriptor_set_layout));
+}
+
+
+static void init_main_descriptors(VkState *vk_state) {
+  u32 n_descriptors = 2;
+
+  // Create descriptor pool
+  VkDescriptorPoolSize pool_sizes[] = {
+    descriptor_pool_size(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+      N_PARALLEL_FRAMES),
+    descriptor_pool_size(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      N_PARALLEL_FRAMES),
+  };
+  VkDescriptorPoolCreateInfo const pool_info = descriptor_pool_create_info(
+    N_PARALLEL_FRAMES, n_descriptors, pool_sizes);
+  check_vk_result(vkCreateDescriptorPool(vk_state->device, &pool_info, nullptr,
+    &vk_state->main_stage.descriptor_pool));
+
+  // Image info is always the same
+  VkDescriptorImageInfo const image_info = {
+    .sampler     = vk_state->g_position.sampler,
+    .imageView   = vk_state->g_position.view,
+    .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+  };
+
+  // Create descriptors
+  range (0, N_PARALLEL_FRAMES) {
+    FrameResources *frame_resources = &vk_state->frame_resources[idx];
+
+    VkDescriptorBufferInfo const buffer_info = {
+      .buffer = frame_resources->uniform_buffer,
+      .offset = 0,
+      .range  = sizeof(CoreSceneState),
+    };
+
+    // Create descriptor sets
+    VkDescriptorSetAllocateInfo const alloc_info = descriptor_set_allocate_info(
+      vk_state->main_stage.descriptor_pool,
+      &vk_state->main_stage.descriptor_set_layout);
+    check_vk_result(vkAllocateDescriptorSets(vk_state->device, &alloc_info,
+      &frame_resources->main_descriptor_set));
+
+    // Update descriptor sets
+    VkWriteDescriptorSet descriptor_writes[] = {
+      write_descriptor_set_buffer(frame_resources->main_descriptor_set, 0,
+        &buffer_info),
+      write_descriptor_set_image(frame_resources->main_descriptor_set, 1,
+        &image_info),
+    };
+    vkUpdateDescriptorSets(vk_state->device, n_descriptors, descriptor_writes,
+      0, nullptr);
+  }
+}
+
+
 static void init_main_render_pass(VkState *vk_state) {
   VkAttachmentDescription const color_attachment = attachment_description(
     VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
@@ -37,7 +125,7 @@ static void init_main_render_pass(VkState *vk_state) {
 static void init_main_pipeline(VkState *vk_state, VkExtent2D extent) {
   // Pipeline layout
   VkPipelineLayoutCreateInfo const pipeline_layout_info =
-    pipeline_layout_create_info(&vk_state->descriptor_set_layout);
+    pipeline_layout_create_info(&vk_state->main_stage.descriptor_set_layout);
   check_vk_result(vkCreatePipelineLayout(vk_state->device, &pipeline_layout_info,
     nullptr, &vk_state->main_stage.pipeline_layout));
 
@@ -161,7 +249,7 @@ static void record_main_command_buffer(
   u32 idx_image
 ) {
   FrameResources *frame_resources = &vk_state->frame_resources[idx_frame];
-  VkDescriptorSet *descriptor_set = &frame_resources->descriptor_set;
+  VkDescriptorSet *descriptor_set = &frame_resources->main_descriptor_set;
 
   // Reset commmand buffer
   vkResetCommandBuffer(*command_buffer, 0);

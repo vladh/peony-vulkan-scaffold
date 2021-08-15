@@ -88,14 +88,19 @@ struct SwapchainSupportDetails {
 struct FrameResources {
   VkSemaphore image_available_semaphore;
   VkFence frame_rendered_fence;
+
   VkBuffer uniform_buffer;
   VkDeviceMemory uniform_buffer_memory;
-  VkDescriptorSet descriptor_set;
+
+  VkDescriptorSet deferred_descriptor_set;
   VkCommandBuffer deferred_command_buffer;
+
+  VkDescriptorSet main_descriptor_set;
   VkCommandBuffer main_command_buffer;
 };
 
 struct RenderStage {
+  VkDescriptorSetLayout descriptor_set_layout;
   VkDescriptorPool descriptor_pool;
   VkRenderPass render_pass;
   VkPipelineLayout pipeline_layout;
@@ -108,6 +113,7 @@ struct ImageResources {
   VkImage image;
   VkDeviceMemory memory;
   VkImageView view;
+  VkSampler sampler;
 };
 
 struct VkState {
@@ -137,8 +143,10 @@ struct VkState {
   // Scene resources
   VkBuffer vertex_buffer;
   VkDeviceMemory vertex_buffer_memory;
+
   VkBuffer index_buffer;
   VkDeviceMemory index_buffer_memory;
+
   VkImage texture_image;
   VkDeviceMemory texture_image_memory;
   VkImageView texture_image_view;
@@ -146,7 +154,6 @@ struct VkState {
 
   // Rendering resources and information
   u32 idx_frame;
-  VkDescriptorSetLayout descriptor_set_layout;
   ImageResources depthbuffer;
   ImageResources g_position;
   ImageResources g_normal;

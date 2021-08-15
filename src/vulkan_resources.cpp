@@ -6,7 +6,8 @@
 static void init_textures(VkState *vk_state) {
   // Load image
   int width, height, n_channels;
-  unsigned char *image = files::load_image("../peony/resources/textures/alpaca.jpg",
+  unsigned char *image = files::load_image(
+    "../peony/resources/textures/alpaca.jpg",
     &width, &height, &n_channels, STBI_rgb_alpha, false);
   VkDeviceSize image_size = width * height * 4;
 
@@ -66,30 +67,10 @@ static void init_textures(VkState *vk_state) {
     vk_state->texture_image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 
   // Create sampler
-  VkSamplerCreateInfo const sampler_info = {
-    .sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-    .magFilter               = VK_FILTER_LINEAR,
-    .minFilter               = VK_FILTER_LINEAR,
-    .mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-    .addressModeU            = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-    .addressModeV            = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-    .addressModeW            = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-    .mipLodBias              = 0.0f,
-    .anisotropyEnable        = VK_TRUE,
-    .maxAnisotropy = vk_state->physical_device_properties.limits.maxSamplerAnisotropy,
-    .compareEnable           = VK_FALSE,
-    .compareOp               = VK_COMPARE_OP_ALWAYS,
-    .minLod                  = 0.0f,
-    .maxLod                  = 0.0f,
-    .borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
-    .unnormalizedCoordinates = VK_FALSE,
-  };
-  if (
-    vkCreateSampler(vk_state->device, &sampler_info, nullptr,
-      &vk_state->texture_sampler) != VK_SUCCESS
-  ) {
-    logs::fatal("Could not create texture sampler.");
-  }
+  VkSamplerCreateInfo const sampler_info = sampler_create_info(
+    vk_state->physical_device_properties);
+  check_vk_result(vkCreateSampler(vk_state->device, &sampler_info, nullptr,
+    &vk_state->texture_sampler));
 }
 
 
@@ -158,5 +139,19 @@ static void init_buffers(VkState *vk_state) {
 
     vkDestroyBuffer(vk_state->device, staging_buffer, nullptr);
     vkFreeMemory(vk_state->device, staging_buffer_memory, nullptr);
+  }
+
+  // Create uniform buffers
+  {
+    range (0, N_PARALLEL_FRAMES) {
+      FrameResources *frame_resources = &vk_state->frame_resources[idx];
+      create_buffer(vk_state->device, vk_state->physical_device,
+        sizeof(CoreSceneState),
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        &frame_resources->uniform_buffer,
+        &frame_resources->uniform_buffer_memory);
+    }
   }
 }

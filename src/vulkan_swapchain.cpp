@@ -131,12 +131,8 @@ static void init_swapchain(VkState *vk_state, GLFWwindow *window, VkExtent2D *ex
     swapchain_info.imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE;
   }
 
-  if (
-    vkCreateSwapchainKHR(vk_state->device, &swapchain_info, nullptr,
-      &vk_state->swapchain) != VK_SUCCESS
-  ) {
-    logs::fatal("Could not create swapchain.");
-  }
+  check_vk_result(vkCreateSwapchainKHR(vk_state->device, &swapchain_info,
+    nullptr, &vk_state->swapchain));
 
   VkImage swapchain_images[MAX_N_SWAPCHAIN_IMAGES];
   vkGetSwapchainImagesKHR(vk_state->device,
@@ -170,11 +166,7 @@ static void init_swapchain(VkState *vk_state, GLFWwindow *window, VkExtent2D *ex
       },
     };
 
-    if (
-      vkCreateImageView(vk_state->device, &image_view_info, nullptr,
-        image_view) != VK_SUCCESS
-    ) {
-      logs::fatal("Could not create image views.");
-    }
+    check_vk_result(vkCreateImageView(vk_state->device, &image_view_info,
+      nullptr, image_view));
   }
 }

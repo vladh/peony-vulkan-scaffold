@@ -28,97 +28,7 @@
 #include "vulkan_general.cpp"
 
 
-static void init_descriptor_set_layouts(VkState *vk_state) {
-  u32 n_descriptors = 2;
-
-  // Create descriptor set layout
-  VkDescriptorSetLayoutBinding bindings[] = {
-    descriptor_set_layout_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
-    descriptor_set_layout_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-  };
-  VkDescriptorSetLayoutCreateInfo const layout_info =
-    descriptor_set_layout_create_info(n_descriptors, bindings);
-  check_vk_result(vkCreateDescriptorSetLayout(vk_state->device, &layout_info,
-    nullptr, &vk_state->descriptor_set_layout));
-}
-
-
-static void init_descriptors(VkState *vk_state) {
-  u32 n_descriptors = 2;
-
-  // Create descriptor pool
-  VkDescriptorPoolSize pool_sizes[] = {
-    descriptor_pool_size(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-      N_PARALLEL_FRAMES),
-    descriptor_pool_size(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-      N_PARALLEL_FRAMES),
-  };
-  VkDescriptorPoolCreateInfo const pool_info = descriptor_pool_create_info(
-    N_PARALLEL_FRAMES, n_descriptors, pool_sizes);
-  check_vk_result(vkCreateDescriptorPool(vk_state->device, &pool_info, nullptr,
-    &vk_state->deferred_stage.descriptor_pool));
-
-  // Image info is always the same
-  VkDescriptorImageInfo const image_info = {
-    .sampler     = vk_state->texture_sampler,
-    .imageView   = vk_state->texture_image_view,
-    .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-  };
-
-  // Create uniform buffers and descriptors
-  range (0, N_PARALLEL_FRAMES) {
-    FrameResources *frame_resources = &vk_state->frame_resources[idx];
-
-    // Create uniform buffer
-    create_buffer(vk_state->device, vk_state->physical_device,
-      sizeof(CoreSceneState),
-      VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-      &frame_resources->uniform_buffer,
-      &frame_resources->uniform_buffer_memory);
-    VkDescriptorBufferInfo const buffer_info = {
-      .buffer = frame_resources->uniform_buffer,
-      .offset = 0,
-      .range  = sizeof(CoreSceneState),
-    };
-
-    // Create descriptor sets
-    VkDescriptorSetAllocateInfo const alloc_info = descriptor_set_allocate_info(
-      vk_state->deferred_stage.descriptor_pool,
-      &vk_state->descriptor_set_layout);
-    check_vk_result(vkAllocateDescriptorSets(vk_state->device, &alloc_info,
-      &frame_resources->descriptor_set));
-
-    // Update descriptor sets
-    VkWriteDescriptorSet descriptor_writes[] = {
-      write_descriptor_set_buffer(frame_resources->descriptor_set, 0,
-        &buffer_info),
-      write_descriptor_set_image(frame_resources->descriptor_set, 1,
-        &image_info),
-    };
-    vkUpdateDescriptorSets(vk_state->device, n_descriptors, descriptor_writes,
-      0, nullptr);
-  }
-}
-
-
-static void init_command_buffers(VkState *vk_state, VkExtent2D extent) {
-  range (0, N_PARALLEL_FRAMES) {
-    FrameResources *frame_resources = &vk_state->frame_resources[idx];
-
-    // Allocate command buffer
-    VkCommandBufferAllocateInfo const alloc_info =
-      command_buffer_allocate_info(vk_state->command_pool);
-    check_vk_result(vkAllocateCommandBuffers(vk_state->device, &alloc_info,
-      &frame_resources->deferred_command_buffer));
-    check_vk_result(vkAllocateCommandBuffers(vk_state->device, &alloc_info,
-      &frame_resources->main_command_buffer));
-  }
-}
-
-
 static void init_synchronization(VkState *vk_state) {
-  // Command buffer is initialised separately
   VkSemaphoreCreateInfo const semaphore_info = {
     .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
   };
@@ -135,10 +45,8 @@ static void init_synchronization(VkState *vk_state) {
       &frame_resources->frame_rendered_fence));
   }
 
-  check_vk_result(vkCreateSemaphore(vk_state->device, &semaphore_info, nullptr,
-    &vk_state->deferred_stage.render_finished_semaphore));
-  check_vk_result(vkCreateSemaphore(vk_state->device, &semaphore_info, nullptr,
-    &vk_state->main_stage.render_finished_semaphore));
+  init_deferred_synchronization(vk_state);
+  init_main_synchronization(vk_state);
 }
 
 
@@ -174,20 +82,23 @@ void vulkan::init(VkState *vk_state, CommonState *common_state) {
   init_command_pool(vk_state);
   init_textures(vk_state);
   init_buffers(vk_state);
-  init_descriptor_set_layouts(vk_state);
-  init_descriptors(vk_state);
 
   // Deferred stage
+  init_deferred_descriptor_set_layout(vk_state);
+  init_deferred_descriptors(vk_state);
   init_deferred_render_pass(vk_state);
   init_deferred_framebuffers(vk_state, common_state->extent);
   init_deferred_pipeline(vk_state, common_state->extent);
+  init_deferred_command_buffer(vk_state, common_state->extent);
 
   // Main stage
+  init_main_descriptor_set_layout(vk_state);
+  init_main_descriptors(vk_state);
   init_main_render_pass(vk_state);
   init_main_framebuffers(vk_state, common_state->extent);
   init_main_pipeline(vk_state, common_state->extent);
+  init_main_command_buffer(vk_state, common_state->extent);
 
-  init_command_buffers(vk_state, common_state->extent);
   init_synchronization(vk_state);
 }
 
@@ -199,23 +110,24 @@ static void destroy_swapchain(VkState *vk_state) {
   destroy_image_resources(&vk_state->g_albedo, vk_state->device);
   destroy_image_resources(&vk_state->g_pbr, vk_state->device);
 
+  vkDestroySwapchainKHR(vk_state->device, vk_state->swapchain, nullptr);
+
+  range (0, N_PARALLEL_FRAMES) {
+    FrameResources *frame_resources = &vk_state->frame_resources[idx];
+    vkDestroyBuffer(vk_state->device,
+      frame_resources->uniform_buffer, nullptr);
+    vkFreeMemory(vk_state->device,
+      frame_resources->uniform_buffer_memory, nullptr);
+  }
+
+  // Deferred stage
   range (0, N_PARALLEL_FRAMES) {
     FrameResources *frame_resources = &vk_state->frame_resources[idx];
     vkFreeCommandBuffers(vk_state->device, vk_state->command_pool,
       1, &frame_resources->deferred_command_buffer);
-    vkFreeCommandBuffers(vk_state->device, vk_state->command_pool,
-      1, &frame_resources->main_command_buffer);
-    vkDestroyBuffer(vk_state->device, frame_resources->uniform_buffer,
-      nullptr);
-    vkFreeMemory(vk_state->device, frame_resources->uniform_buffer_memory,
-      nullptr);
   }
-
-  vkDestroySwapchainKHR(vk_state->device, vk_state->swapchain, nullptr);
   vkDestroyDescriptorPool(vk_state->device,
     vk_state->deferred_stage.descriptor_pool, nullptr);
-
-  // Deferred stage
   range (0, vk_state->n_swapchain_images) {
     vkDestroyFramebuffer(vk_state->device,
       vk_state->deferred_stage.framebuffers[idx], nullptr);
@@ -228,6 +140,13 @@ static void destroy_swapchain(VkState *vk_state) {
     nullptr);
 
   // Main stage
+  range (0, N_PARALLEL_FRAMES) {
+    FrameResources *frame_resources = &vk_state->frame_resources[idx];
+    vkFreeCommandBuffers(vk_state->device, vk_state->command_pool,
+      1, &frame_resources->main_command_buffer);
+  }
+  vkDestroyDescriptorPool(vk_state->device,
+    vk_state->main_stage.descriptor_pool, nullptr);
   range (0, vk_state->n_swapchain_images) {
     vkDestroyFramebuffer(vk_state->device,
       vk_state->main_stage.framebuffers[idx], nullptr);
@@ -267,14 +186,15 @@ void vulkan::destroy(VkState *vk_state) {
       nullptr);
   }
 
-  vkDestroyDescriptorSetLayout(vk_state->device,
-    vk_state->descriptor_set_layout, nullptr);
-
   // Deferred stage
+  vkDestroyDescriptorSetLayout(vk_state->device,
+    vk_state->deferred_stage.descriptor_set_layout, nullptr);
   vkDestroySemaphore(vk_state->device,
     vk_state->deferred_stage.render_finished_semaphore, nullptr);
 
   // Main stage
+  vkDestroyDescriptorSetLayout(vk_state->device,
+    vk_state->main_stage.descriptor_set_layout, nullptr);
   vkDestroySemaphore(vk_state->device,
     vk_state->main_stage.render_finished_semaphore, nullptr);
 
@@ -309,16 +229,18 @@ void vulkan::recreate_swapchain(VkState *vk_state, CommonState *common_state) {
 
   init_swapchain_support_details(&vk_state->swapchain_support_details,
     vk_state->physical_device, vk_state->surface);
-  init_command_buffers(vk_state, common_state->extent);
   init_swapchain(vk_state, common_state->window, &common_state->extent);
-  init_descriptors(vk_state);
 
   // Deferred stage
+  init_deferred_command_buffer(vk_state, common_state->extent);
+  init_deferred_descriptors(vk_state);
   init_deferred_render_pass(vk_state);
   init_deferred_framebuffers(vk_state, common_state->extent);
   init_deferred_pipeline(vk_state, common_state->extent);
 
   // Main stage
+  init_main_command_buffer(vk_state, common_state->extent);
+  init_main_descriptors(vk_state);
   init_main_render_pass(vk_state);
   init_main_framebuffers(vk_state, common_state->extent);
   init_main_pipeline(vk_state, common_state->extent);

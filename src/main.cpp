@@ -18,7 +18,9 @@ struct State {
 };
 
 
-static void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+static void framebuffer_size_callback(
+  GLFWwindow* window, int width, int height
+) {
   State *state = (State*)glfwGetWindowUserPointer(window);
   state->vk_state.should_recreate_swapchain = true;
 }
