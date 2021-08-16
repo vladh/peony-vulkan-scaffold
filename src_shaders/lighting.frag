@@ -6,13 +6,19 @@ layout (binding = 3) uniform sampler2D g_albedo;
 layout (binding = 4) uniform sampler2D g_pbr;
 
 layout (location = 0) in BLOCK {
-  vec3 world_position;
-  vec3 normal;
   vec2 tex_coords;
 } fs_in;
 
 layout (location = 0) out vec4 color;
 
 void main() {
-  color = texture(g_position, fs_in.tex_coords);
+  if (fs_in.tex_coords.x < 0.4) {
+    color = texture(g_position, fs_in.tex_coords);
+  } else if (fs_in.tex_coords.x < 0.5) {
+    color = texture(g_normal, fs_in.tex_coords);
+  } else if (fs_in.tex_coords.x < 0.6) {
+    color = texture(g_albedo, fs_in.tex_coords);
+  } else {
+    color = texture(g_pbr, fs_in.tex_coords);
+  }
 }

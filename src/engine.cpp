@@ -25,7 +25,7 @@ void engine::update(CommonState *common_state) {
     ),
   };
 
-  // In OpenGL (which GLM was designed for), the y coordinate of the clip coordinates
-  // is inverted. This is not true in Vulkan, so we invert it back.
+  // In OpenGL (which GLM was designed for), the y coordinate of the clip
+  // coordinates is inverted. This is not true in Vulkan, so we invert it back.
   common_state->core_scene_state.projection[1][1] *= -1;
 }

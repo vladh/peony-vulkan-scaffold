@@ -11,25 +11,25 @@ struct Vertex {
   v2 tex_coords;
 };
 
-static constexpr i64 const NO_QUEUE_FAMILY               = -1;
-static constexpr u32 const MAX_N_SWAPCHAIN_FORMATS       = 32;
-static constexpr u32 const MAX_N_SWAPCHAIN_PRESENT_MODES = 32;
-static constexpr u32 const MAX_N_SWAPCHAIN_IMAGES        = 8;
-static constexpr u32 const N_PARALLEL_FRAMES             = 3;
-constexpr u32 const MAX_N_REQUIRED_EXTENSIONS            = 256;
+static constexpr i64 NO_QUEUE_FAMILY               = -1;
+static constexpr u32 MAX_N_SWAPCHAIN_FORMATS       = 32;
+static constexpr u32 MAX_N_SWAPCHAIN_PRESENT_MODES = 32;
+static constexpr u32 MAX_N_SWAPCHAIN_IMAGES        = 8;
+static constexpr u32 N_PARALLEL_FRAMES             = 3;
+static constexpr u32 MAX_N_REQUIRED_EXTENSIONS     = 256;
 
-constexpr bool const USE_VALIDATION = true;
-constexpr char const * const VALIDATION_LAYERS[] = {
+static constexpr bool USE_VALIDATION = true;
+static constexpr char const *VALIDATION_LAYERS[] = {
   "VK_LAYER_KHRONOS_validation"
 };
-constexpr char const * const REQUIRED_DEVICE_EXTENSIONS[] = {
+static constexpr char const *REQUIRED_DEVICE_EXTENSIONS[] = {
   VK_KHR_SWAPCHAIN_EXTENSION_NAME,
   #if PLATFORM & PLATFORM_MACOS
     "VK_KHR_portability_subset",
   #endif
 };
 
-constexpr Vertex const VERTICES[] = {
+static constexpr Vertex SIGN_VERTICES[] = {
   {{-0.5f, -0.5f,  0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
   {{ 0.5f, -0.5f,  0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
   {{ 0.5f,  0.5f,  0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
@@ -41,17 +41,31 @@ constexpr Vertex const VERTICES[] = {
   {{-0.5f,  0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
 };
 
-constexpr u32 INDICES[] = {
+static constexpr u32 SIGN_INDICES[] = {
   0, 1, 2, 2, 3, 0,
   4, 5, 6, 6, 7, 4,
 };
 
-constexpr VkVertexInputBindingDescription const VERTEX_BINDING_DESCRIPTION = {
+static constexpr Vertex SCREENQUAD_VERTICES[] = {
+  {{-1.0f,  1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
+  {{-1.0f, -1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+  {{ 1.0f, -1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+  {{ 1.0f,  1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f}},
+};
+
+static constexpr u32 SCREENQUAD_INDICES[] = {
+  // TODO: Change face culling direction for everything!!!
+  /* 0, 1, 2, 0, 2, 3, */
+  2, 1, 0, 3, 2, 0
+};
+
+static constexpr VkVertexInputBindingDescription VERTEX_BINDING_DESCRIPTION = {
   .binding   = 0,
   .stride    = sizeof(Vertex),
   .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
 };
-constexpr VkVertexInputAttributeDescription const VERTEX_ATTRIBUTE_DESCRIPTIONS[] = {
+static constexpr VkVertexInputAttributeDescription
+VERTEX_ATTRIBUTE_DESCRIPTIONS[] = {
   {
     .location = 0,
     .binding  = 0,
@@ -141,11 +155,15 @@ struct VkState {
   FrameResources frame_resources[N_PARALLEL_FRAMES];
 
   // Scene resources
-  VkBuffer vertex_buffer;
-  VkDeviceMemory vertex_buffer_memory;
+  VkBuffer sign_vertex_buffer;
+  VkDeviceMemory sign_vertex_buffer_memory;
+  VkBuffer screenquad_vertex_buffer;
+  VkDeviceMemory screenquad_vertex_buffer_memory;
 
-  VkBuffer index_buffer;
-  VkDeviceMemory index_buffer_memory;
+  VkBuffer sign_index_buffer;
+  VkDeviceMemory sign_index_buffer_memory;
+  VkBuffer screenquad_index_buffer;
+  VkDeviceMemory screenquad_index_buffer_memory;
 
   VkImage texture_image;
   VkDeviceMemory texture_image_memory;

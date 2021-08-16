@@ -310,14 +310,14 @@ static void record_main_command_buffer(
     vk_state->main_stage.pipeline_layout, 0, 1, descriptor_set, 0, nullptr);
 
   // Bind vertex and index buffers
-  VkBuffer const vertex_buffers[] = {vk_state->vertex_buffer};
+  VkBuffer const vertex_buffers[] = {vk_state->screenquad_vertex_buffer};
   VkDeviceSize const offsets[] = {0};
   vkCmdBindVertexBuffers(*command_buffer, 0, 1, vertex_buffers, offsets);
-  vkCmdBindIndexBuffer(*command_buffer, vk_state->index_buffer, 0,
+  vkCmdBindIndexBuffer(*command_buffer, vk_state->screenquad_index_buffer, 0,
     VK_INDEX_TYPE_UINT32);
 
   // Draw
-  vkCmdDrawIndexed(*command_buffer, LEN(INDICES), 1, 0, 0, 0);
+  vkCmdDrawIndexed(*command_buffer, LEN(SCREENQUAD_INDICES), 1, 0, 0, 0);
 
   // End render pass and command buffer
   vkCmdEndRenderPass(*command_buffer);

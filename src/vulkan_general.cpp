@@ -167,7 +167,7 @@ static void init_debug_messenger(
 static QueueFamilyIndices get_queue_family_indices(
   VkPhysicalDevice physical_device, VkSurfaceKHR surface
 ) {
-  constexpr u32 const MAX_N_QUEUE_FAMILIES = 64;
+  constexpr u32 MAX_N_QUEUE_FAMILIES = 64;
   QueueFamilyIndices indices = {};
   VkQueueFamilyProperties queue_families[MAX_N_QUEUE_FAMILIES];
   u32 n_queue_families = 0;
@@ -203,7 +203,7 @@ static bool are_queue_family_indices_complete(
 
 
 static bool are_required_extensions_supported(VkPhysicalDevice physical_device) {
-  constexpr u32 const MAX_N_EXTENSIONS = 512;
+  constexpr u32 MAX_N_EXTENSIONS = 512;
   VkExtensionProperties supported_extensions[MAX_N_EXTENSIONS];
   u32 n_supported_extensions;
   vkEnumerateDeviceExtensionProperties(physical_device,
@@ -316,7 +316,7 @@ static void init_physical_device(VkState *vk_state) {
   vk_state->physical_device = VK_NULL_HANDLE;
 
   // Get all physical devices
-  constexpr u32 const MAX_N_PHYSICAL_DEVICES = 8;
+  constexpr u32 MAX_N_PHYSICAL_DEVICES = 8;
   VkPhysicalDevice physical_devices[MAX_N_PHYSICAL_DEVICES];
   u32 n_devices = 0;
   vkEnumeratePhysicalDevices(vk_state->instance, &n_devices, nullptr);
@@ -364,7 +364,7 @@ static void init_physical_device(VkState *vk_state) {
 
 
 static void init_logical_device(VkState *vk_state) {
-  constexpr u32 const MAX_N_QUEUES = 32;
+  constexpr u32 MAX_N_QUEUES = 32;
   VkDeviceQueueCreateInfo queue_infos[MAX_N_QUEUES];
   u32 n_queue_infos = 0;
   u32 const potential_queues[] = {

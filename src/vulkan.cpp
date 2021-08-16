@@ -174,10 +174,17 @@ void vulkan::destroy(VkState *vk_state) {
   vkDestroyImage(vk_state->device, vk_state->texture_image, nullptr);
   vkFreeMemory(vk_state->device, vk_state->texture_image_memory, nullptr);
 
-  vkDestroyBuffer(vk_state->device, vk_state->vertex_buffer, nullptr);
-  vkFreeMemory(vk_state->device, vk_state->vertex_buffer_memory, nullptr);
-  vkDestroyBuffer(vk_state->device, vk_state->index_buffer, nullptr);
-  vkFreeMemory(vk_state->device, vk_state->index_buffer_memory, nullptr);
+  vkDestroyBuffer(vk_state->device, vk_state->sign_vertex_buffer, nullptr);
+  vkFreeMemory(vk_state->device, vk_state->sign_vertex_buffer_memory, nullptr);
+  vkDestroyBuffer(vk_state->device, vk_state->screenquad_vertex_buffer,
+    nullptr);
+  vkFreeMemory(vk_state->device, vk_state->screenquad_vertex_buffer_memory,
+    nullptr);
+  vkDestroyBuffer(vk_state->device, vk_state->sign_index_buffer, nullptr);
+  vkFreeMemory(vk_state->device, vk_state->sign_index_buffer_memory, nullptr);
+  vkDestroyBuffer(vk_state->device, vk_state->screenquad_index_buffer, nullptr);
+  vkFreeMemory(vk_state->device, vk_state->screenquad_index_buffer_memory,
+    nullptr);
 
   range (0, N_PARALLEL_FRAMES) {
     FrameResources *frame_resources = &vk_state->frame_resources[idx];

@@ -93,63 +93,117 @@ static void init_buffers(VkState *vk_state) {
   // two buffers using the memory offsets in e.g. `vkCmdBindVertexBuffers()`.
   // vulkan-tutorial.com/Vertex_buffers/Index_buffer.html
 
-  // Vertex buffer
+  // Sign vertex buffer
   {
-    VkDeviceSize buffer_size = sizeof(VERTICES);
+    VkDeviceSize buffer_size = sizeof(SIGN_VERTICES);
 
     VkBuffer staging_buffer;
     VkDeviceMemory staging_buffer_memory;
-    create_buffer(vk_state->device, vk_state->physical_device,
-      buffer_size,
-      VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-      &staging_buffer,
+    create_buffer(vk_state->device, vk_state->physical_device, buffer_size,
+      VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &staging_buffer,
       &staging_buffer_memory);
 
     void *memory;
-    vkMapMemory(vk_state->device, staging_buffer_memory, 0, buffer_size, 0, &memory);
-    memcpy(memory, VERTICES, (size_t)buffer_size);
+    vkMapMemory(vk_state->device, staging_buffer_memory, 0, buffer_size, 0,
+      &memory);
+    memcpy(memory, SIGN_VERTICES, (size_t)buffer_size);
     vkUnmapMemory(vk_state->device, staging_buffer_memory);
 
-    create_buffer(vk_state->device, vk_state->physical_device,
-      buffer_size,
+    create_buffer(vk_state->device, vk_state->physical_device, buffer_size,
       VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-      &vk_state->vertex_buffer,
-      &vk_state->vertex_buffer_memory);
-    copy_buffer(vk_state->device, vk_state->command_pool, vk_state->graphics_queue,
-      staging_buffer, vk_state->vertex_buffer, buffer_size);
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vk_state->sign_vertex_buffer,
+      &vk_state->sign_vertex_buffer_memory);
+    copy_buffer(vk_state->device, vk_state->command_pool,
+      vk_state->graphics_queue, staging_buffer,
+      vk_state->sign_vertex_buffer, buffer_size);
 
     vkDestroyBuffer(vk_state->device, staging_buffer, nullptr);
     vkFreeMemory(vk_state->device, staging_buffer_memory, nullptr);
   }
 
-  // Index buffer
+  // Sign index buffer
   {
-    VkDeviceSize buffer_size = sizeof(INDICES);
+    VkDeviceSize buffer_size = sizeof(SIGN_INDICES);
 
     VkBuffer staging_buffer;
     VkDeviceMemory staging_buffer_memory;
-    create_buffer(vk_state->device, vk_state->physical_device,
-      buffer_size,
-      VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-      &staging_buffer,
+    create_buffer(vk_state->device, vk_state->physical_device, buffer_size,
+      VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &staging_buffer,
       &staging_buffer_memory);
 
     void *memory;
-    vkMapMemory(vk_state->device, staging_buffer_memory, 0, buffer_size, 0, &memory);
-    memcpy(memory, INDICES, (size_t)buffer_size);
+    vkMapMemory(vk_state->device, staging_buffer_memory, 0, buffer_size, 0,
+      &memory);
+    memcpy(memory, SIGN_INDICES, (size_t)buffer_size);
     vkUnmapMemory(vk_state->device, staging_buffer_memory);
 
-    create_buffer(vk_state->device, vk_state->physical_device,
-      buffer_size,
+    create_buffer(vk_state->device, vk_state->physical_device, buffer_size,
       VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-      &vk_state->index_buffer,
-      &vk_state->index_buffer_memory);
-    copy_buffer(vk_state->device, vk_state->command_pool, vk_state->graphics_queue,
-      staging_buffer, vk_state->index_buffer, buffer_size);
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vk_state->sign_index_buffer,
+      &vk_state->sign_index_buffer_memory);
+    copy_buffer(vk_state->device, vk_state->command_pool,
+      vk_state->graphics_queue, staging_buffer, vk_state->sign_index_buffer,
+      buffer_size);
+
+    vkDestroyBuffer(vk_state->device, staging_buffer, nullptr);
+    vkFreeMemory(vk_state->device, staging_buffer_memory, nullptr);
+  }
+
+  // Screenquad vertex buffer
+  {
+    VkDeviceSize buffer_size = sizeof(SCREENQUAD_VERTICES);
+
+    VkBuffer staging_buffer;
+    VkDeviceMemory staging_buffer_memory;
+    create_buffer(vk_state->device, vk_state->physical_device, buffer_size,
+      VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &staging_buffer,
+      &staging_buffer_memory);
+
+    void *memory;
+    vkMapMemory(vk_state->device, staging_buffer_memory, 0, buffer_size, 0,
+      &memory);
+    memcpy(memory, SCREENQUAD_VERTICES, (size_t)buffer_size);
+    vkUnmapMemory(vk_state->device, staging_buffer_memory);
+
+    create_buffer(vk_state->device, vk_state->physical_device, buffer_size,
+      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vk_state->screenquad_vertex_buffer,
+      &vk_state->screenquad_vertex_buffer_memory);
+    copy_buffer(vk_state->device, vk_state->command_pool,
+      vk_state->graphics_queue, staging_buffer,
+      vk_state->screenquad_vertex_buffer, buffer_size);
+
+    vkDestroyBuffer(vk_state->device, staging_buffer, nullptr);
+    vkFreeMemory(vk_state->device, staging_buffer_memory, nullptr);
+  }
+
+  // Screenquad index buffer
+  {
+    VkDeviceSize buffer_size = sizeof(SCREENQUAD_INDICES);
+
+    VkBuffer staging_buffer;
+    VkDeviceMemory staging_buffer_memory;
+    create_buffer(vk_state->device, vk_state->physical_device, buffer_size,
+      VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &staging_buffer,
+      &staging_buffer_memory);
+
+    void *memory;
+    vkMapMemory(vk_state->device, staging_buffer_memory, 0, buffer_size, 0,
+      &memory);
+    memcpy(memory, SCREENQUAD_INDICES, (size_t)buffer_size);
+    vkUnmapMemory(vk_state->device, staging_buffer_memory);
+
+    create_buffer(vk_state->device, vk_state->physical_device, buffer_size,
+      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vk_state->screenquad_index_buffer,
+      &vk_state->screenquad_index_buffer_memory);
+    copy_buffer(vk_state->device, vk_state->command_pool,
+      vk_state->graphics_queue, staging_buffer,
+      vk_state->screenquad_index_buffer, buffer_size);
 
     vkDestroyBuffer(vk_state->device, staging_buffer, nullptr);
     vkFreeMemory(vk_state->device, staging_buffer_memory, nullptr);
