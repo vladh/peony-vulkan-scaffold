@@ -49,7 +49,6 @@ static void init_deferred_descriptors(VkState *vk_state) {
   check_vk_result(vkCreateDescriptorPool(vk_state->device, &pool_info, nullptr,
     &vk_state->deferred_stage.descriptor_pool));
 
-  // Image info is always the same
   VkDescriptorImageInfo const image_info = {
     .sampler     = vk_state->texture_sampler,
     .imageView   = vk_state->texture_image_view,
@@ -262,48 +261,48 @@ static void init_deferred_pipeline(VkState *vk_state, VkExtent2D extent) {
 
 static void init_deferred_framebuffers(VkState *vk_state, VkExtent2D extent) {
   // g_position
-  create_image_resources(&vk_state->g_position,
+  create_image_resources_with_sampler(&vk_state->g_position,
     vk_state->device, vk_state->physical_device,
     extent.width, extent.height,
     VK_FORMAT_B8G8R8A8_SRGB,
     VK_IMAGE_TILING_OPTIMAL,
     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-    VK_IMAGE_ASPECT_COLOR_BIT);
-  VkSamplerCreateInfo const sampler_info = sampler_create_info(
+    VK_IMAGE_ASPECT_COLOR_BIT,
     vk_state->physical_device_properties);
-  check_vk_result(vkCreateSampler(vk_state->device, &sampler_info, nullptr,
-    &vk_state->g_position.sampler));
 
   // g_normal
-  create_image_resources(&vk_state->g_normal,
+  create_image_resources_with_sampler(&vk_state->g_normal,
     vk_state->device, vk_state->physical_device,
     extent.width, extent.height,
     VK_FORMAT_B8G8R8A8_SRGB,
     VK_IMAGE_TILING_OPTIMAL,
     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-    VK_IMAGE_ASPECT_COLOR_BIT);
+    VK_IMAGE_ASPECT_COLOR_BIT,
+    vk_state->physical_device_properties);
 
   // g_albedo
-  create_image_resources(&vk_state->g_albedo,
+  create_image_resources_with_sampler(&vk_state->g_albedo,
     vk_state->device, vk_state->physical_device,
     extent.width, extent.height,
     VK_FORMAT_B8G8R8A8_SRGB,
     VK_IMAGE_TILING_OPTIMAL,
     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-    VK_IMAGE_ASPECT_COLOR_BIT);
+    VK_IMAGE_ASPECT_COLOR_BIT,
+    vk_state->physical_device_properties);
 
   // g_pbr
-  create_image_resources(&vk_state->g_pbr,
+  create_image_resources_with_sampler(&vk_state->g_pbr,
     vk_state->device, vk_state->physical_device,
     extent.width, extent.height,
     VK_FORMAT_B8G8R8A8_SRGB,
     VK_IMAGE_TILING_OPTIMAL,
     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-    VK_IMAGE_ASPECT_COLOR_BIT);
+    VK_IMAGE_ASPECT_COLOR_BIT,
+    vk_state->physical_device_properties);
 
   // Depth buffer
   create_image_resources(&vk_state->depthbuffer,

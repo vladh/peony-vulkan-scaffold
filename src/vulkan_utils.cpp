@@ -207,10 +207,48 @@ static void create_image_resources(
 }
 
 
+static void create_image_resources_with_sampler(
+  ImageResources *image_resources,
+  VkDevice device,
+  VkPhysicalDevice physical_device,
+  u32 width, u32 height,
+  VkFormat format,
+  VkImageTiling tiling,
+  VkImageUsageFlags usage,
+  VkMemoryPropertyFlags properties,
+  VkImageAspectFlags aspect_flags,
+  VkPhysicalDeviceProperties physical_device_properties
+) {
+  create_image_resources(
+    image_resources,
+    device,
+    physical_device,
+    width, height,
+    format,
+    tiling,
+    usage,
+    properties,
+    aspect_flags
+  );
+  VkSamplerCreateInfo const sampler_info = sampler_create_info(
+    physical_device_properties);
+  check_vk_result(vkCreateSampler(device, &sampler_info, nullptr,
+    &image_resources->sampler));
+}
+
+
 static void destroy_image_resources(ImageResources *image_resources, VkDevice device) {
   vkDestroyImageView(device, image_resources->view, nullptr);
   vkDestroyImage(device, image_resources->image, nullptr);
   vkFreeMemory(device, image_resources->memory, nullptr);
+}
+
+
+static void destroy_image_resources_with_sampler(
+  ImageResources *image_resources, VkDevice device
+) {
+  destroy_image_resources(image_resources, device);
+  vkDestroySampler(device, image_resources->sampler, nullptr);
 }
 
 

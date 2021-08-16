@@ -19,8 +19,8 @@
 #include "constants.hpp"
 #include "files.hpp"
 
-#include "vulkan_utils.cpp"
 #include "vulkan_structs.cpp"
+#include "vulkan_utils.cpp"
 #include "vulkan_swapchain.cpp"
 #include "vulkan_resources.cpp"
 #include "vulkan_stage_deferred.cpp"
@@ -106,14 +106,10 @@ void vulkan::init(VkState *vk_state, CommonState *common_state) {
 
 static void destroy_swapchain(VkState *vk_state) {
   destroy_image_resources(&vk_state->depthbuffer, vk_state->device);
-  destroy_image_resources(&vk_state->g_position, vk_state->device);
-  vkDestroySampler(vk_state->device, vk_state->g_position.sampler, nullptr);
-  destroy_image_resources(&vk_state->g_normal, vk_state->device);
-  vkDestroySampler(vk_state->device, vk_state->g_normal.sampler, nullptr);
-  destroy_image_resources(&vk_state->g_albedo, vk_state->device);
-  vkDestroySampler(vk_state->device, vk_state->g_albedo.sampler, nullptr);
-  destroy_image_resources(&vk_state->g_pbr, vk_state->device);
-  vkDestroySampler(vk_state->device, vk_state->g_pbr.sampler, nullptr);
+  destroy_image_resources_with_sampler(&vk_state->g_position, vk_state->device);
+  destroy_image_resources_with_sampler(&vk_state->g_normal, vk_state->device);
+  destroy_image_resources_with_sampler(&vk_state->g_albedo, vk_state->device);
+  destroy_image_resources_with_sampler(&vk_state->g_pbr, vk_state->device);
 
   vkDestroySwapchainKHR(vk_state->device, vk_state->swapchain, nullptr);
 

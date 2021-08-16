@@ -20,13 +20,15 @@ static void init_main_command_buffer(VkState *vk_state, VkExtent2D extent) {
 
 
 static void init_main_descriptor_set_layout(VkState *vk_state) {
-  u32 n_descriptors = 2;
-
   // Create descriptor set layout
   VkDescriptorSetLayoutBinding bindings[] = {
     descriptor_set_layout_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
     descriptor_set_layout_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+    descriptor_set_layout_binding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+    descriptor_set_layout_binding(3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+    descriptor_set_layout_binding(4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
   };
+  u32 n_descriptors = LEN(bindings);
   VkDescriptorSetLayoutCreateInfo const layout_info =
     descriptor_set_layout_create_info(n_descriptors, bindings);
   check_vk_result(vkCreateDescriptorSetLayout(vk_state->device, &layout_info,
@@ -35,24 +37,43 @@ static void init_main_descriptor_set_layout(VkState *vk_state) {
 
 
 static void init_main_descriptors(VkState *vk_state) {
-  u32 n_descriptors = 2;
-
   // Create descriptor pool
   VkDescriptorPoolSize pool_sizes[] = {
-    descriptor_pool_size(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-      N_PARALLEL_FRAMES),
-    descriptor_pool_size(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-      N_PARALLEL_FRAMES),
+    descriptor_pool_size(
+      VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, N_PARALLEL_FRAMES),
+    descriptor_pool_size(
+      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, N_PARALLEL_FRAMES),
+    descriptor_pool_size(
+      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, N_PARALLEL_FRAMES),
+    descriptor_pool_size(
+      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, N_PARALLEL_FRAMES),
+    descriptor_pool_size(
+      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, N_PARALLEL_FRAMES),
   };
+  u32 n_descriptors = LEN(pool_sizes);
   VkDescriptorPoolCreateInfo const pool_info = descriptor_pool_create_info(
     N_PARALLEL_FRAMES, n_descriptors, pool_sizes);
   check_vk_result(vkCreateDescriptorPool(vk_state->device, &pool_info, nullptr,
     &vk_state->main_stage.descriptor_pool));
 
-  // Image info is always the same
-  VkDescriptorImageInfo const image_info = {
+  VkDescriptorImageInfo const g_position_info = {
     .sampler     = vk_state->g_position.sampler,
     .imageView   = vk_state->g_position.view,
+    .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+  };
+  VkDescriptorImageInfo const g_normal_info = {
+    .sampler     = vk_state->g_normal.sampler,
+    .imageView   = vk_state->g_normal.view,
+    .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+  };
+  VkDescriptorImageInfo const g_albedo_info = {
+    .sampler     = vk_state->g_albedo.sampler,
+    .imageView   = vk_state->g_albedo.view,
+    .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+  };
+  VkDescriptorImageInfo const g_pbr_info = {
+    .sampler     = vk_state->g_pbr.sampler,
+    .imageView   = vk_state->g_pbr.view,
     .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
   };
 
@@ -78,7 +99,13 @@ static void init_main_descriptors(VkState *vk_state) {
       write_descriptor_set_buffer(frame_resources->main_descriptor_set, 0,
         &buffer_info),
       write_descriptor_set_image(frame_resources->main_descriptor_set, 1,
-        &image_info),
+        &g_position_info),
+      write_descriptor_set_image(frame_resources->main_descriptor_set, 1,
+        &g_normal_info),
+      write_descriptor_set_image(frame_resources->main_descriptor_set, 1,
+        &g_albedo_info),
+      write_descriptor_set_image(frame_resources->main_descriptor_set, 1,
+        &g_pbr_info),
     };
     vkUpdateDescriptorSets(vk_state->device, n_descriptors, descriptor_writes,
       0, nullptr);
