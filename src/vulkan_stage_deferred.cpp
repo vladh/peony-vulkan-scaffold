@@ -88,22 +88,22 @@ static void init_deferred_descriptors(VkState *vk_state) {
 
 static void init_deferred_render_pass(VkState *vk_state) {
   VkAttachmentDescription const g_position_attachment = attachment_description(
-    VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
   VkAttachmentReference const g_position_ref = attachment_reference(
     0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
   VkAttachmentDescription const g_normal_attachment = attachment_description(
-    VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
   VkAttachmentReference const g_normal_ref = attachment_reference(
     1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
   VkAttachmentDescription const g_albedo_attachment = attachment_description(
-    VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
   VkAttachmentReference const g_albedo_ref = attachment_reference(
     2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
   VkAttachmentDescription const g_pbr_attachment = attachment_description(
-    VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
   VkAttachmentReference const g_pbr_ref = attachment_reference(
     3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
@@ -267,7 +267,7 @@ static void init_deferred_framebuffers(VkState *vk_state, VkExtent2D extent) {
     extent.width, extent.height,
     VK_FORMAT_B8G8R8A8_SRGB,
     VK_IMAGE_TILING_OPTIMAL,
-    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     VK_IMAGE_ASPECT_COLOR_BIT);
   VkSamplerCreateInfo const sampler_info = sampler_create_info(
@@ -281,7 +281,7 @@ static void init_deferred_framebuffers(VkState *vk_state, VkExtent2D extent) {
     extent.width, extent.height,
     VK_FORMAT_B8G8R8A8_SRGB,
     VK_IMAGE_TILING_OPTIMAL,
-    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     VK_IMAGE_ASPECT_COLOR_BIT);
 
@@ -291,7 +291,7 @@ static void init_deferred_framebuffers(VkState *vk_state, VkExtent2D extent) {
     extent.width, extent.height,
     VK_FORMAT_B8G8R8A8_SRGB,
     VK_IMAGE_TILING_OPTIMAL,
-    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     VK_IMAGE_ASPECT_COLOR_BIT);
 
@@ -301,7 +301,7 @@ static void init_deferred_framebuffers(VkState *vk_state, VkExtent2D extent) {
     extent.width, extent.height,
     VK_FORMAT_B8G8R8A8_SRGB,
     VK_IMAGE_TILING_OPTIMAL,
-    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     VK_IMAGE_ASPECT_COLOR_BIT);
 
@@ -311,7 +311,7 @@ static void init_deferred_framebuffers(VkState *vk_state, VkExtent2D extent) {
     extent.width, extent.height,
     VK_FORMAT_D32_SFLOAT,
     VK_IMAGE_TILING_OPTIMAL,
-    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     VK_IMAGE_ASPECT_DEPTH_BIT);
 

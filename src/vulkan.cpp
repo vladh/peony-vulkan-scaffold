@@ -82,6 +82,7 @@ void vulkan::init(VkState *vk_state, CommonState *common_state) {
   init_command_pool(vk_state);
   init_textures(vk_state);
   init_buffers(vk_state);
+  init_uniform_buffers(vk_state);
 
   // Deferred stage
   init_deferred_descriptor_set_layout(vk_state);
@@ -106,9 +107,13 @@ void vulkan::init(VkState *vk_state, CommonState *common_state) {
 static void destroy_swapchain(VkState *vk_state) {
   destroy_image_resources(&vk_state->depthbuffer, vk_state->device);
   destroy_image_resources(&vk_state->g_position, vk_state->device);
+  vkDestroySampler(vk_state->device, vk_state->g_position.sampler, nullptr);
   destroy_image_resources(&vk_state->g_normal, vk_state->device);
+  vkDestroySampler(vk_state->device, vk_state->g_normal.sampler, nullptr);
   destroy_image_resources(&vk_state->g_albedo, vk_state->device);
+  vkDestroySampler(vk_state->device, vk_state->g_albedo.sampler, nullptr);
   destroy_image_resources(&vk_state->g_pbr, vk_state->device);
+  vkDestroySampler(vk_state->device, vk_state->g_pbr.sampler, nullptr);
 
   vkDestroySwapchainKHR(vk_state->device, vk_state->swapchain, nullptr);
 
@@ -230,6 +235,7 @@ void vulkan::recreate_swapchain(VkState *vk_state, CommonState *common_state) {
   init_swapchain_support_details(&vk_state->swapchain_support_details,
     vk_state->physical_device, vk_state->surface);
   init_swapchain(vk_state, common_state->window, &common_state->extent);
+  init_uniform_buffers(vk_state);
 
   // Deferred stage
   init_deferred_command_buffer(vk_state, common_state->extent);

@@ -74,6 +74,20 @@ static void init_textures(VkState *vk_state) {
 }
 
 
+static void init_uniform_buffers(VkState *vk_state) {
+  range (0, N_PARALLEL_FRAMES) {
+    FrameResources *frame_resources = &vk_state->frame_resources[idx];
+    create_buffer(vk_state->device, vk_state->physical_device,
+      sizeof(CoreSceneState),
+      VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+      &frame_resources->uniform_buffer,
+      &frame_resources->uniform_buffer_memory);
+  }
+}
+
+
 static void init_buffers(VkState *vk_state) {
   // TODO: #slow Allocate memory only once, and split that up ourselves into the
   // two buffers using the memory offsets in e.g. `vkCmdBindVertexBuffers()`.
@@ -139,19 +153,5 @@ static void init_buffers(VkState *vk_state) {
 
     vkDestroyBuffer(vk_state->device, staging_buffer, nullptr);
     vkFreeMemory(vk_state->device, staging_buffer_memory, nullptr);
-  }
-
-  // Create uniform buffers
-  {
-    range (0, N_PARALLEL_FRAMES) {
-      FrameResources *frame_resources = &vk_state->frame_resources[idx];
-      create_buffer(vk_state->device, vk_state->physical_device,
-        sizeof(CoreSceneState),
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        &frame_resources->uniform_buffer,
-        &frame_resources->uniform_buffer_memory);
-    }
   }
 }
