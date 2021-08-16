@@ -15,4 +15,5 @@ struct CommonState {
   GLFWwindow *window;
   VkExtent2D extent;
   CoreSceneState core_scene_state;
+  bool should_quit;
 };

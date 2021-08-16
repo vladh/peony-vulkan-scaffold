@@ -26,6 +26,18 @@ static void framebuffer_size_callback(
 }
 
 
+void key_callback(
+  GLFWwindow* window, int key, int scancode, int action, int mods
+) {
+  State *state = (State*)glfwGetWindowUserPointer(window);
+
+  if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+    state->common_state.should_quit = true;
+  }
+}
+
+
+
 static void init_window(GLFWwindow **window, State *state) {
   glfwInit();
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -33,6 +45,7 @@ static void init_window(GLFWwindow **window, State *state) {
   *window = glfwCreateWindow(800, 600, "Hi! :)", nullptr, nullptr);
   glfwSetWindowUserPointer(*window, state);
   glfwSetFramebufferSizeCallback(*window, framebuffer_size_callback);
+  glfwSetKeyCallback(*window, key_callback);
 }
 
 
@@ -43,7 +56,10 @@ static void destroy_window(GLFWwindow *window) {
 
 
 static void run_main_loop(State *state) {
-  while (!glfwWindowShouldClose(state->common_state.window)) {
+  while (
+    !glfwWindowShouldClose(state->common_state.window) &&
+    !state->common_state.should_quit
+  ) {
     glfwPollEvents();
     engine::update(&state->common_state);
     vulkan::render(&state->vk_state, &state->common_state);
