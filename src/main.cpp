@@ -41,8 +41,7 @@ void key_callback(
 static void init_window(GLFWwindow **window, State *state) {
   glfwInit();
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-  /* glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); */
-  *window = glfwCreateWindow(800, 600, "Hi! :)", nullptr, nullptr);
+  *window = glfwCreateWindow(1600, 1000, "Hi! :)", nullptr, nullptr);
   glfwSetWindowUserPointer(*window, state);
   glfwSetFramebufferSizeCallback(*window, framebuffer_size_callback);
   glfwSetKeyCallback(*window, key_callback);
