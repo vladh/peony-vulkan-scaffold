@@ -102,15 +102,8 @@ struct SwapchainSupportDetails {
 struct FrameResources {
   VkSemaphore image_available_semaphore;
   VkFence frame_rendered_fence;
-
   VkBuffer uniform_buffer;
   VkDeviceMemory uniform_buffer_memory;
-
-  VkDescriptorSet deferred_descriptor_set;
-  VkCommandBuffer deferred_command_buffer;
-
-  VkDescriptorSet main_descriptor_set;
-  VkCommandBuffer main_command_buffer;
 };
 
 struct RenderStage {
@@ -121,6 +114,8 @@ struct RenderStage {
   VkPipeline pipeline;
   VkFramebuffer framebuffers[MAX_N_SWAPCHAIN_IMAGES];
   VkSemaphore render_finished_semaphore;
+  VkDescriptorSet descriptor_sets[N_PARALLEL_FRAMES];
+  VkCommandBuffer command_buffers[N_PARALLEL_FRAMES];
 };
 
 struct ImageResources {

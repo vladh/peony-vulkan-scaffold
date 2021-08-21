@@ -159,7 +159,7 @@ static void init_debug_messenger(
     return;
   }
 
-  check_vk_result(CreateDebugUtilsMessengerEXT(vk_state->instance,
+  vkutils::check(CreateDebugUtilsMessengerEXT(vk_state->instance,
     debug_messenger_info, nullptr, &vk_state->debug_messenger));
 }
 
@@ -405,7 +405,7 @@ static void init_logical_device(VkState *vk_state) {
     .pEnabledFeatures        = &device_features,
   };
 
-  check_vk_result(vkCreateDevice(vk_state->physical_device, &device_info,
+  vkutils::check(vkCreateDevice(vk_state->physical_device, &device_info,
     nullptr, &vk_state->device));
 
   vkGetDeviceQueue(vk_state->device,
@@ -420,7 +420,7 @@ static void init_logical_device(VkState *vk_state) {
 
 
 static void init_surface(VkState *vk_state, GLFWwindow *window) {
-  check_vk_result(glfwCreateWindowSurface(vk_state->instance, window, nullptr,
+  vkutils::check(glfwCreateWindowSurface(vk_state->instance, window, nullptr,
     &vk_state->surface));
 }
 
@@ -432,6 +432,6 @@ static void init_command_pool(VkState *vk_state) {
     .queueFamilyIndex = (u32)vk_state->queue_family_indices.graphics,
   };
 
-  check_vk_result(vkCreateCommandPool(vk_state->device, &pool_info, nullptr,
+  vkutils::check(vkCreateCommandPool(vk_state->device, &pool_info, nullptr,
     &vk_state->command_pool));
 }

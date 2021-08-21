@@ -19,8 +19,7 @@
 #include "constants.hpp"
 #include "files.hpp"
 
-#include "vulkan_structs.cpp"
-#include "vulkan_utils.cpp"
+#include "vkutils.cpp"
 #include "vulkan_swapchain.cpp"
 #include "vulkan_resources.cpp"
 #include "vulkan_stage_deferred.cpp"
@@ -39,9 +38,9 @@ static void init_synchronization(VkState *vk_state) {
 
   range (0, N_PARALLEL_FRAMES) {
     FrameResources *frame_resources = &vk_state->frame_resources[idx];
-    check_vk_result(vkCreateSemaphore(vk_state->device, &semaphore_info, nullptr,
+    vkutils::check(vkCreateSemaphore(vk_state->device, &semaphore_info, nullptr,
       &frame_resources->image_available_semaphore));
-    check_vk_result(vkCreateFence(vk_state->device, &fence_info, nullptr,
+    vkutils::check(vkCreateFence(vk_state->device, &fence_info, nullptr,
       &frame_resources->frame_rendered_fence));
   }
 }
@@ -89,11 +88,15 @@ void vulkan::init(VkState *vk_state, CommonState *common_state) {
 
 
 static void destroy_swapchain(VkState *vk_state) {
-  destroy_image_resources(&vk_state->depthbuffer, vk_state->device);
-  destroy_image_resources_with_sampler(&vk_state->g_position, vk_state->device);
-  destroy_image_resources_with_sampler(&vk_state->g_normal, vk_state->device);
-  destroy_image_resources_with_sampler(&vk_state->g_albedo, vk_state->device);
-  destroy_image_resources_with_sampler(&vk_state->g_pbr, vk_state->device);
+  vkutils::destroy_image_resources(&vk_state->depthbuffer, vk_state->device);
+  vkutils::destroy_image_resources_with_sampler(&vk_state->g_position,
+    vk_state->device);
+  vkutils::destroy_image_resources_with_sampler(&vk_state->g_normal,
+    vk_state->device);
+  vkutils::destroy_image_resources_with_sampler(&vk_state->g_albedo,
+    vk_state->device);
+  vkutils::destroy_image_resources_with_sampler(&vk_state->g_pbr,
+    vk_state->device);
 
   vkDestroySwapchainKHR(vk_state->device, vk_state->swapchain, nullptr);
 
@@ -180,8 +183,8 @@ void vulkan::recreate_swapchain(VkState *vk_state, CommonState *common_state) {
   init_swapchain(vk_state, common_state->window, &common_state->extent);
   init_uniform_buffers(vk_state);
 
-  reinit_deferred_stage_swapchain(vk_state, common_state->extent);
-  reinit_main_stage_swapchain(vk_state, common_state->extent);
+  init_deferred_stage_swapchain(vk_state, common_state->extent);
+  init_main_stage_swapchain(vk_state, common_state->extent);
 }
 
 

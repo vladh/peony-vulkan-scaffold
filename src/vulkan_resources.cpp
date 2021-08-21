@@ -14,7 +14,7 @@ static void init_textures(VkState *vk_state) {
   // Copy to staging buffer
   VkBuffer staging_buffer;
   VkDeviceMemory staging_buffer_memory;
-  create_buffer(vk_state->device, vk_state->physical_device,
+  vkutils::create_buffer(vk_state->device, vk_state->physical_device,
     image_size,
     VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -28,7 +28,7 @@ static void init_textures(VkState *vk_state) {
   files::free_image(image);
 
   // Create VkImage
-  create_image(vk_state->device, vk_state->physical_device,
+  vkutils::create_image(vk_state->device, vk_state->physical_device,
     &vk_state->texture_image, &vk_state->texture_image_memory,
     width, height,
     VK_FORMAT_R8G8B8A8_SRGB,
@@ -37,21 +37,21 @@ static void init_textures(VkState *vk_state) {
     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
   // Copy image
-  transition_image_layout(vk_state->device,
+  vkutils::transition_image_layout(vk_state->device,
     vk_state->graphics_queue,
     vk_state->command_pool,
     vk_state->texture_image,
     VK_FORMAT_R8G8B8A8_SRGB,
     VK_IMAGE_LAYOUT_UNDEFINED,
     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-  copy_buffer_to_image(vk_state->device,
+  vkutils::copy_buffer_to_image(vk_state->device,
     vk_state->graphics_queue,
     vk_state->command_pool,
     staging_buffer,
     vk_state->texture_image,
     width,
     height);
-  transition_image_layout(vk_state->device,
+  vkutils::transition_image_layout(vk_state->device,
     vk_state->graphics_queue,
     vk_state->command_pool,
     vk_state->texture_image,
@@ -63,13 +63,14 @@ static void init_textures(VkState *vk_state) {
   vkFreeMemory(vk_state->device, staging_buffer_memory, nullptr);
 
   // Create texture image view
-  vk_state->texture_image_view = create_image_view(vk_state->device,
-    vk_state->texture_image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+  vk_state->texture_image_view = vkutils::create_image_view(vk_state->device,
+    vk_state->texture_image, VK_FORMAT_R8G8B8A8_SRGB,
+    VK_IMAGE_ASPECT_COLOR_BIT);
 
   // Create sampler
-  VkSamplerCreateInfo const sampler_info = sampler_create_info(
+  VkSamplerCreateInfo const sampler_info = vkutils::sampler_create_info(
     vk_state->physical_device_properties);
-  check_vk_result(vkCreateSampler(vk_state->device, &sampler_info, nullptr,
+  vkutils::check(vkCreateSampler(vk_state->device, &sampler_info, nullptr,
     &vk_state->texture_sampler));
 }
 
@@ -77,7 +78,7 @@ static void init_textures(VkState *vk_state) {
 static void init_uniform_buffers(VkState *vk_state) {
   range (0, N_PARALLEL_FRAMES) {
     FrameResources *frame_resources = &vk_state->frame_resources[idx];
-    create_buffer(vk_state->device, vk_state->physical_device,
+    vkutils::create_buffer(vk_state->device, vk_state->physical_device,
       sizeof(CoreSceneState),
       VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
@@ -99,8 +100,9 @@ static void init_buffers(VkState *vk_state) {
 
     VkBuffer staging_buffer;
     VkDeviceMemory staging_buffer_memory;
-    create_buffer(vk_state->device, vk_state->physical_device, buffer_size,
-      VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+    vkutils::create_buffer(vk_state->device, vk_state->physical_device,
+      buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &staging_buffer,
       &staging_buffer_memory);
 
@@ -110,11 +112,11 @@ static void init_buffers(VkState *vk_state) {
     memcpy(memory, SIGN_VERTICES, (size_t)buffer_size);
     vkUnmapMemory(vk_state->device, staging_buffer_memory);
 
-    create_buffer(vk_state->device, vk_state->physical_device, buffer_size,
-      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vk_state->sign_vertex_buffer,
-      &vk_state->sign_vertex_buffer_memory);
-    copy_buffer(vk_state->device, vk_state->command_pool,
+    vkutils::create_buffer(vk_state->device, vk_state->physical_device,
+      buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+      &vk_state->sign_vertex_buffer, &vk_state->sign_vertex_buffer_memory);
+    vkutils::copy_buffer(vk_state->device, vk_state->command_pool,
       vk_state->graphics_queue, staging_buffer,
       vk_state->sign_vertex_buffer, buffer_size);
 
@@ -128,8 +130,9 @@ static void init_buffers(VkState *vk_state) {
 
     VkBuffer staging_buffer;
     VkDeviceMemory staging_buffer_memory;
-    create_buffer(vk_state->device, vk_state->physical_device, buffer_size,
-      VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+    vkutils::create_buffer(vk_state->device, vk_state->physical_device,
+      buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &staging_buffer,
       &staging_buffer_memory);
 
@@ -139,11 +142,11 @@ static void init_buffers(VkState *vk_state) {
     memcpy(memory, SIGN_INDICES, (size_t)buffer_size);
     vkUnmapMemory(vk_state->device, staging_buffer_memory);
 
-    create_buffer(vk_state->device, vk_state->physical_device, buffer_size,
-      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vk_state->sign_index_buffer,
-      &vk_state->sign_index_buffer_memory);
-    copy_buffer(vk_state->device, vk_state->command_pool,
+    vkutils::create_buffer(vk_state->device, vk_state->physical_device,
+      buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+      VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+      &vk_state->sign_index_buffer, &vk_state->sign_index_buffer_memory);
+    vkutils::copy_buffer(vk_state->device, vk_state->command_pool,
       vk_state->graphics_queue, staging_buffer, vk_state->sign_index_buffer,
       buffer_size);
 
@@ -157,8 +160,9 @@ static void init_buffers(VkState *vk_state) {
 
     VkBuffer staging_buffer;
     VkDeviceMemory staging_buffer_memory;
-    create_buffer(vk_state->device, vk_state->physical_device, buffer_size,
-      VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+    vkutils::create_buffer(vk_state->device, vk_state->physical_device,
+      buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &staging_buffer,
       &staging_buffer_memory);
 
@@ -168,11 +172,12 @@ static void init_buffers(VkState *vk_state) {
     memcpy(memory, SCREENQUAD_VERTICES, (size_t)buffer_size);
     vkUnmapMemory(vk_state->device, staging_buffer_memory);
 
-    create_buffer(vk_state->device, vk_state->physical_device, buffer_size,
-      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vk_state->screenquad_vertex_buffer,
+    vkutils::create_buffer(vk_state->device, vk_state->physical_device,
+      buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+      &vk_state->screenquad_vertex_buffer,
       &vk_state->screenquad_vertex_buffer_memory);
-    copy_buffer(vk_state->device, vk_state->command_pool,
+    vkutils::copy_buffer(vk_state->device, vk_state->command_pool,
       vk_state->graphics_queue, staging_buffer,
       vk_state->screenquad_vertex_buffer, buffer_size);
 
@@ -186,8 +191,9 @@ static void init_buffers(VkState *vk_state) {
 
     VkBuffer staging_buffer;
     VkDeviceMemory staging_buffer_memory;
-    create_buffer(vk_state->device, vk_state->physical_device, buffer_size,
-      VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+    vkutils::create_buffer(vk_state->device, vk_state->physical_device,
+      buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &staging_buffer,
       &staging_buffer_memory);
 
@@ -197,11 +203,12 @@ static void init_buffers(VkState *vk_state) {
     memcpy(memory, SCREENQUAD_INDICES, (size_t)buffer_size);
     vkUnmapMemory(vk_state->device, staging_buffer_memory);
 
-    create_buffer(vk_state->device, vk_state->physical_device, buffer_size,
-      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vk_state->screenquad_index_buffer,
+    vkutils::create_buffer(vk_state->device, vk_state->physical_device,
+      buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+      VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+      &vk_state->screenquad_index_buffer,
       &vk_state->screenquad_index_buffer_memory);
-    copy_buffer(vk_state->device, vk_state->command_pool,
+    vkutils::copy_buffer(vk_state->device, vk_state->command_pool,
       vk_state->graphics_queue, staging_buffer,
       vk_state->screenquad_index_buffer, buffer_size);
 
