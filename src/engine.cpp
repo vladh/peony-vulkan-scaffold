@@ -6,19 +6,18 @@
 
 void engine::update(CommonState *common_state) {
   f64 t = glfwGetTime();
-  m4 model_matrix = glm::rotate(glm::mat4(1.0f), (f32)sin(t),
-      glm::vec3(0.0f, 0.0f, 1.0f));
-  m3 model_normal_matrix = m3(transpose(inverse(model_matrix)));
+  m4 model_matrix = rotate(m4(1.0f), (f32)t, v3(0.0f, 1.0f, 0.0f));
+  m4 model_normal_matrix = m4(m3(transpose(inverse(model_matrix))));
   common_state->core_scene_state = {
     .model_matrix = model_matrix,
     .model_normal_matrix = model_normal_matrix,
     .view = glm::lookAt(
-      glm::vec3(2.0f, 2.0f, 2.0f),
-      glm::vec3(0.0f, 0.0f, 0.0f),
-      glm::vec3(0.0f, 0.0f, 1.0f)
+      v3(-1.0f, 1.0f, 1.0f),
+      v3(0.0f, 0.0f, 0.0f),
+      v3(0.0f, 1.0f, 0.0f)
     ),
     .projection = glm::perspective(
-      glm::radians(45.0f),
+      radians(90.0f),
       (f32)common_state->extent.width / (f32)common_state->extent.height,
       0.01f,
       20.0f

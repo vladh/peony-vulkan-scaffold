@@ -30,15 +30,15 @@ static constexpr char const *REQUIRED_DEVICE_EXTENSIONS[] = {
 };
 
 static constexpr Vertex SIGN_VERTICES[] = {
-  {{-0.5f, -0.5f,  0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-  {{ 0.5f, -0.5f,  0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-  {{ 0.5f,  0.5f,  0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
-  {{-0.5f,  0.5f,  0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
+  {{-0.5f,  0.0f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+  {{ 0.5f,  0.0f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+  {{ 0.5f,  0.0f,  0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
+  {{-0.5f,  0.0f,  0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
 
   {{-0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
   {{ 0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-  {{ 0.5f,  0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
-  {{-0.5f,  0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
+  {{ 0.5f, -0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
+  {{-0.5f, -0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
 };
 
 static constexpr u32 SIGN_INDICES[] = {
@@ -54,9 +54,7 @@ static constexpr Vertex SCREENQUAD_VERTICES[] = {
 };
 
 static constexpr u32 SCREENQUAD_INDICES[] = {
-  // TODO: Change face culling direction for everything!!!
-  /* 0, 1, 2, 0, 2, 3, */
-  2, 1, 0, 3, 2, 0
+  0, 1, 2, 0, 2, 3,
 };
 
 static constexpr VkVertexInputBindingDescription VERTEX_BINDING_DESCRIPTION = {

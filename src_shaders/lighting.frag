@@ -12,13 +12,14 @@ layout (location = 0) in BLOCK {
 layout (location = 0) out vec4 color;
 
 void main() {
-  if (fs_in.tex_coords.x < 0.4) {
-    color = texture(g_position, fs_in.tex_coords);
-  } else if (fs_in.tex_coords.x < 0.5) {
-    color = texture(g_normal, fs_in.tex_coords);
-  } else if (fs_in.tex_coords.x < 0.6) {
-    color = texture(g_albedo, fs_in.tex_coords);
-  } else {
-    color = texture(g_pbr, fs_in.tex_coords);
-  }
+  // if (fs_in.tex_coords.x < 0.4) {
+  //   color = texture(g_position, fs_in.tex_coords);
+  // } else if (fs_in.tex_coords.x < 0.5) {
+  //   color = texture(g_normal, fs_in.tex_coords);
+  // } else if (fs_in.tex_coords.x < 0.6) {
+  //   color = texture(g_albedo, fs_in.tex_coords);
+  // } else {
+  //   color = texture(g_pbr, fs_in.tex_coords);
+  // }
+  color = texture(g_position, fs_in.tex_coords);
 }
