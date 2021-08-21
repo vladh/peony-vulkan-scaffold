@@ -1,11 +1,11 @@
-static void record_main_command_buffer(
+static void record_lighting_command_buffer(
   VkState *vk_state,
   VkCommandBuffer *command_buffer,
   VkExtent2D extent,
   u32 idx_frame,
   u32 idx_image
 ) {
-  auto *descriptor_set = &vk_state->main_stage.descriptor_sets[idx_frame];
+  auto *descriptor_set = &vk_state->lighting_stage.descriptor_sets[idx_frame];
 
   // Reset commmand buffer
   vkResetCommandBuffer(*command_buffer, 0);
@@ -20,8 +20,8 @@ static void record_main_command_buffer(
   };
   VkRenderPassBeginInfo const renderpass_info = {
     .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-    .renderPass      = vk_state->main_stage.render_pass,
-    .framebuffer     = vk_state->main_stage.framebuffers[idx_image],
+    .renderPass      = vk_state->lighting_stage.render_pass,
+    .framebuffer     = vk_state->lighting_stage.framebuffers[idx_image],
     .renderArea = {
       .offset        = {0, 0},
       .extent        = extent,
@@ -34,9 +34,9 @@ static void record_main_command_buffer(
 
   // Bind pipeline and descriptor sets
   vkCmdBindPipeline(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    vk_state->main_stage.pipeline);
+    vk_state->lighting_stage.pipeline);
   vkCmdBindDescriptorSets(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    vk_state->main_stage.pipeline_layout, 0, 1, descriptor_set, 0, nullptr);
+    vk_state->lighting_stage.pipeline_layout, 0, 1, descriptor_set, 0, nullptr);
 
   // Bind vertex and index buffers
   VkBuffer const vertex_buffers[] = {vk_state->screenquad_vertex_buffer};
@@ -54,24 +54,22 @@ static void record_main_command_buffer(
 }
 
 
-static void render_main_stage(
+static void render_lighting_stage(
   VkState *vk_state, VkExtent2D extent, u32 idx_image
 ) {
-  auto *frame_resources = &vk_state->frame_resources[vk_state->idx_frame];
-
   auto *command_buffer =
-    &vk_state->main_stage.command_buffers[vk_state->idx_frame];;
+    &vk_state->lighting_stage.command_buffers[vk_state->idx_frame];;
 
-  record_main_command_buffer(vk_state, command_buffer,
+  record_lighting_command_buffer(vk_state, command_buffer,
     extent, vk_state->idx_frame, idx_image);
   VkSemaphore const wait_semaphores[] = {
-    vk_state->deferred_stage.render_finished_semaphore
+    vk_state->geometry_stage.render_finished_semaphore
   };
   VkPipelineStageFlags const wait_stages[] = {
     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
   };
   VkSemaphore const signal_semaphores[] = {
-    vk_state->main_stage.render_finished_semaphore
+    vk_state->lighting_stage.render_finished_semaphore
   };
   VkSubmitInfo const submit_info = {
     .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -83,13 +81,12 @@ static void render_main_stage(
     .signalSemaphoreCount = 1,
     .pSignalSemaphores    = signal_semaphores,
   };
-  vkResetFences(vk_state->device, 1, &frame_resources->frame_rendered_fence);
   vkutils::check(vkQueueSubmit(vk_state->graphics_queue, 1, &submit_info,
-    frame_resources->frame_rendered_fence));
+    nullptr));
 }
 
 
-static void init_main_stage_swapchain(
+static void init_lighting_stage_swapchain(
   VkState *vk_state, VkExtent2D extent
 ) {
   // Command buffer
@@ -98,7 +95,7 @@ static void init_main_stage_swapchain(
       auto const alloc_info =
         vkutils::command_buffer_allocate_info(vk_state->command_pool);
       vkutils::check(vkAllocateCommandBuffers(vk_state->device, &alloc_info,
-        &vk_state->main_stage.command_buffers[idx]));
+        &vk_state->lighting_stage.command_buffers[idx]));
     }
   }
 
@@ -122,7 +119,7 @@ static void init_main_stage_swapchain(
     auto const pool_info = vkutils::descriptor_pool_create_info(
       N_PARALLEL_FRAMES, n_descriptors, pool_sizes);
     vkutils::check(vkCreateDescriptorPool(vk_state->device, &pool_info, nullptr,
-      &vk_state->main_stage.descriptor_pool));
+      &vk_state->lighting_stage.descriptor_pool));
 
     VkDescriptorImageInfo const g_position_info = {
       .sampler     = vk_state->g_position.sampler,
@@ -156,10 +153,10 @@ static void init_main_stage_swapchain(
       };
 
       // Create descriptor sets
-      auto *descriptor_set = &vk_state->main_stage.descriptor_sets[idx];
+      auto *descriptor_set = &vk_state->lighting_stage.descriptor_sets[idx];
       auto const alloc_info = vkutils::descriptor_set_allocate_info(
-          vk_state->main_stage.descriptor_pool,
-          &vk_state->main_stage.descriptor_set_layout);
+          vk_state->lighting_stage.descriptor_pool,
+          &vk_state->lighting_stage.descriptor_set_layout);
       vkutils::check(vkAllocateDescriptorSets(vk_state->device, &alloc_info,
         descriptor_set));
 
@@ -180,8 +177,8 @@ static void init_main_stage_swapchain(
   {
     auto const color_attachment = vkutils::attachment_description(
       VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-    auto const color_attachment_ref =
-      vkutils::attachment_reference(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    auto const color_attachment_ref = vkutils::attachment_reference(
+      0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     VkAttachmentDescription const attachments[] = {color_attachment};
 
     VkSubpassDescription const subpass = {
@@ -209,7 +206,7 @@ static void init_main_stage_swapchain(
     };
 
     vkutils::check(vkCreateRenderPass(vk_state->device, &render_pass_info,
-      nullptr, &vk_state->main_stage.render_pass));
+      nullptr, &vk_state->lighting_stage.render_pass));
   }
 
   // Framebuffers
@@ -220,7 +217,7 @@ static void init_main_stage_swapchain(
       };
       VkFramebufferCreateInfo const framebuffer_info = {
         .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-        .renderPass      = vk_state->main_stage.render_pass,
+        .renderPass      = vk_state->lighting_stage.render_pass,
         .attachmentCount = LEN(attachments),
         .pAttachments    = attachments,
         .width           = extent.width,
@@ -228,7 +225,7 @@ static void init_main_stage_swapchain(
         .layers          = 1,
       };
       vkutils::check(vkCreateFramebuffer(vk_state->device, &framebuffer_info,
-        nullptr, &vk_state->main_stage.framebuffers[idx]));
+        nullptr, &vk_state->lighting_stage.framebuffers[idx]));
     }
   }
 
@@ -236,9 +233,9 @@ static void init_main_stage_swapchain(
   {
     // Pipeline layout
     auto const pipeline_layout_info = vkutils::pipeline_layout_create_info(
-        &vk_state->main_stage.descriptor_set_layout);
+        &vk_state->lighting_stage.descriptor_set_layout);
     vkutils::check(vkCreatePipelineLayout(vk_state->device, &pipeline_layout_info,
-      nullptr, &vk_state->main_stage.pipeline_layout));
+      nullptr, &vk_state->lighting_stage.pipeline_layout));
 
     // Shaders
     MemoryPool pool = {};
@@ -276,8 +273,8 @@ static void init_main_stage_swapchain(
       .offset = {0, 0},
       .extent = extent,
     };
-    auto const viewport_state_info = vkutils::pipeline_viewport_state_create_info(
-      &viewport, &scissor);
+    auto const viewport_state_info =
+      vkutils::pipeline_viewport_state_create_info(&viewport, &scissor);
     VkPipelineRasterizationStateCreateInfo const rasterizer_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
       .depthClampEnable        = VK_FALSE,
@@ -318,13 +315,13 @@ static void init_main_stage_swapchain(
       .pDepthStencilState  = &depth_stencil_info,
       .pColorBlendState    = &color_blending_info,
       .pDynamicState       = nullptr,
-      .layout              = vk_state->main_stage.pipeline_layout,
-      .renderPass          = vk_state->main_stage.render_pass,
+      .layout              = vk_state->lighting_stage.pipeline_layout,
+      .renderPass          = vk_state->lighting_stage.render_pass,
       .subpass             = 0,
     };
 
     vkutils::check(vkCreateGraphicsPipelines(vk_state->device, VK_NULL_HANDLE, 1,
-      &pipeline_info, nullptr, &vk_state->main_stage.pipeline));
+      &pipeline_info, nullptr, &vk_state->lighting_stage.pipeline));
 
     vkDestroyShaderModule(vk_state->device, vert_shader_module, nullptr);
     vkDestroyShaderModule(vk_state->device, frag_shader_module, nullptr);
@@ -332,7 +329,7 @@ static void init_main_stage_swapchain(
 }
 
 
-static void init_main_stage(VkState *vk_state, VkExtent2D extent) {
+static void init_lighting_stage(VkState *vk_state, VkExtent2D extent) {
   {
     // Create descriptor set layout
     VkDescriptorSetLayoutBinding bindings[] = {
@@ -351,39 +348,39 @@ static void init_main_stage(VkState *vk_state, VkExtent2D extent) {
     auto const layout_info = vkutils::descriptor_set_layout_create_info(
       n_descriptors, bindings);
     vkutils::check(vkCreateDescriptorSetLayout(vk_state->device, &layout_info,
-      nullptr, &vk_state->main_stage.descriptor_set_layout));
+      nullptr, &vk_state->lighting_stage.descriptor_set_layout));
   }
 
   vkutils::create_semaphore(vk_state->device,
-    &vk_state->main_stage.render_finished_semaphore);
+    &vk_state->lighting_stage.render_finished_semaphore);
 
-  init_main_stage_swapchain(vk_state, extent);
+  init_lighting_stage_swapchain(vk_state, extent);
 }
 
 
-static void destroy_main_stage_swapchain(VkState *vk_state) {
+static void destroy_lighting_stage_swapchain(VkState *vk_state) {
   range (0, N_PARALLEL_FRAMES) {
     vkFreeCommandBuffers(vk_state->device, vk_state->command_pool, 1,
-      &vk_state->main_stage.command_buffers[idx]);
+      &vk_state->lighting_stage.command_buffers[idx]);
   }
   vkDestroyDescriptorPool(vk_state->device,
-    vk_state->main_stage.descriptor_pool, nullptr);
+    vk_state->lighting_stage.descriptor_pool, nullptr);
   range (0, vk_state->n_swapchain_images) {
     vkDestroyFramebuffer(vk_state->device,
-      vk_state->main_stage.framebuffers[idx], nullptr);
+      vk_state->lighting_stage.framebuffers[idx], nullptr);
   }
-  vkDestroyPipeline(vk_state->device, vk_state->main_stage.pipeline,
+  vkDestroyPipeline(vk_state->device, vk_state->lighting_stage.pipeline,
     nullptr);
   vkDestroyPipelineLayout(vk_state->device,
-    vk_state->main_stage.pipeline_layout, nullptr);
-  vkDestroyRenderPass(vk_state->device, vk_state->main_stage.render_pass,
+    vk_state->lighting_stage.pipeline_layout, nullptr);
+  vkDestroyRenderPass(vk_state->device, vk_state->lighting_stage.render_pass,
     nullptr);
 }
 
 
-static void destroy_main_stage_nonswapchain(VkState *vk_state) {
+static void destroy_lighting_stage_nonswapchain(VkState *vk_state) {
   vkDestroyDescriptorSetLayout(vk_state->device,
-    vk_state->main_stage.descriptor_set_layout, nullptr);
+    vk_state->lighting_stage.descriptor_set_layout, nullptr);
   vkDestroySemaphore(vk_state->device,
-    vk_state->main_stage.render_finished_semaphore, nullptr);
+    vk_state->lighting_stage.render_finished_semaphore, nullptr);
 }

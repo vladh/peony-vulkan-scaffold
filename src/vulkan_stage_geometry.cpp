@@ -1,11 +1,11 @@
-static void record_deferred_command_buffer(
+static void record_geometry_command_buffer(
   VkState *vk_state,
   VkCommandBuffer *command_buffer,
   VkExtent2D extent,
   u32 idx_frame,
   u32 idx_image
 ) {
-  auto *descriptor_set = &vk_state->deferred_stage.descriptor_sets[idx_frame];
+  auto *descriptor_set = &vk_state->geometry_stage.descriptor_sets[idx_frame];
 
   // Reset commmand buffer
   vkResetCommandBuffer(*command_buffer, 0);
@@ -24,8 +24,8 @@ static void record_deferred_command_buffer(
   };
   VkRenderPassBeginInfo const renderpass_info = {
     .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-    .renderPass      = vk_state->deferred_stage.render_pass,
-    .framebuffer     = vk_state->deferred_stage.framebuffers[idx_image],
+    .renderPass      = vk_state->geometry_stage.render_pass,
+    .framebuffer     = vk_state->geometry_stage.framebuffers[idx_image],
     .renderArea = {
       .offset        = {0, 0},
       .extent        = extent,
@@ -38,9 +38,9 @@ static void record_deferred_command_buffer(
 
   // Bind pipeline and descriptor sets
   vkCmdBindPipeline(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    vk_state->deferred_stage.pipeline);
+    vk_state->geometry_stage.pipeline);
   vkCmdBindDescriptorSets(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    vk_state->deferred_stage.pipeline_layout, 0, 1, descriptor_set, 0, nullptr);
+    vk_state->geometry_stage.pipeline_layout, 0, 1, descriptor_set, 0, nullptr);
 
   // Bind vertex and index buffers
   VkBuffer const vertex_buffers[] = {vk_state->sign_vertex_buffer};
@@ -58,15 +58,15 @@ static void record_deferred_command_buffer(
 }
 
 
-static void render_deferred_stage(
+static void render_geometry_stage(
   VkState *vk_state, VkExtent2D extent, u32 idx_image
 ) {
   auto *frame_resources = &vk_state->frame_resources[vk_state->idx_frame];
 
   auto *command_buffer =
-    &vk_state->deferred_stage.command_buffers[vk_state->idx_frame];
+    &vk_state->geometry_stage.command_buffers[vk_state->idx_frame];
 
-  record_deferred_command_buffer(vk_state, command_buffer,
+  record_geometry_command_buffer(vk_state, command_buffer,
     extent, vk_state->idx_frame, idx_image);
   VkSemaphore const wait_semaphores[] = {
     frame_resources->image_available_semaphore
@@ -75,7 +75,7 @@ static void render_deferred_stage(
     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
   };
   VkSemaphore const signal_semaphores[] = {
-    vk_state->deferred_stage.render_finished_semaphore
+    vk_state->geometry_stage.render_finished_semaphore
   };
   VkSubmitInfo const submit_info = {
     .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -92,7 +92,7 @@ static void render_deferred_stage(
 }
 
 
-static void init_deferred_stage_swapchain(
+static void init_geometry_stage_swapchain(
   VkState *vk_state, VkExtent2D extent
 ) {
   // Command buffers
@@ -101,7 +101,7 @@ static void init_deferred_stage_swapchain(
       auto const alloc_info =
         vkutils::command_buffer_allocate_info(vk_state->command_pool);
       vkutils::check(vkAllocateCommandBuffers(vk_state->device, &alloc_info,
-        &vk_state->deferred_stage.command_buffers[idx]));
+        &vk_state->geometry_stage.command_buffers[idx]));
     }
   }
 
@@ -119,7 +119,7 @@ static void init_deferred_stage_swapchain(
     auto const pool_info = vkutils::descriptor_pool_create_info(
       N_PARALLEL_FRAMES, n_descriptors, pool_sizes);
     vkutils::check(vkCreateDescriptorPool(vk_state->device, &pool_info, nullptr,
-      &vk_state->deferred_stage.descriptor_pool));
+      &vk_state->geometry_stage.descriptor_pool));
 
     VkDescriptorImageInfo const image_info = {
       .sampler     = vk_state->texture_sampler,
@@ -138,10 +138,10 @@ static void init_deferred_stage_swapchain(
       };
 
       // Create descriptor sets
-      auto *descriptor_set = &vk_state->deferred_stage.descriptor_sets[idx];
+      auto *descriptor_set = &vk_state->geometry_stage.descriptor_sets[idx];
       auto const alloc_info = vkutils::descriptor_set_allocate_info(
-          vk_state->deferred_stage.descriptor_pool,
-          &vk_state->deferred_stage.descriptor_set_layout);
+          vk_state->geometry_stage.descriptor_pool,
+          &vk_state->geometry_stage.descriptor_set_layout);
       vkutils::check(vkAllocateDescriptorSets(vk_state->device, &alloc_info,
         descriptor_set));
 
@@ -220,7 +220,7 @@ static void init_deferred_stage_swapchain(
     };
 
     vkutils::check(vkCreateRenderPass(vk_state->device, &render_pass_info,
-      nullptr, &vk_state->deferred_stage.render_pass));
+      nullptr, &vk_state->geometry_stage.render_pass));
   }
 
   // Framebuffers
@@ -291,7 +291,7 @@ static void init_deferred_stage_swapchain(
       };
       VkFramebufferCreateInfo const framebuffer_info = {
         .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-        .renderPass      = vk_state->deferred_stage.render_pass,
+        .renderPass      = vk_state->geometry_stage.render_pass,
         .attachmentCount = LEN(attachments),
         .pAttachments    = attachments,
         .width           = extent.width,
@@ -299,7 +299,7 @@ static void init_deferred_stage_swapchain(
         .layers          = 1,
       };
       vkutils::check(vkCreateFramebuffer(vk_state->device, &framebuffer_info,
-        nullptr, &vk_state->deferred_stage.framebuffers[idx]));
+        nullptr, &vk_state->geometry_stage.framebuffers[idx]));
     }
   }
 
@@ -307,16 +307,16 @@ static void init_deferred_stage_swapchain(
   {
     // Pipeline layout
     auto const pipeline_layout_info = vkutils::pipeline_layout_create_info(
-        &vk_state->deferred_stage.descriptor_set_layout);
+        &vk_state->geometry_stage.descriptor_set_layout);
     vkutils::check(vkCreatePipelineLayout(vk_state->device, &pipeline_layout_info,
-      nullptr, &vk_state->deferred_stage.pipeline_layout));
+      nullptr, &vk_state->geometry_stage.pipeline_layout));
 
     // Shaders
     MemoryPool pool = {};
     auto const vert_shader_module = vkutils::create_shader_module_from_file(
-      vk_state->device, &pool, "bin/shaders/standard.vert.spv");
+      vk_state->device, &pool, "bin/shaders/geometry.vert.spv");
     auto const frag_shader_module = vkutils::create_shader_module_from_file(
-      vk_state->device, &pool, "bin/shaders/standard.frag.spv");
+      vk_state->device, &pool, "bin/shaders/geometry.frag.spv");
     VkPipelineShaderStageCreateInfo const shader_stages[] = {
       vkutils::pipeline_shader_stage_create_info_vert(vert_shader_module),
       vkutils::pipeline_shader_stage_create_info_frag(frag_shader_module),
@@ -347,8 +347,8 @@ static void init_deferred_stage_swapchain(
       .offset = {0, 0},
       .extent = extent,
     };
-    auto const viewport_state_info = vkutils::pipeline_viewport_state_create_info(
-      &viewport, &scissor);
+    auto const viewport_state_info =
+      vkutils::pipeline_viewport_state_create_info(&viewport, &scissor);
     VkPipelineRasterizationStateCreateInfo const rasterizer_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
       .depthClampEnable        = VK_FALSE,
@@ -397,13 +397,13 @@ static void init_deferred_stage_swapchain(
       .pDepthStencilState  = &depth_stencil_info,
       .pColorBlendState    = &color_blending_info,
       .pDynamicState       = nullptr,
-      .layout              = vk_state->deferred_stage.pipeline_layout,
-      .renderPass          = vk_state->deferred_stage.render_pass,
+      .layout              = vk_state->geometry_stage.pipeline_layout,
+      .renderPass          = vk_state->geometry_stage.render_pass,
       .subpass             = 0,
     };
 
     vkutils::check(vkCreateGraphicsPipelines(vk_state->device, VK_NULL_HANDLE, 1,
-      &pipeline_info, nullptr, &vk_state->deferred_stage.pipeline));
+      &pipeline_info, nullptr, &vk_state->geometry_stage.pipeline));
 
     vkDestroyShaderModule(vk_state->device, vert_shader_module, nullptr);
     vkDestroyShaderModule(vk_state->device, frag_shader_module, nullptr);
@@ -411,7 +411,7 @@ static void init_deferred_stage_swapchain(
 }
 
 
-static void init_deferred_stage(VkState *vk_state, VkExtent2D extent) {
+static void init_geometry_stage(VkState *vk_state, VkExtent2D extent) {
   // Descriptor set layout
   {
     u32 n_descriptors = 2;
@@ -424,39 +424,39 @@ static void init_deferred_stage(VkState *vk_state, VkExtent2D extent) {
     auto const layout_info =
       vkutils::descriptor_set_layout_create_info(n_descriptors, bindings);
     vkutils::check(vkCreateDescriptorSetLayout(vk_state->device, &layout_info,
-      nullptr, &vk_state->deferred_stage.descriptor_set_layout));
+      nullptr, &vk_state->geometry_stage.descriptor_set_layout));
   }
 
   vkutils::create_semaphore(vk_state->device,
-    &vk_state->deferred_stage.render_finished_semaphore);
+    &vk_state->geometry_stage.render_finished_semaphore);
 
-  init_deferred_stage_swapchain(vk_state, extent);
+  init_geometry_stage_swapchain(vk_state, extent);
 }
 
 
-static void destroy_deferred_stage_swapchain(VkState *vk_state) {
+static void destroy_geometry_stage_swapchain(VkState *vk_state) {
   range (0, N_PARALLEL_FRAMES) {
     vkFreeCommandBuffers(vk_state->device, vk_state->command_pool, 1,
-      &vk_state->deferred_stage.command_buffers[idx]);
+      &vk_state->geometry_stage.command_buffers[idx]);
   }
   vkDestroyDescriptorPool(vk_state->device,
-    vk_state->deferred_stage.descriptor_pool, nullptr);
+    vk_state->geometry_stage.descriptor_pool, nullptr);
   range (0, vk_state->n_swapchain_images) {
     vkDestroyFramebuffer(vk_state->device,
-      vk_state->deferred_stage.framebuffers[idx], nullptr);
+      vk_state->geometry_stage.framebuffers[idx], nullptr);
   }
-  vkDestroyPipeline(vk_state->device, vk_state->deferred_stage.pipeline,
+  vkDestroyPipeline(vk_state->device, vk_state->geometry_stage.pipeline,
     nullptr);
   vkDestroyPipelineLayout(vk_state->device,
-    vk_state->deferred_stage.pipeline_layout, nullptr);
-  vkDestroyRenderPass(vk_state->device, vk_state->deferred_stage.render_pass,
+    vk_state->geometry_stage.pipeline_layout, nullptr);
+  vkDestroyRenderPass(vk_state->device, vk_state->geometry_stage.render_pass,
     nullptr);
 }
 
 
-static void destroy_deferred_stage_nonswapchain(VkState *vk_state) {
+static void destroy_geometry_stage_nonswapchain(VkState *vk_state) {
   vkDestroyDescriptorSetLayout(vk_state->device,
-    vk_state->deferred_stage.descriptor_set_layout, nullptr);
+    vk_state->geometry_stage.descriptor_set_layout, nullptr);
   vkDestroySemaphore(vk_state->device,
-    vk_state->deferred_stage.render_finished_semaphore, nullptr);
+    vk_state->geometry_stage.render_finished_semaphore, nullptr);
 }

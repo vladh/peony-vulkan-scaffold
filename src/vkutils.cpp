@@ -78,6 +78,22 @@ namespace vkutils {
   }
 
 
+  VkAttachmentDescription attachment_description_loadload(
+    VkFormat format, VkImageLayout initialLayout, VkImageLayout finalLayout
+  ) {
+    return {
+      .format         = format,
+      .samples        = VK_SAMPLE_COUNT_1_BIT,
+      .loadOp         = VK_ATTACHMENT_LOAD_OP_LOAD,
+      .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
+      .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+      .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+      .initialLayout  = initialLayout,
+      .finalLayout    = finalLayout,
+    };
+  }
+
+
   VkCommandBufferBeginInfo command_buffer_begin_info() {
     return {
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,

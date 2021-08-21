@@ -40,10 +40,19 @@ static constexpr Vertex SIGN_VERTICES[] = {
   {{ 0.5f, -0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
   {{-0.5f, -0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
 };
-
 static constexpr u32 SIGN_INDICES[] = {
   0, 1, 2, 2, 3, 0,
   4, 5, 6, 6, 7, 4,
+};
+
+static constexpr Vertex FSIGN_VERTICES[] = {
+  {{-0.5f, -0.25f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+  {{ 0.5f, -0.25f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+  {{ 0.5f, -0.25f,  0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
+  {{-0.5f, -0.25f,  0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
+};
+static constexpr u32 FSIGN_INDICES[] = {
+  0, 1, 2, 2, 3, 0,
 };
 
 static constexpr Vertex SCREENQUAD_VERTICES[] = {
@@ -52,7 +61,6 @@ static constexpr Vertex SCREENQUAD_VERTICES[] = {
   {{ 1.0f, -1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
   {{ 1.0f,  1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f}},
 };
-
 static constexpr u32 SCREENQUAD_INDICES[] = {
   0, 1, 2, 0, 2, 3,
 };
@@ -150,11 +158,15 @@ struct VkState {
   // Scene resources
   VkBuffer sign_vertex_buffer;
   VkDeviceMemory sign_vertex_buffer_memory;
+  VkBuffer fsign_vertex_buffer;
+  VkDeviceMemory fsign_vertex_buffer_memory;
   VkBuffer screenquad_vertex_buffer;
   VkDeviceMemory screenquad_vertex_buffer_memory;
 
   VkBuffer sign_index_buffer;
   VkDeviceMemory sign_index_buffer_memory;
+  VkBuffer fsign_index_buffer;
+  VkDeviceMemory fsign_index_buffer_memory;
   VkBuffer screenquad_index_buffer;
   VkDeviceMemory screenquad_index_buffer_memory;
 
@@ -172,8 +184,9 @@ struct VkState {
   ImageResources g_pbr;
 
   // Render stages
-  RenderStage deferred_stage;
-  RenderStage main_stage;
+  RenderStage geometry_stage;
+  RenderStage lighting_stage;
+  RenderStage forward_stage;
 };
 
 namespace vulkan {

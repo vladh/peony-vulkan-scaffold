@@ -154,6 +154,66 @@ static void init_buffers(VkState *vk_state) {
     vkFreeMemory(vk_state->device, staging_buffer_memory, nullptr);
   }
 
+  // Fsign vertex buffer
+  {
+    VkDeviceSize buffer_size = sizeof(FSIGN_VERTICES);
+
+    VkBuffer staging_buffer;
+    VkDeviceMemory staging_buffer_memory;
+    vkutils::create_buffer(vk_state->device, vk_state->physical_device,
+      buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &staging_buffer,
+      &staging_buffer_memory);
+
+    void *memory;
+    vkMapMemory(vk_state->device, staging_buffer_memory, 0, buffer_size, 0,
+      &memory);
+    memcpy(memory, FSIGN_VERTICES, (size_t)buffer_size);
+    vkUnmapMemory(vk_state->device, staging_buffer_memory);
+
+    vkutils::create_buffer(vk_state->device, vk_state->physical_device,
+      buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+      &vk_state->fsign_vertex_buffer, &vk_state->fsign_vertex_buffer_memory);
+    vkutils::copy_buffer(vk_state->device, vk_state->command_pool,
+      vk_state->graphics_queue, staging_buffer,
+      vk_state->fsign_vertex_buffer, buffer_size);
+
+    vkDestroyBuffer(vk_state->device, staging_buffer, nullptr);
+    vkFreeMemory(vk_state->device, staging_buffer_memory, nullptr);
+  }
+
+  // Fsign index buffer
+  {
+    VkDeviceSize buffer_size = sizeof(FSIGN_INDICES);
+
+    VkBuffer staging_buffer;
+    VkDeviceMemory staging_buffer_memory;
+    vkutils::create_buffer(vk_state->device, vk_state->physical_device,
+      buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &staging_buffer,
+      &staging_buffer_memory);
+
+    void *memory;
+    vkMapMemory(vk_state->device, staging_buffer_memory, 0, buffer_size, 0,
+      &memory);
+    memcpy(memory, FSIGN_INDICES, (size_t)buffer_size);
+    vkUnmapMemory(vk_state->device, staging_buffer_memory);
+
+    vkutils::create_buffer(vk_state->device, vk_state->physical_device,
+      buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+      VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+      &vk_state->fsign_index_buffer, &vk_state->fsign_index_buffer_memory);
+    vkutils::copy_buffer(vk_state->device, vk_state->command_pool,
+      vk_state->graphics_queue, staging_buffer, vk_state->fsign_index_buffer,
+      buffer_size);
+
+    vkDestroyBuffer(vk_state->device, staging_buffer, nullptr);
+    vkFreeMemory(vk_state->device, staging_buffer_memory, nullptr);
+  }
+
   // Screenquad vertex buffer
   {
     VkDeviceSize buffer_size = sizeof(SCREENQUAD_VERTICES);

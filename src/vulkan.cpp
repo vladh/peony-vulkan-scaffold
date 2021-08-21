@@ -22,8 +22,9 @@
 #include "vkutils.cpp"
 #include "vulkan_swapchain.cpp"
 #include "vulkan_resources.cpp"
-#include "vulkan_stage_deferred.cpp"
-#include "vulkan_stage_main.cpp"
+#include "vulkan_stage_geometry.cpp"
+#include "vulkan_stage_lighting.cpp"
+#include "vulkan_stage_forward.cpp"
 #include "vulkan_general.cpp"
 
 
@@ -80,8 +81,9 @@ void vulkan::init(VkState *vk_state, CommonState *common_state) {
   init_buffers(vk_state);
   init_uniform_buffers(vk_state);
 
-  init_deferred_stage(vk_state, common_state->extent);
-  init_main_stage(vk_state, common_state->extent);
+  init_geometry_stage(vk_state, common_state->extent);
+  init_lighting_stage(vk_state, common_state->extent);
+  init_forward_stage(vk_state, common_state->extent);
 
   init_synchronization(vk_state);
 }
@@ -108,8 +110,9 @@ static void destroy_swapchain(VkState *vk_state) {
       frame_resources->uniform_buffer_memory, nullptr);
   }
 
-  destroy_deferred_stage_swapchain(vk_state);
-  destroy_main_stage_swapchain(vk_state);
+  destroy_geometry_stage_swapchain(vk_state);
+  destroy_lighting_stage_swapchain(vk_state);
+  destroy_forward_stage_swapchain(vk_state);
 
   range (0, vk_state->n_swapchain_images) {
     vkDestroyImageView(vk_state->device, vk_state->swapchain_image_views[idx],
@@ -128,12 +131,16 @@ void vulkan::destroy(VkState *vk_state) {
 
   vkDestroyBuffer(vk_state->device, vk_state->sign_vertex_buffer, nullptr);
   vkFreeMemory(vk_state->device, vk_state->sign_vertex_buffer_memory, nullptr);
+  vkDestroyBuffer(vk_state->device, vk_state->fsign_vertex_buffer, nullptr);
+  vkFreeMemory(vk_state->device, vk_state->fsign_vertex_buffer_memory, nullptr);
   vkDestroyBuffer(vk_state->device, vk_state->screenquad_vertex_buffer,
     nullptr);
   vkFreeMemory(vk_state->device, vk_state->screenquad_vertex_buffer_memory,
     nullptr);
   vkDestroyBuffer(vk_state->device, vk_state->sign_index_buffer, nullptr);
   vkFreeMemory(vk_state->device, vk_state->sign_index_buffer_memory, nullptr);
+  vkDestroyBuffer(vk_state->device, vk_state->fsign_index_buffer, nullptr);
+  vkFreeMemory(vk_state->device, vk_state->fsign_index_buffer_memory, nullptr);
   vkDestroyBuffer(vk_state->device, vk_state->screenquad_index_buffer, nullptr);
   vkFreeMemory(vk_state->device, vk_state->screenquad_index_buffer_memory,
     nullptr);
@@ -146,8 +153,9 @@ void vulkan::destroy(VkState *vk_state) {
       nullptr);
   }
 
-  destroy_deferred_stage_nonswapchain(vk_state);
-  destroy_main_stage_nonswapchain(vk_state);
+  destroy_geometry_stage_nonswapchain(vk_state);
+  destroy_lighting_stage_nonswapchain(vk_state);
+  destroy_forward_stage_nonswapchain(vk_state);
 
   vkDestroyCommandPool(vk_state->device, vk_state->command_pool,
     nullptr);
@@ -183,8 +191,9 @@ void vulkan::recreate_swapchain(VkState *vk_state, CommonState *common_state) {
   init_swapchain(vk_state, common_state->window, &common_state->extent);
   init_uniform_buffers(vk_state);
 
-  init_deferred_stage_swapchain(vk_state, common_state->extent);
-  init_main_stage_swapchain(vk_state, common_state->extent);
+  init_geometry_stage_swapchain(vk_state, common_state->extent);
+  init_lighting_stage_swapchain(vk_state, common_state->extent);
+  init_forward_stage_swapchain(vk_state, common_state->extent);
 }
 
 
@@ -220,13 +229,14 @@ void vulkan::render(VkState *vk_state, CommonState *common_state) {
   }
 
   // Render each stage
-  render_deferred_stage(vk_state, common_state->extent, idx_image);
-  render_main_stage(vk_state, common_state->extent, idx_image);
+  render_geometry_stage(vk_state, common_state->extent, idx_image);
+  render_lighting_stage(vk_state, common_state->extent, idx_image);
+  render_forward_stage(vk_state, common_state->extent, idx_image);
 
   // Present image
   {
     VkSemaphore const signal_semaphores[] = {
-      vk_state->main_stage.render_finished_semaphore
+      vk_state->forward_stage.render_finished_semaphore
     };
     VkSwapchainKHR const swapchains[] = {vk_state->swapchain};
     VkPresentInfoKHR const present_info = {

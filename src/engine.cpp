@@ -12,7 +12,7 @@ void engine::update(CommonState *common_state) {
     .model_matrix = model_matrix,
     .model_normal_matrix = model_normal_matrix,
     .view = glm::lookAt(
-      v3(-1.0f, 1.0f, 1.0f),
+      v3(-1.0f, sin(f32(t)) + 1.0f, 1.0f),
       v3(0.0f, 0.0f, 0.0f),
       v3(0.0f, 1.0f, 0.0f)
     ),
