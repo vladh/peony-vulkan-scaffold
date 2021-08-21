@@ -398,3 +398,43 @@ static void record_deferred_command_buffer(
   vkCmdEndRenderPass(*command_buffer);
   check_vk_result(vkEndCommandBuffer(*command_buffer));
 }
+
+
+static void init_deferred_stage(VkState *vk_state, VkExtent2D extent) {
+  init_deferred_descriptor_set_layout(vk_state);
+  init_deferred_descriptors(vk_state);
+  init_deferred_render_pass(vk_state);
+  init_deferred_framebuffers(vk_state, extent);
+  init_deferred_pipeline(vk_state, extent);
+  init_deferred_command_buffer(vk_state, extent);
+  init_deferred_synchronization(vk_state);
+}
+
+
+static void destroy_deferred_stage_swapchain(VkState *vk_state) {
+  range (0, N_PARALLEL_FRAMES) {
+    FrameResources *frame_resources = &vk_state->frame_resources[idx];
+    vkFreeCommandBuffers(vk_state->device, vk_state->command_pool,
+      1, &frame_resources->deferred_command_buffer);
+  }
+  vkDestroyDescriptorPool(vk_state->device,
+    vk_state->deferred_stage.descriptor_pool, nullptr);
+  range (0, vk_state->n_swapchain_images) {
+    vkDestroyFramebuffer(vk_state->device,
+      vk_state->deferred_stage.framebuffers[idx], nullptr);
+  }
+  vkDestroyPipeline(vk_state->device, vk_state->deferred_stage.pipeline,
+    nullptr);
+  vkDestroyPipelineLayout(vk_state->device,
+    vk_state->deferred_stage.pipeline_layout, nullptr);
+  vkDestroyRenderPass(vk_state->device, vk_state->deferred_stage.render_pass,
+    nullptr);
+}
+
+
+static void destroy_deferred_stage_nonswapchain(VkState *vk_state) {
+  vkDestroyDescriptorSetLayout(vk_state->device,
+    vk_state->deferred_stage.descriptor_set_layout, nullptr);
+  vkDestroySemaphore(vk_state->device,
+    vk_state->deferred_stage.render_finished_semaphore, nullptr);
+}

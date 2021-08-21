@@ -44,9 +44,6 @@ static void init_synchronization(VkState *vk_state) {
     check_vk_result(vkCreateFence(vk_state->device, &fence_info, nullptr,
       &frame_resources->frame_rendered_fence));
   }
-
-  init_deferred_synchronization(vk_state);
-  init_main_synchronization(vk_state);
 }
 
 
@@ -84,21 +81,8 @@ void vulkan::init(VkState *vk_state, CommonState *common_state) {
   init_buffers(vk_state);
   init_uniform_buffers(vk_state);
 
-  // Deferred stage
-  init_deferred_descriptor_set_layout(vk_state);
-  init_deferred_descriptors(vk_state);
-  init_deferred_render_pass(vk_state);
-  init_deferred_framebuffers(vk_state, common_state->extent);
-  init_deferred_pipeline(vk_state, common_state->extent);
-  init_deferred_command_buffer(vk_state, common_state->extent);
-
-  // Main stage
-  init_main_descriptor_set_layout(vk_state);
-  init_main_descriptors(vk_state);
-  init_main_render_pass(vk_state);
-  init_main_framebuffers(vk_state, common_state->extent);
-  init_main_pipeline(vk_state, common_state->extent);
-  init_main_command_buffer(vk_state, common_state->extent);
+  init_deferred_stage(vk_state, common_state->extent);
+  init_main_stage(vk_state, common_state->extent);
 
   init_synchronization(vk_state);
 }
@@ -121,43 +105,8 @@ static void destroy_swapchain(VkState *vk_state) {
       frame_resources->uniform_buffer_memory, nullptr);
   }
 
-  // Deferred stage
-  range (0, N_PARALLEL_FRAMES) {
-    FrameResources *frame_resources = &vk_state->frame_resources[idx];
-    vkFreeCommandBuffers(vk_state->device, vk_state->command_pool,
-      1, &frame_resources->deferred_command_buffer);
-  }
-  vkDestroyDescriptorPool(vk_state->device,
-    vk_state->deferred_stage.descriptor_pool, nullptr);
-  range (0, vk_state->n_swapchain_images) {
-    vkDestroyFramebuffer(vk_state->device,
-      vk_state->deferred_stage.framebuffers[idx], nullptr);
-  }
-  vkDestroyPipeline(vk_state->device, vk_state->deferred_stage.pipeline,
-    nullptr);
-  vkDestroyPipelineLayout(vk_state->device,
-    vk_state->deferred_stage.pipeline_layout, nullptr);
-  vkDestroyRenderPass(vk_state->device, vk_state->deferred_stage.render_pass,
-    nullptr);
-
-  // Main stage
-  range (0, N_PARALLEL_FRAMES) {
-    FrameResources *frame_resources = &vk_state->frame_resources[idx];
-    vkFreeCommandBuffers(vk_state->device, vk_state->command_pool,
-      1, &frame_resources->main_command_buffer);
-  }
-  vkDestroyDescriptorPool(vk_state->device,
-    vk_state->main_stage.descriptor_pool, nullptr);
-  range (0, vk_state->n_swapchain_images) {
-    vkDestroyFramebuffer(vk_state->device,
-      vk_state->main_stage.framebuffers[idx], nullptr);
-  }
-  vkDestroyPipeline(vk_state->device, vk_state->main_stage.pipeline,
-    nullptr);
-  vkDestroyPipelineLayout(vk_state->device,
-    vk_state->main_stage.pipeline_layout, nullptr);
-  vkDestroyRenderPass(vk_state->device, vk_state->main_stage.render_pass,
-    nullptr);
+  destroy_deferred_stage_swapchain(vk_state);
+  destroy_main_stage_swapchain(vk_state);
 
   range (0, vk_state->n_swapchain_images) {
     vkDestroyImageView(vk_state->device, vk_state->swapchain_image_views[idx],
@@ -194,17 +143,8 @@ void vulkan::destroy(VkState *vk_state) {
       nullptr);
   }
 
-  // Deferred stage
-  vkDestroyDescriptorSetLayout(vk_state->device,
-    vk_state->deferred_stage.descriptor_set_layout, nullptr);
-  vkDestroySemaphore(vk_state->device,
-    vk_state->deferred_stage.render_finished_semaphore, nullptr);
-
-  // Main stage
-  vkDestroyDescriptorSetLayout(vk_state->device,
-    vk_state->main_stage.descriptor_set_layout, nullptr);
-  vkDestroySemaphore(vk_state->device,
-    vk_state->main_stage.render_finished_semaphore, nullptr);
+  destroy_deferred_stage_nonswapchain(vk_state);
+  destroy_main_stage_nonswapchain(vk_state);
 
   vkDestroyCommandPool(vk_state->device, vk_state->command_pool,
     nullptr);
