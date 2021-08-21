@@ -180,19 +180,8 @@ void vulkan::recreate_swapchain(VkState *vk_state, CommonState *common_state) {
   init_swapchain(vk_state, common_state->window, &common_state->extent);
   init_uniform_buffers(vk_state);
 
-  // Deferred stage
-  init_deferred_command_buffer(vk_state, common_state->extent);
-  init_deferred_descriptors(vk_state);
-  init_deferred_render_pass(vk_state);
-  init_deferred_framebuffers(vk_state, common_state->extent);
-  init_deferred_pipeline(vk_state, common_state->extent);
-
-  // Main stage
-  init_main_command_buffer(vk_state, common_state->extent);
-  init_main_descriptors(vk_state);
-  init_main_render_pass(vk_state);
-  init_main_framebuffers(vk_state, common_state->extent);
-  init_main_pipeline(vk_state, common_state->extent);
+  reinit_deferred_stage_swapchain(vk_state, common_state->extent);
+  reinit_main_stage_swapchain(vk_state, common_state->extent);
 }
 
 
@@ -214,8 +203,8 @@ void vulkan::render(VkState *vk_state, CommonState *common_state) {
   u32 idx_image;
   {
     VkResult acquire_image_res = vkAcquireNextImageKHR(vk_state->device,
-      vk_state->swapchain, UINT64_MAX, frame_resources->image_available_semaphore,
-      VK_NULL_HANDLE, &idx_image);
+      vk_state->swapchain, UINT64_MAX,
+      frame_resources->image_available_semaphore, VK_NULL_HANDLE, &idx_image);
 
     if (acquire_image_res == VK_ERROR_OUT_OF_DATE_KHR) {
       recreate_swapchain(vk_state, common_state);
@@ -227,62 +216,9 @@ void vulkan::render(VkState *vk_state, CommonState *common_state) {
     }
   }
 
-  // Deferred stage
-  {
-    VkCommandBuffer *command_buffer = &frame_resources->deferred_command_buffer;
-    record_deferred_command_buffer(vk_state, command_buffer,
-      common_state->extent, vk_state->idx_frame, idx_image);
-    VkSemaphore const wait_semaphores[] = {
-      frame_resources->image_available_semaphore
-    };
-    VkPipelineStageFlags const wait_stages[] = {
-      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-    };
-    VkSemaphore const signal_semaphores[] = {
-      vk_state->deferred_stage.render_finished_semaphore
-    };
-    VkSubmitInfo const submit_info = {
-      .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-      .waitSemaphoreCount   = 1,
-      .pWaitSemaphores      = wait_semaphores,
-      .pWaitDstStageMask    = wait_stages,
-      .commandBufferCount   = 1,
-      .pCommandBuffers      = command_buffer,
-      .signalSemaphoreCount = 1,
-      .pSignalSemaphores    = signal_semaphores,
-    };
-    check_vk_result(vkQueueSubmit(vk_state->graphics_queue, 1, &submit_info,
-      nullptr));
-  }
-
-  // Main render stage
-  {
-    VkCommandBuffer *command_buffer = &frame_resources->main_command_buffer;
-    record_main_command_buffer(vk_state, command_buffer,
-      common_state->extent, vk_state->idx_frame, idx_image);
-    VkSemaphore const wait_semaphores[] = {
-      vk_state->deferred_stage.render_finished_semaphore
-    };
-    VkPipelineStageFlags const wait_stages[] = {
-      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-    };
-    VkSemaphore const signal_semaphores[] = {
-      vk_state->main_stage.render_finished_semaphore
-    };
-    VkSubmitInfo const submit_info = {
-      .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-      .waitSemaphoreCount   = 1,
-      .pWaitSemaphores      = wait_semaphores,
-      .pWaitDstStageMask    = wait_stages,
-      .commandBufferCount   = 1,
-      .pCommandBuffers      = command_buffer,
-      .signalSemaphoreCount = 1,
-      .pSignalSemaphores    = signal_semaphores,
-    };
-    vkResetFences(vk_state->device, 1, &frame_resources->frame_rendered_fence);
-    check_vk_result(vkQueueSubmit(vk_state->graphics_queue, 1, &submit_info,
-      frame_resources->frame_rendered_fence));
-  }
+  // Render each stage
+  render_deferred_stage(vk_state, common_state->extent, idx_image);
+  render_main_stage(vk_state, common_state->extent, idx_image);
 
   // Present image
   {

@@ -400,6 +400,39 @@ static void record_deferred_command_buffer(
 }
 
 
+static void render_deferred_stage(
+  VkState *vk_state, VkExtent2D extent, u32 idx_image
+) {
+  FrameResources *frame_resources =
+    &vk_state->frame_resources[vk_state->idx_frame];
+
+  VkCommandBuffer *command_buffer = &frame_resources->deferred_command_buffer;
+  record_deferred_command_buffer(vk_state, command_buffer,
+    extent, vk_state->idx_frame, idx_image);
+  VkSemaphore const wait_semaphores[] = {
+    frame_resources->image_available_semaphore
+  };
+  VkPipelineStageFlags const wait_stages[] = {
+    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+  };
+  VkSemaphore const signal_semaphores[] = {
+    vk_state->deferred_stage.render_finished_semaphore
+  };
+  VkSubmitInfo const submit_info = {
+    .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+    .waitSemaphoreCount   = 1,
+    .pWaitSemaphores      = wait_semaphores,
+    .pWaitDstStageMask    = wait_stages,
+    .commandBufferCount   = 1,
+    .pCommandBuffers      = command_buffer,
+    .signalSemaphoreCount = 1,
+    .pSignalSemaphores    = signal_semaphores,
+  };
+  check_vk_result(vkQueueSubmit(vk_state->graphics_queue, 1, &submit_info,
+    nullptr));
+}
+
+
 static void init_deferred_stage(VkState *vk_state, VkExtent2D extent) {
   init_deferred_descriptor_set_layout(vk_state);
   init_deferred_descriptors(vk_state);
@@ -408,6 +441,17 @@ static void init_deferred_stage(VkState *vk_state, VkExtent2D extent) {
   init_deferred_pipeline(vk_state, extent);
   init_deferred_command_buffer(vk_state, extent);
   init_deferred_synchronization(vk_state);
+}
+
+
+static void reinit_deferred_stage_swapchain(
+  VkState *vk_state, VkExtent2D extent
+) {
+  init_deferred_command_buffer(vk_state, extent);
+  init_deferred_descriptors(vk_state);
+  init_deferred_render_pass(vk_state);
+  init_deferred_framebuffers(vk_state, extent);
+  init_deferred_pipeline(vk_state, extent);
 }
 
 

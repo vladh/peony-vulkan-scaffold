@@ -325,6 +325,40 @@ static void record_main_command_buffer(
 }
 
 
+static void render_main_stage(
+  VkState *vk_state, VkExtent2D extent, u32 idx_image
+) {
+  FrameResources *frame_resources =
+    &vk_state->frame_resources[vk_state->idx_frame];
+
+  VkCommandBuffer *command_buffer = &frame_resources->main_command_buffer;
+  record_main_command_buffer(vk_state, command_buffer,
+    extent, vk_state->idx_frame, idx_image);
+  VkSemaphore const wait_semaphores[] = {
+    vk_state->deferred_stage.render_finished_semaphore
+  };
+  VkPipelineStageFlags const wait_stages[] = {
+    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+  };
+  VkSemaphore const signal_semaphores[] = {
+    vk_state->main_stage.render_finished_semaphore
+  };
+  VkSubmitInfo const submit_info = {
+    .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+    .waitSemaphoreCount   = 1,
+    .pWaitSemaphores      = wait_semaphores,
+    .pWaitDstStageMask    = wait_stages,
+    .commandBufferCount   = 1,
+    .pCommandBuffers      = command_buffer,
+    .signalSemaphoreCount = 1,
+    .pSignalSemaphores    = signal_semaphores,
+  };
+  vkResetFences(vk_state->device, 1, &frame_resources->frame_rendered_fence);
+  check_vk_result(vkQueueSubmit(vk_state->graphics_queue, 1, &submit_info,
+    frame_resources->frame_rendered_fence));
+}
+
+
 static void init_main_stage(VkState *vk_state, VkExtent2D extent) {
   init_main_descriptor_set_layout(vk_state);
   init_main_descriptors(vk_state);
@@ -333,6 +367,17 @@ static void init_main_stage(VkState *vk_state, VkExtent2D extent) {
   init_main_pipeline(vk_state, extent);
   init_main_command_buffer(vk_state, extent);
   init_main_synchronization(vk_state);
+}
+
+
+static void reinit_main_stage_swapchain(
+  VkState *vk_state, VkExtent2D extent
+) {
+  init_main_command_buffer(vk_state, extent);
+  init_main_descriptors(vk_state);
+  init_main_render_pass(vk_state);
+  init_main_framebuffers(vk_state, extent);
+  init_main_pipeline(vk_state, extent);
 }
 
 
