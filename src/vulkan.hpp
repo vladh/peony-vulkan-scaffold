@@ -131,6 +131,17 @@ struct ImageResources {
   VkSampler sampler;
 };
 
+struct BufferResources {
+  VkBuffer buffer;
+  VkDeviceMemory memory;
+  u32 n_items;
+};
+
+struct DrawableComponent {
+  BufferResources vertex;
+  BufferResources index;
+};
+
 struct VkState {
   // General Vulkan stuff
   VkInstance instance;
@@ -156,24 +167,10 @@ struct VkState {
   FrameResources frame_resources[N_PARALLEL_FRAMES];
 
   // Scene resources
-  VkBuffer sign_vertex_buffer;
-  VkDeviceMemory sign_vertex_buffer_memory;
-  VkBuffer fsign_vertex_buffer;
-  VkDeviceMemory fsign_vertex_buffer_memory;
-  VkBuffer screenquad_vertex_buffer;
-  VkDeviceMemory screenquad_vertex_buffer_memory;
-
-  VkBuffer sign_index_buffer;
-  VkDeviceMemory sign_index_buffer_memory;
-  VkBuffer fsign_index_buffer;
-  VkDeviceMemory fsign_index_buffer_memory;
-  VkBuffer screenquad_index_buffer;
-  VkDeviceMemory screenquad_index_buffer_memory;
-
-  VkImage texture_image;
-  VkDeviceMemory texture_image_memory;
-  VkImageView texture_image_view;
-  VkSampler texture_sampler;
+  DrawableComponent sign;
+  DrawableComponent fsign;
+  DrawableComponent screenquad;
+  ImageResources alpaca;
 
   // Rendering resources and information
   u32 idx_frame;

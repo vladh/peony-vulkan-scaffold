@@ -42,15 +42,8 @@ static void record_geometry_command_buffer(
   vkCmdBindDescriptorSets(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
     vk_state->geometry_stage.pipeline_layout, 0, 1, descriptor_set, 0, nullptr);
 
-  // Bind vertex and index buffers
-  VkBuffer const vertex_buffers[] = {vk_state->sign_vertex_buffer};
-  VkDeviceSize const offsets[] = {0};
-  vkCmdBindVertexBuffers(*command_buffer, 0, 1, vertex_buffers, offsets);
-  vkCmdBindIndexBuffer(*command_buffer, vk_state->sign_index_buffer, 0,
-    VK_INDEX_TYPE_UINT32);
-
-  // Draw
-  vkCmdDrawIndexed(*command_buffer, LEN(SIGN_INDICES), 1, 0, 0, 0);
+  // Render
+  render_drawable_component(&vk_state->sign, command_buffer);
 
   // End render pass and command buffer
   vkCmdEndRenderPass(*command_buffer);
@@ -122,8 +115,8 @@ static void init_geometry_stage_swapchain(
       &vk_state->geometry_stage.descriptor_pool));
 
     VkDescriptorImageInfo const image_info = {
-      .sampler     = vk_state->texture_sampler,
-      .imageView   = vk_state->texture_image_view,
+      .sampler     = vk_state->alpaca.sampler,
+      .imageView   = vk_state->alpaca.view,
       .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
     };
 
@@ -226,8 +219,9 @@ static void init_geometry_stage_swapchain(
   // Framebuffers
   {
     // g_position
-    vkutils::create_image_resources_with_sampler(&vk_state->g_position,
-      vk_state->device, vk_state->physical_device,
+    vkutils::create_image_resources_with_sampler(vk_state->device,
+      &vk_state->g_position,
+      vk_state->physical_device,
       extent.width, extent.height,
       VK_FORMAT_B8G8R8A8_SRGB,
       VK_IMAGE_TILING_OPTIMAL,
@@ -237,8 +231,9 @@ static void init_geometry_stage_swapchain(
       vk_state->physical_device_properties);
 
     // g_normal
-    vkutils::create_image_resources_with_sampler(&vk_state->g_normal,
-      vk_state->device, vk_state->physical_device,
+    vkutils::create_image_resources_with_sampler(vk_state->device,
+      &vk_state->g_normal,
+      vk_state->physical_device,
       extent.width, extent.height,
       VK_FORMAT_B8G8R8A8_SRGB,
       VK_IMAGE_TILING_OPTIMAL,
@@ -248,8 +243,9 @@ static void init_geometry_stage_swapchain(
       vk_state->physical_device_properties);
 
     // g_albedo
-    vkutils::create_image_resources_with_sampler(&vk_state->g_albedo,
-      vk_state->device, vk_state->physical_device,
+    vkutils::create_image_resources_with_sampler(vk_state->device,
+      &vk_state->g_albedo,
+      vk_state->physical_device,
       extent.width, extent.height,
       VK_FORMAT_B8G8R8A8_SRGB,
       VK_IMAGE_TILING_OPTIMAL,
@@ -259,8 +255,9 @@ static void init_geometry_stage_swapchain(
       vk_state->physical_device_properties);
 
     // g_pbr
-    vkutils::create_image_resources_with_sampler(&vk_state->g_pbr,
-      vk_state->device, vk_state->physical_device,
+    vkutils::create_image_resources_with_sampler(vk_state->device,
+      &vk_state->g_pbr,
+      vk_state->physical_device,
       extent.width, extent.height,
       VK_FORMAT_B8G8R8A8_SRGB,
       VK_IMAGE_TILING_OPTIMAL,
@@ -270,8 +267,9 @@ static void init_geometry_stage_swapchain(
       vk_state->physical_device_properties);
 
     // Depth buffer
-    vkutils::create_image_resources(&vk_state->depthbuffer,
-      vk_state->device, vk_state->physical_device,
+    vkutils::create_image_resources(vk_state->device,
+      &vk_state->depthbuffer,
+      vk_state->physical_device,
       extent.width, extent.height,
       VK_FORMAT_D32_SFLOAT,
       VK_IMAGE_TILING_OPTIMAL,

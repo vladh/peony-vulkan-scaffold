@@ -38,15 +38,8 @@ static void record_lighting_command_buffer(
   vkCmdBindDescriptorSets(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
     vk_state->lighting_stage.pipeline_layout, 0, 1, descriptor_set, 0, nullptr);
 
-  // Bind vertex and index buffers
-  VkBuffer const vertex_buffers[] = {vk_state->screenquad_vertex_buffer};
-  VkDeviceSize const offsets[] = {0};
-  vkCmdBindVertexBuffers(*command_buffer, 0, 1, vertex_buffers, offsets);
-  vkCmdBindIndexBuffer(*command_buffer, vk_state->screenquad_index_buffer, 0,
-    VK_INDEX_TYPE_UINT32);
-
-  // Draw
-  vkCmdDrawIndexed(*command_buffer, LEN(SCREENQUAD_INDICES), 1, 0, 0, 0);
+  // Render
+  render_drawable_component(&vk_state->screenquad, command_buffer);
 
   // End render pass and command buffer
   vkCmdEndRenderPass(*command_buffer);

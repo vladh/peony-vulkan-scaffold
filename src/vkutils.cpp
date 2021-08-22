@@ -398,6 +398,64 @@ namespace vkutils {
   }
 
 
+  void create_buffer_resources(
+    VkDevice device,
+    BufferResources *buffer_resources,
+    VkPhysicalDevice physical_device,
+    void const *data,
+    u32 n_items,
+    VkDeviceSize size,
+    VkBufferUsageFlags usage,
+    VkCommandPool command_pool,
+    VkQueue queue
+  ) {
+    buffer_resources->n_items = n_items;
+
+    VkBuffer staging_buffer;
+    VkDeviceMemory staging_buffer_memory;
+
+    vkutils::create_buffer(device,
+      physical_device,
+      size,
+      VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+      &staging_buffer,
+      &staging_buffer_memory);
+
+    void *memory;
+    vkMapMemory(device, staging_buffer_memory, 0, size, 0, &memory);
+    memcpy(memory, data, (size_t)size);
+    vkUnmapMemory(device, staging_buffer_memory);
+
+    vkutils::create_buffer(device,
+      physical_device,
+      size,
+      VK_BUFFER_USAGE_TRANSFER_DST_BIT | usage,
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+      &buffer_resources->buffer,
+      &buffer_resources->memory);
+    vkutils::copy_buffer(device,
+      command_pool,
+      queue,
+      staging_buffer,
+      buffer_resources->buffer,
+      size);
+
+    vkDestroyBuffer(device, staging_buffer, nullptr);
+    vkFreeMemory(device, staging_buffer_memory, nullptr);
+  }
+
+
+  void destroy_buffer_resources(
+    VkDevice device,
+    BufferResources *buffer_resources
+  ) {
+    vkDestroyBuffer(device, buffer_resources->buffer, nullptr);
+    vkFreeMemory(device, buffer_resources->memory, nullptr);
+  }
+
+
   void create_image(
     VkDevice device,
     VkPhysicalDevice physical_device,
@@ -466,73 +524,6 @@ namespace vkutils {
     check(vkCreateImageView(device, &image_view_info, nullptr,
       &image_view));
     return image_view;
-  }
-
-
-  void create_image_resources(
-    ImageResources *image_resources,
-    VkDevice device,
-    VkPhysicalDevice physical_device,
-    u32 width, u32 height,
-    VkFormat format,
-    VkImageTiling tiling,
-    VkImageUsageFlags usage,
-    VkMemoryPropertyFlags properties,
-    VkImageAspectFlags aspect_flags
-  ) {
-    create_image(device, physical_device,
-      &image_resources->image, &image_resources->memory,
-      width, height,
-      format, tiling, usage, properties);
-    image_resources->view = create_image_view(device, image_resources->image,
-      format, aspect_flags);
-  }
-
-
-  void create_image_resources_with_sampler(
-    ImageResources *image_resources,
-    VkDevice device,
-    VkPhysicalDevice physical_device,
-    u32 width, u32 height,
-    VkFormat format,
-    VkImageTiling tiling,
-    VkImageUsageFlags usage,
-    VkMemoryPropertyFlags properties,
-    VkImageAspectFlags aspect_flags,
-    VkPhysicalDeviceProperties physical_device_properties
-  ) {
-    create_image_resources(
-      image_resources,
-      device,
-      physical_device,
-      width, height,
-      format,
-      tiling,
-      usage,
-      properties,
-      aspect_flags
-    );
-    VkSamplerCreateInfo const sampler_info = sampler_create_info(
-      physical_device_properties);
-    check(vkCreateSampler(device, &sampler_info, nullptr,
-      &image_resources->sampler));
-  }
-
-
-  void destroy_image_resources(
-    ImageResources *image_resources, VkDevice device
-  ) {
-    vkDestroyImageView(device, image_resources->view, nullptr);
-    vkDestroyImage(device, image_resources->image, nullptr);
-    vkFreeMemory(device, image_resources->memory, nullptr);
-  }
-
-
-  void destroy_image_resources_with_sampler(
-    ImageResources *image_resources, VkDevice device
-  ) {
-    destroy_image_resources(image_resources, device);
-    vkDestroySampler(device, image_resources->sampler, nullptr);
   }
 
 
@@ -623,6 +614,145 @@ namespace vkutils {
       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
     end_command_buffer(device, queue, command_pool, command_buffer);
+  }
+
+
+  void create_image_resources(
+    VkDevice device,
+    ImageResources *image_resources,
+    VkPhysicalDevice physical_device,
+    u32 width, u32 height,
+    VkFormat format,
+    VkImageTiling tiling,
+    VkImageUsageFlags usage,
+    VkMemoryPropertyFlags properties,
+    VkImageAspectFlags aspect_flags
+  ) {
+    create_image(device, physical_device,
+      &image_resources->image, &image_resources->memory,
+      width, height,
+      format, tiling, usage, properties);
+    image_resources->view = create_image_view(device, image_resources->image,
+      format, aspect_flags);
+  }
+
+
+  void create_image_resources_with_sampler(
+    VkDevice device,
+    ImageResources *image_resources,
+    VkPhysicalDevice physical_device,
+    u32 width, u32 height,
+    VkFormat format,
+    VkImageTiling tiling,
+    VkImageUsageFlags usage,
+    VkMemoryPropertyFlags properties,
+    VkImageAspectFlags aspect_flags,
+    VkPhysicalDeviceProperties physical_device_properties
+  ) {
+    create_image_resources(
+      device,
+      image_resources,
+      physical_device,
+      width, height,
+      format,
+      tiling,
+      usage,
+      properties,
+      aspect_flags
+    );
+    VkSamplerCreateInfo const sampler_info = sampler_create_info(
+      physical_device_properties);
+    check(vkCreateSampler(device, &sampler_info, nullptr,
+      &image_resources->sampler));
+  }
+
+
+  void create_image_resources_with_sampler_from_image(
+    VkDevice device,
+    ImageResources *image_resources,
+    VkPhysicalDevice physical_device,
+    unsigned char *image,
+    u32 width, u32 height,
+    VkFormat format,
+    VkImageTiling tiling,
+    VkImageUsageFlags usage,
+    VkMemoryPropertyFlags properties,
+    VkImageAspectFlags aspect_flags,
+    VkPhysicalDeviceProperties physical_device_properties,
+    VkQueue graphics_queue,
+    VkCommandPool command_pool
+  ) {
+    // Create ImageResources
+    create_image_resources_with_sampler(
+      device,
+      image_resources,
+      physical_device,
+      width, height,
+      format,
+      tiling,
+      usage,
+      properties,
+      aspect_flags,
+      physical_device_properties);
+
+    VkDeviceSize image_size = width * height * 4;
+
+    // Copy image to staging buffer
+    VkBuffer staging_buffer;
+    VkDeviceMemory staging_buffer_memory;
+    create_buffer(device, physical_device,
+      image_size,
+      VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+      &staging_buffer,
+      &staging_buffer_memory);
+    void *memory;
+    vkMapMemory(device, staging_buffer_memory, 0, image_size, 0, &memory);
+    memcpy(memory, image, (size_t)image_size);
+    vkUnmapMemory(device, staging_buffer_memory);
+
+    // Copy image
+    transition_image_layout(device,
+      graphics_queue,
+      command_pool,
+      image_resources->image,
+      format,
+      VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    copy_buffer_to_image(device,
+      graphics_queue,
+      command_pool,
+      staging_buffer,
+      image_resources->image,
+      width,
+      height);
+    transition_image_layout(device,
+      graphics_queue,
+      command_pool,
+      image_resources->image,
+      format,
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    vkDestroyBuffer(device, staging_buffer, nullptr);
+    vkFreeMemory(device, staging_buffer_memory, nullptr);
+  }
+
+
+  void destroy_image_resources(
+    VkDevice device, ImageResources *image_resources
+  ) {
+    vkDestroyImageView(device, image_resources->view, nullptr);
+    vkDestroyImage(device, image_resources->image, nullptr);
+    vkFreeMemory(device, image_resources->memory, nullptr);
+  }
+
+
+  void destroy_image_resources_with_sampler(
+    VkDevice device, ImageResources *image_resources
+  ) {
+    destroy_image_resources(device, image_resources);
+    vkDestroySampler(device, image_resources->sampler, nullptr);
   }
 
 

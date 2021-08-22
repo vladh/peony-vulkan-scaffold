@@ -22,10 +22,11 @@
 #include "vkutils.cpp"
 #include "vulkan_swapchain.cpp"
 #include "vulkan_resources.cpp"
+#include "vulkan_general.cpp"
+#include "vulkan_rendering.cpp"
 #include "vulkan_stage_geometry.cpp"
 #include "vulkan_stage_lighting.cpp"
 #include "vulkan_stage_forward.cpp"
-#include "vulkan_general.cpp"
 
 
 static void init_synchronization(VkState *vk_state) {
@@ -90,15 +91,15 @@ void vulkan::init(VkState *vk_state, CommonState *common_state) {
 
 
 static void destroy_swapchain(VkState *vk_state) {
-  vkutils::destroy_image_resources(&vk_state->depthbuffer, vk_state->device);
-  vkutils::destroy_image_resources_with_sampler(&vk_state->g_position,
-    vk_state->device);
-  vkutils::destroy_image_resources_with_sampler(&vk_state->g_normal,
-    vk_state->device);
-  vkutils::destroy_image_resources_with_sampler(&vk_state->g_albedo,
-    vk_state->device);
-  vkutils::destroy_image_resources_with_sampler(&vk_state->g_pbr,
-    vk_state->device);
+  vkutils::destroy_image_resources(vk_state->device, &vk_state->depthbuffer);
+  vkutils::destroy_image_resources_with_sampler(vk_state->device,
+    &vk_state->g_position);
+  vkutils::destroy_image_resources_with_sampler(vk_state->device,
+    &vk_state->g_normal);
+  vkutils::destroy_image_resources_with_sampler(vk_state->device,
+    &vk_state->g_albedo);
+  vkutils::destroy_image_resources_with_sampler(vk_state->device,
+    &vk_state->g_pbr);
 
   vkDestroySwapchainKHR(vk_state->device, vk_state->swapchain, nullptr);
 
@@ -124,26 +125,17 @@ static void destroy_swapchain(VkState *vk_state) {
 void vulkan::destroy(VkState *vk_state) {
   destroy_swapchain(vk_state);
 
-  vkDestroySampler(vk_state->device, vk_state->texture_sampler, nullptr);
-  vkDestroyImageView(vk_state->device, vk_state->texture_image_view, nullptr);
-  vkDestroyImage(vk_state->device, vk_state->texture_image, nullptr);
-  vkFreeMemory(vk_state->device, vk_state->texture_image_memory, nullptr);
+  vkutils::destroy_image_resources_with_sampler(vk_state->device,
+    &vk_state->alpaca);
 
-  vkDestroyBuffer(vk_state->device, vk_state->sign_vertex_buffer, nullptr);
-  vkFreeMemory(vk_state->device, vk_state->sign_vertex_buffer_memory, nullptr);
-  vkDestroyBuffer(vk_state->device, vk_state->fsign_vertex_buffer, nullptr);
-  vkFreeMemory(vk_state->device, vk_state->fsign_vertex_buffer_memory, nullptr);
-  vkDestroyBuffer(vk_state->device, vk_state->screenquad_vertex_buffer,
-    nullptr);
-  vkFreeMemory(vk_state->device, vk_state->screenquad_vertex_buffer_memory,
-    nullptr);
-  vkDestroyBuffer(vk_state->device, vk_state->sign_index_buffer, nullptr);
-  vkFreeMemory(vk_state->device, vk_state->sign_index_buffer_memory, nullptr);
-  vkDestroyBuffer(vk_state->device, vk_state->fsign_index_buffer, nullptr);
-  vkFreeMemory(vk_state->device, vk_state->fsign_index_buffer_memory, nullptr);
-  vkDestroyBuffer(vk_state->device, vk_state->screenquad_index_buffer, nullptr);
-  vkFreeMemory(vk_state->device, vk_state->screenquad_index_buffer_memory,
-    nullptr);
+  vkutils::destroy_buffer_resources(vk_state->device, &vk_state->sign.vertex);
+  vkutils::destroy_buffer_resources(vk_state->device, &vk_state->fsign.vertex);
+  vkutils::destroy_buffer_resources(vk_state->device,
+    &vk_state->screenquad.vertex);
+  vkutils::destroy_buffer_resources(vk_state->device, &vk_state->sign.index);
+  vkutils::destroy_buffer_resources(vk_state->device, &vk_state->fsign.index);
+  vkutils::destroy_buffer_resources(vk_state->device,
+    &vk_state->screenquad.index);
 
   range (0, N_PARALLEL_FRAMES) {
     FrameResources *frame_resources = &vk_state->frame_resources[idx];

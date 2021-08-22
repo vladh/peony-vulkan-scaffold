@@ -12,7 +12,7 @@
 
 
 unsigned char* files::load_image(
-  const char *path, int32 *width, int32 *height, int32 *n_channels,
+  char const *path, int32 *width, int32 *height, int32 *n_channels,
   int32 desired_channels, bool should_flip
 ) {
   stbi_set_flip_vertically_on_load(should_flip);
