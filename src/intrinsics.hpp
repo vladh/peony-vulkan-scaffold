@@ -9,6 +9,7 @@
 
 // Functions
 #define LEN(x) (sizeof((x)) / sizeof((x)[0]))
+#define STD_ARRAY_BYTESIZE(x) (sizeof(x[0]) * x.size())
 
 
 // Keywords

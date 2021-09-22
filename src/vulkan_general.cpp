@@ -69,8 +69,8 @@ static bool init_instance(
 
   // Set validation layer creation options
   if (USE_VALIDATION) {
-    instance_info.enabledLayerCount   = LEN(VALIDATION_LAYERS);
-    instance_info.ppEnabledLayerNames = VALIDATION_LAYERS;
+    instance_info.enabledLayerCount   = VALIDATION_LAYERS.size();
+    instance_info.ppEnabledLayerNames = VALIDATION_LAYERS.data();
     instance_info.pNext               = debug_messenger_info;
   } else {
     instance_info.enabledLayerCount   = 0;
@@ -92,28 +92,21 @@ static bool ensure_validation_layers_supported() {
   u32 n_available_layers;
   vkEnumerateInstanceLayerProperties(&n_available_layers, nullptr);
 
-  VkLayerProperties *available_layers = (VkLayerProperties*)calloc(
-    1, n_available_layers * sizeof(VkLayerProperties));
-  defer { free(available_layers); };
-  vkEnumerateInstanceLayerProperties(&n_available_layers, available_layers);
+  std::vector<VkLayerProperties> available_layers(n_available_layers);
+  vkEnumerateInstanceLayerProperties(&n_available_layers,
+    available_layers.data());
 
   // Compare with desired layers
-  u32 const n_validation_layers = LEN(VALIDATION_LAYERS);
-  range_named (idx_desired, 0, n_validation_layers) {
+  for (auto desired_layer : VALIDATION_LAYERS) {
     bool did_find_layer = false;
-    range_named (idx_available, 0, n_available_layers) {
-      if (
-        pstr_eq(
-          available_layers[idx_available].layerName,
-          VALIDATION_LAYERS[idx_desired])
-      ) {
+    for (auto available_layer : available_layers) {
+      if (pstr_eq(available_layer.layerName, desired_layer)) {
         did_find_layer = true;
         break;
       }
     }
     if (!did_find_layer) {
-      logs::error("Could not find validation layer: %s",
-        VALIDATION_LAYERS[idx_desired]);
+      logs::error("Could not find validation layer: %s", desired_layer);
       return false;
     }
   }
@@ -203,30 +196,25 @@ static bool are_queue_family_indices_complete(
 
 
 static bool are_required_extensions_supported(VkPhysicalDevice physical_device) {
-  constexpr u32 MAX_N_EXTENSIONS = 512;
-  VkExtensionProperties supported_extensions[MAX_N_EXTENSIONS];
   u32 n_supported_extensions;
   vkEnumerateDeviceExtensionProperties(physical_device,
     nullptr, &n_supported_extensions, nullptr);
-  assert(n_supported_extensions <= MAX_N_EXTENSIONS);
-  vkEnumerateDeviceExtensionProperties(physical_device,
-    nullptr, &n_supported_extensions, supported_extensions);
 
-  range_named (idx_required, 0, LEN(REQUIRED_DEVICE_EXTENSIONS)) {
+  std::vector<VkExtensionProperties> supported_extensions(
+    n_supported_extensions);
+  vkEnumerateDeviceExtensionProperties(physical_device,
+    nullptr, &n_supported_extensions, supported_extensions.data());
+
+  for (auto required_extension : REQUIRED_DEVICE_EXTENSIONS) {
     bool did_find_extension = false;
-    range_named (idx_supported, 0, n_supported_extensions) {
-      if (
-        pstr_eq(
-          supported_extensions[idx_supported].extensionName,
-          REQUIRED_DEVICE_EXTENSIONS[idx_required])
-      ) {
+    for (auto supported_extension : supported_extensions) {
+      if (pstr_eq(supported_extension.extensionName, required_extension)) {
         did_find_extension = true;
         break;
       }
     }
     if (!did_find_extension) {
-      logs::warning("Unsupported required extension: %s",
-        REQUIRED_DEVICE_EXTENSIONS[idx_required]);
+      logs::warning("Unsupported required extension: %s", required_extension);
       return false;
     }
   }
@@ -400,8 +388,8 @@ static void init_logical_device(VkState *vk_state) {
     .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
     .queueCreateInfoCount    = n_queue_infos,
     .pQueueCreateInfos       = queue_infos,
-    .enabledExtensionCount   = LEN(REQUIRED_DEVICE_EXTENSIONS),
-    .ppEnabledExtensionNames = REQUIRED_DEVICE_EXTENSIONS,
+    .enabledExtensionCount   = REQUIRED_DEVICE_EXTENSIONS.size(),
+    .ppEnabledExtensionNames = REQUIRED_DEVICE_EXTENSIONS.data(),
     .pEnabledFeatures        = &device_features,
   };
 

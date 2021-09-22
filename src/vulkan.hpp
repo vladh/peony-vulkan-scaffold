@@ -2,6 +2,8 @@
 
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
+#include <array>
+
 #include "types.hpp"
 #include "common.hpp"
 
@@ -19,10 +21,10 @@ static constexpr u32 N_PARALLEL_FRAMES             = 3;
 static constexpr u32 MAX_N_REQUIRED_EXTENSIONS     = 256;
 
 static constexpr bool USE_VALIDATION = true;
-static constexpr char const *VALIDATION_LAYERS[] = {
+static constexpr std::array VALIDATION_LAYERS = {
   "VK_LAYER_KHRONOS_validation"
 };
-static constexpr char const *REQUIRED_DEVICE_EXTENSIONS[] = {
+static constexpr std::array REQUIRED_DEVICE_EXTENSIONS = {
   VK_KHR_SWAPCHAIN_EXTENSION_NAME,
   #if PLATFORM & PLATFORM_MACOS
     "VK_KHR_portability_subset",

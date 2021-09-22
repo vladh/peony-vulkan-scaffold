@@ -40,7 +40,7 @@ static void record_forward_command_buffer(
     vk_state->forward_stage.pipeline_layout, 0, 1, descriptor_set, 0, nullptr);
 
   // render
-  /* render_drawable_component(&vk_state->fsign, command_buffer); */
+  render_drawable_component(&vk_state->fsign, command_buffer);
 
   // End render pass and command buffer
   vkCmdEndRenderPass(*command_buffer);

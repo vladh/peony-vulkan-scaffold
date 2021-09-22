@@ -9,6 +9,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include "../src_external/pstr.h"
+#include <vector>
 
 #include "glm.hpp"
 #include "common.hpp"

@@ -37,7 +37,6 @@ void key_callback(
 }
 
 
-
 static void init_window(GLFWwindow **window, State *state) {
   glfwInit();
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
