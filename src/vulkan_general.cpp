@@ -69,7 +69,7 @@ static bool init_instance(
 
   // Set validation layer creation options
   if (USE_VALIDATION) {
-    instance_info.enabledLayerCount   = VALIDATION_LAYERS.size();
+    instance_info.enabledLayerCount   = (u32)VALIDATION_LAYERS.size();
     instance_info.ppEnabledLayerNames = VALIDATION_LAYERS.data();
     instance_info.pNext               = debug_messenger_info;
   } else {
@@ -388,7 +388,7 @@ static void init_logical_device(VkState *vk_state) {
     .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
     .queueCreateInfoCount    = n_queue_infos,
     .pQueueCreateInfos       = queue_infos,
-    .enabledExtensionCount   = REQUIRED_DEVICE_EXTENSIONS.size(),
+    .enabledExtensionCount   = (u32)REQUIRED_DEVICE_EXTENSIONS.size(),
     .ppEnabledExtensionNames = REQUIRED_DEVICE_EXTENSIONS.data(),
     .pEnabledFeatures        = &device_features,
   };
