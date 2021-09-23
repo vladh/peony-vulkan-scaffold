@@ -11,9 +11,72 @@ namespace vkutils {
   /////////////////////////
   // Struct creation utils
   /////////////////////////
-  VkSamplerCreateInfo sampler_create_info(
-    VkPhysicalDeviceProperties physical_device_props
+  VkSubpassDependency const subpass_dependency_depth() {
+    return {
+      .srcSubpass    = VK_SUBPASS_EXTERNAL,
+      .dstSubpass    = 0,
+      .srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+      .dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+      .srcAccessMask = 0,
+      .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+    };
+  }
+
+
+  VkSubpassDependency const subpass_dependency_no_depth() {
+    return {
+      .srcSubpass    = VK_SUBPASS_EXTERNAL,
+      .dstSubpass    = 0,
+      .srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+      .dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+      .srcAccessMask = 0,
+      .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+    };
+  }
+
+
+  VkViewport const viewport_from_extent(VkExtent2D extent) {
+    return {
+      .x        = 0.0f,
+      .y        = 0.0f,
+      .width    = (f32)extent.width,
+      .height   = (f32)extent.height,
+      .minDepth = 0.0f,
+      .maxDepth = 1.0f,
+    };
+  }
+
+
+  VkRect2D const rect_from_extent(VkExtent2D extent) {
+    return {
+      .offset = {0, 0},
+      .extent = extent,
+    };
+  }
+
+
+  VkRenderPassBeginInfo render_pass_begin_info(
+    VkRenderPass renderPass,
+    VkFramebuffer framebuffer,
+    VkExtent2D extent,
+    u32 clearValueCount,
+    VkClearValue const *pClearValues
   ) {
+    return {
+      .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+      .renderPass      = renderPass,
+      .framebuffer     = framebuffer,
+      .renderArea = {
+        .offset        = {0, 0},
+        .extent        = extent,
+      },
+      .clearValueCount = clearValueCount,
+      .pClearValues    = pClearValues,
+    };
+  }
+
+
+  VkSamplerCreateInfo sampler_create_info(VkPhysicalDeviceProperties physical_device_props) {
     return {
       .sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
       .magFilter               = VK_FILTER_LINEAR,
@@ -24,8 +87,7 @@ namespace vkutils {
       .addressModeW            = VK_SAMPLER_ADDRESS_MODE_REPEAT,
       .mipLodBias              = 0.0f,
       .anisotropyEnable        = VK_TRUE,
-      .maxAnisotropy           =
-        physical_device_props.limits.maxSamplerAnisotropy,
+      .maxAnisotropy           = physical_device_props.limits.maxSamplerAnisotropy,
       .compareEnable           = VK_FALSE,
       .compareOp               = VK_COMPARE_OP_ALWAYS,
       .minLod                  = 0.0f,
@@ -45,16 +107,13 @@ namespace vkutils {
       .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
       .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
       .alphaBlendOp        = VK_BLEND_OP_ADD,
-      .colorWriteMask      = VK_COLOR_COMPONENT_R_BIT |
-        VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
+      .colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
         VK_COLOR_COMPONENT_A_BIT,
     };
   }
 
 
-  VkAttachmentReference attachment_reference(
-    u32 attachment, VkImageLayout layout
-  ) {
+  VkAttachmentReference attachment_reference(u32 attachment, VkImageLayout layout) {
     return {
       .attachment = attachment,
       .layout     = layout,
@@ -62,9 +121,7 @@ namespace vkutils {
   }
 
 
-  VkAttachmentDescription attachment_description(
-    VkFormat format, VkImageLayout finalLayout
-  ) {
+  VkAttachmentDescription attachment_description(VkFormat format, VkImageLayout finalLayout) {
     return {
       .format         = format,
       .samples        = VK_SAMPLE_COUNT_1_BIT,
@@ -101,9 +158,7 @@ namespace vkutils {
   }
 
 
-  VkCommandBufferAllocateInfo command_buffer_allocate_info(
-    VkCommandPool commandPool
-  ) {
+  VkCommandBufferAllocateInfo command_buffer_allocate_info(VkCommandPool commandPool) {
     return {
       .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
       .commandPool        = commandPool,
@@ -114,8 +169,7 @@ namespace vkutils {
 
 
   VkPipelineViewportStateCreateInfo pipeline_viewport_state_create_info(
-    const VkViewport* pViewports,
-    const VkRect2D* pScissors
+    const VkViewport* pViewports, const VkRect2D* pScissors
   ) {
     return {
       .sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
@@ -127,9 +181,7 @@ namespace vkutils {
   }
 
 
-  VkPipelineLayoutCreateInfo pipeline_layout_create_info(
-    const VkDescriptorSetLayout* pSetLayouts
-  ) {
+  VkPipelineLayoutCreateInfo pipeline_layout_create_info(const VkDescriptorSetLayout* pSetLayouts) {
     return {
       .sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
       .setLayoutCount = 1,
@@ -138,9 +190,7 @@ namespace vkutils {
   }
 
 
-  VkPipelineShaderStageCreateInfo pipeline_shader_stage_create_info_vert(
-    VkShaderModule shader_module
-  ) {
+  VkPipelineShaderStageCreateInfo pipeline_shader_stage_create_info_vert(VkShaderModule shader_module) {
     return {
       .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
       .stage  = VK_SHADER_STAGE_VERTEX_BIT,
@@ -150,9 +200,7 @@ namespace vkutils {
   }
 
 
-  VkPipelineShaderStageCreateInfo pipeline_shader_stage_create_info_frag(
-    VkShaderModule shader_module
-  ) {
+  VkPipelineShaderStageCreateInfo pipeline_shader_stage_create_info_frag(VkShaderModule shader_module) {
     return {
       .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
       .stage  = VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -163,8 +211,7 @@ namespace vkutils {
 
 
   VkDescriptorSetAllocateInfo descriptor_set_allocate_info(
-    VkDescriptorPool descriptorPool,
-    const VkDescriptorSetLayout* pSetLayouts
+    VkDescriptorPool descriptorPool, const VkDescriptorSetLayout* pSetLayouts
   ) {
     return {
       .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -176,9 +223,7 @@ namespace vkutils {
 
 
   VkWriteDescriptorSet write_descriptor_set_buffer(
-    VkDescriptorSet dstSet,
-    uint32_t dstBinding,
-    const VkDescriptorBufferInfo* pBufferInfo
+    VkDescriptorSet dstSet, uint32_t dstBinding, const VkDescriptorBufferInfo* pBufferInfo
   ) {
     return {
       .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -193,9 +238,7 @@ namespace vkutils {
 
 
   VkWriteDescriptorSet write_descriptor_set_image(
-    VkDescriptorSet dstSet,
-    uint32_t dstBinding,
-    const VkDescriptorImageInfo* pImageInfo
+    VkDescriptorSet dstSet, uint32_t dstBinding, const VkDescriptorImageInfo* pImageInfo
   ) {
     return {
       .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -210,8 +253,7 @@ namespace vkutils {
 
 
   VkDescriptorPoolSize descriptor_pool_size(
-    VkDescriptorType type,
-    u32 descriptorCount
+    VkDescriptorType type, u32 descriptorCount
   ) {
     return {
       .type            = type,
@@ -221,9 +263,7 @@ namespace vkutils {
 
 
   VkDescriptorPoolCreateInfo descriptor_pool_create_info(
-    u32 maxSets,
-    u32 poolSizeCount,
-    const VkDescriptorPoolSize* pPoolSizes
+    u32 maxSets, u32 poolSizeCount, const VkDescriptorPoolSize* pPoolSizes
   ) {
     return {
       .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
@@ -235,8 +275,7 @@ namespace vkutils {
 
 
   VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info(
-    u32 bindingCount,
-    const VkDescriptorSetLayoutBinding* pBindings
+    u32 bindingCount, const VkDescriptorSetLayoutBinding* pBindings
   ) {
     return {
       .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -246,10 +285,7 @@ namespace vkutils {
   }
 
 
-  VkDescriptorSetLayoutBinding descriptor_set_layout_binding(
-    u32 binding,
-    VkDescriptorType descriptorType
-  ) {
+  VkDescriptorSetLayoutBinding descriptor_set_layout_binding(u32 binding, VkDescriptorType descriptorType) {
     return {
       .binding         = binding,
       .descriptorType  = descriptorType,
@@ -260,9 +296,7 @@ namespace vkutils {
 
 
   VkDescriptorSetLayoutBinding descriptor_set_layout_binding(
-    u32 binding,
-    VkDescriptorType descriptorType,
-    VkShaderStageFlags stageFlags
+    u32 binding, VkDescriptorType descriptorType, VkShaderStageFlags stageFlags
   ) {
     return {
       .binding         = binding,
@@ -280,24 +314,16 @@ namespace vkutils {
   }
 
   void create_semaphore(VkDevice device, VkSemaphore *semaphore) {
-    VkSemaphoreCreateInfo const semaphore_info = {
-      .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-    };
+    VkSemaphoreCreateInfo const semaphore_info = {.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     check(vkCreateSemaphore(device, &semaphore_info, nullptr, semaphore));
   }
 
-  u32 find_memory_type(
-    VkPhysicalDevice physical_device, u32 type_filter,
-    VkMemoryPropertyFlags desired_properties
-  ) {
+  u32 find_memory_type(VkPhysicalDevice physical_device, u32 type_filter, VkMemoryPropertyFlags desired_properties) {
     VkPhysicalDeviceMemoryProperties actual_properties;
     vkGetPhysicalDeviceMemoryProperties(physical_device, &actual_properties);
 
     range (0, actual_properties.memoryTypeCount) {
-      if (
-        type_filter & (1 << idx) &&
-        actual_properties.memoryTypes[idx].propertyFlags & desired_properties
-      ) {
+      if (type_filter & (1 << idx) && actual_properties.memoryTypes[idx].propertyFlags & desired_properties) {
         return idx;
       }
     }
@@ -307,10 +333,7 @@ namespace vkutils {
   }
 
 
-  VkCommandBuffer begin_command_buffer(
-    VkDevice device,
-    VkCommandPool command_pool
-  ) {
+  VkCommandBuffer begin_command_buffer(VkDevice device, VkCommandPool command_pool) {
     VkCommandBufferAllocateInfo const alloc_info = {
       .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
       .commandPool        = command_pool,
@@ -330,12 +353,7 @@ namespace vkutils {
   }
 
 
-  void end_command_buffer(
-    VkDevice device,
-    VkQueue queue,
-    VkCommandPool command_pool,
-    VkCommandBuffer command_buffer
-  ) {
+  void end_command_buffer(VkDevice device, VkQueue queue, VkCommandPool command_pool, VkCommandBuffer command_buffer) {
     vkEndCommandBuffer(command_buffer);
 
     VkSubmitInfo const submit_info = {
@@ -371,8 +389,7 @@ namespace vkutils {
     VkMemoryRequirements requirements;
     vkGetBufferMemoryRequirements(device, *buffer, &requirements);
 
-    u32 memory_type = find_memory_type(physical_device,
-      requirements.memoryTypeBits, properties);
+    u32 memory_type = find_memory_type(physical_device, requirements.memoryTypeBits, properties);
     VkMemoryAllocateInfo const alloc_info = {
       .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
       .allocationSize  = requirements.size,
@@ -447,10 +464,7 @@ namespace vkutils {
   }
 
 
-  void destroy_buffer_resources(
-    VkDevice device,
-    BufferResources *buffer_resources
-  ) {
+  void destroy_buffer_resources(VkDevice device, BufferResources *buffer_resources) {
     vkDestroyBuffer(device, buffer_resources->buffer, nullptr);
     vkFreeMemory(device, buffer_resources->memory, nullptr);
   }
@@ -521,8 +535,7 @@ namespace vkutils {
       },
     };
     VkImageView image_view;
-    check(vkCreateImageView(device, &image_view_info, nullptr,
-      &image_view));
+    check(vkCreateImageView(device, &image_view_info, nullptr, &image_view));
     return image_view;
   }
 
@@ -559,10 +572,7 @@ namespace vkutils {
     VkPipelineStageFlags source_stage = {};
     VkPipelineStageFlags destination_stage = {};
 
-    if (
-      old_layout == VK_IMAGE_LAYOUT_UNDEFINED &&
-      new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
-    ) {
+    if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED && new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
       barrier.srcAccessMask = 0;
       barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
       source_stage          = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
@@ -576,13 +586,11 @@ namespace vkutils {
       barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
       source_stage          = VK_PIPELINE_STAGE_TRANSFER_BIT;
       destination_stage     = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-
     } else {
       logs::fatal("Could not complete requested layout transition as it's unsupported.");
     }
 
-    vkCmdPipelineBarrier(command_buffer, source_stage, destination_stage,
-      0, 0, nullptr, 0, nullptr, 1, &barrier);
+    vkCmdPipelineBarrier(command_buffer, source_stage, destination_stage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
     end_command_buffer(device, queue, command_pool, command_buffer);
   }
@@ -610,8 +618,7 @@ namespace vkutils {
       .imageExtent       = {width, height, 1},
     };
 
-    vkCmdCopyBufferToImage(command_buffer, buffer, image,
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+    vkCmdCopyBufferToImage(command_buffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
     end_command_buffer(device, queue, command_pool, command_buffer);
   }
@@ -628,12 +635,9 @@ namespace vkutils {
     VkMemoryPropertyFlags properties,
     VkImageAspectFlags aspect_flags
   ) {
-    create_image(device, physical_device,
-      &image_resources->image, &image_resources->memory,
-      width, height,
-      format, tiling, usage, properties);
-    image_resources->view = create_image_view(device, image_resources->image,
-      format, aspect_flags);
+    create_image(device, physical_device, &image_resources->image, &image_resources->memory,
+      width, height, format, tiling, usage, properties);
+    image_resources->view = create_image_view(device, image_resources->image, format, aspect_flags);
   }
 
 
@@ -660,10 +664,8 @@ namespace vkutils {
       properties,
       aspect_flags
     );
-    VkSamplerCreateInfo const sampler_info = sampler_create_info(
-      physical_device_properties);
-    check(vkCreateSampler(device, &sampler_info, nullptr,
-      &image_resources->sampler));
+    VkSamplerCreateInfo const sampler_info = sampler_create_info(physical_device_properties);
+    check(vkCreateSampler(device, &sampler_info, nullptr, &image_resources->sampler));
   }
 
 
@@ -766,8 +768,7 @@ namespace vkutils {
     };
 
     VkShaderModule shader_module;
-    check(vkCreateShaderModule(device, &shader_module_info, nullptr,
-      &shader_module));
+    check(vkCreateShaderModule(device, &shader_module_info, nullptr, &shader_module));
 
     return shader_module;
   }

@@ -10,10 +10,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
   const VkDebugUtilsMessengerCallbackDataEXT* p_callback_data,
   void* p_user_data
 ) {
-  if (
-    strstr(p_callback_data->pMessage,
-      "invalid layer manifest file version") != nullptr
-  ) {
+  if (strstr(p_callback_data->pMessage, "invalid layer manifest file version") != nullptr) {
     return VK_FALSE;
   }
   logs::info("(Validation layer) %s", p_callback_data->pMessage);
@@ -22,30 +19,23 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
 
 
 static void get_required_extensions(
-  char const *required_extensions[MAX_N_REQUIRED_EXTENSIONS],
-  u32 *n_required_extensions
+  char const *required_extensions[MAX_N_REQUIRED_EXTENSIONS], u32 *n_required_extensions
 ) {
-  char const **glfw_extensions = glfwGetRequiredInstanceExtensions(
-    n_required_extensions);
+  char const **glfw_extensions = glfwGetRequiredInstanceExtensions( n_required_extensions);
   range (0, *n_required_extensions) {
     required_extensions[idx] = glfw_extensions[idx];
   }
   if (USE_VALIDATION) {
-    required_extensions[(*n_required_extensions)++] =
-      VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
+    required_extensions[(*n_required_extensions)++] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
   }
   #if PLATFORM & PLATFORM_MACOS
-    required_extensions[(*n_required_extensions)++] =
-      "VK_KHR_get_physical_device_properties2";
+    required_extensions[(*n_required_extensions)++] = "VK_KHR_get_physical_device_properties2";
   #endif
   assert(*n_required_extensions <= MAX_N_REQUIRED_EXTENSIONS);
 }
 
 
-static bool init_instance(
-  VkState *vk_state,
-  VkDebugUtilsMessengerCreateInfoEXT *debug_messenger_info
-) {
+static bool init_instance(VkState *vk_state, VkDebugUtilsMessengerCreateInfoEXT *debug_messenger_info) {
   // Initialise info about our application (its name etc.)
   VkApplicationInfo const app_info = {
     .sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -76,10 +66,7 @@ static bool init_instance(
     instance_info.enabledLayerCount   = 0;
   }
 
-  if (
-    vkCreateInstance(&instance_info, nullptr,
-      &vk_state->instance) != VK_SUCCESS
-  ) {
+  if (vkCreateInstance(&instance_info, nullptr, &vk_state->instance) != VK_SUCCESS) {
     return false;
   }
 
@@ -93,8 +80,7 @@ static bool ensure_validation_layers_supported() {
   vkEnumerateInstanceLayerProperties(&n_available_layers, nullptr);
 
   std::vector<VkLayerProperties> available_layers(n_available_layers);
-  vkEnumerateInstanceLayerProperties(&n_available_layers,
-    available_layers.data());
+  vkEnumerateInstanceLayerProperties(&n_available_layers, available_layers.data());
 
   // Compare with desired layers
   for (auto desired_layer : VALIDATION_LAYERS) {
@@ -121,8 +107,8 @@ static VkResult CreateDebugUtilsMessengerEXT(
   const VkAllocationCallbacks *p_allocator,
   VkDebugUtilsMessengerEXT *p_debug_messenger
 ) {
-  auto const func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
-    instance, "vkCreateDebugUtilsMessengerEXT");
+  auto const func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance,
+    "vkCreateDebugUtilsMessengerEXT");
   if (func == nullptr) {
     return VK_ERROR_EXTENSION_NOT_PRESENT;
   }
@@ -131,12 +117,10 @@ static VkResult CreateDebugUtilsMessengerEXT(
 
 
 static void DestroyDebugUtilsMessengerEXT(
-  VkInstance instance,
-  VkDebugUtilsMessengerEXT debug_messenger,
-  const VkAllocationCallbacks* p_allocator
+  VkInstance instance, VkDebugUtilsMessengerEXT debug_messenger, const VkAllocationCallbacks* p_allocator
 ) {
-  auto const func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
-    instance, "vkDestroyDebugUtilsMessengerEXT");
+  auto const func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance,
+    "vkDestroyDebugUtilsMessengerEXT");
   if (func == nullptr) {
     return;
   }
@@ -152,8 +136,8 @@ static void init_debug_messenger(
     return;
   }
 
-  vkutils::check(CreateDebugUtilsMessengerEXT(vk_state->instance,
-    debug_messenger_info, nullptr, &vk_state->debug_messenger));
+  vkutils::check(CreateDebugUtilsMessengerEXT(vk_state->instance, debug_messenger_info, nullptr,
+    &vk_state->debug_messenger));
 }
 
 
@@ -164,17 +148,14 @@ static QueueFamilyIndices get_queue_family_indices(
   QueueFamilyIndices indices = {};
   VkQueueFamilyProperties queue_families[MAX_N_QUEUE_FAMILIES];
   u32 n_queue_families = 0;
-  vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &n_queue_families,
-    nullptr);
+  vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &n_queue_families, nullptr);
   assert(n_queue_families <= MAX_N_QUEUE_FAMILIES);
-  vkGetPhysicalDeviceQueueFamilyProperties(physical_device,
-    &n_queue_families, queue_families);
+  vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &n_queue_families, queue_families);
 
   range (0, n_queue_families) {
     VkQueueFamilyProperties *family = &queue_families[idx];
     VkBool32 supports_present = false;
-    vkGetPhysicalDeviceSurfaceSupportKHR(physical_device,
-      idx, surface, &supports_present);
+    vkGetPhysicalDeviceSurfaceSupportKHR(physical_device, idx, surface, &supports_present);
     if (family->queueFlags & VK_QUEUE_GRAPHICS_BIT) {
       indices.graphics = idx;
     }
@@ -187,23 +168,17 @@ static QueueFamilyIndices get_queue_family_indices(
 }
 
 
-static bool are_queue_family_indices_complete(
-  QueueFamilyIndices queue_family_indices
-) {
-  return queue_family_indices.graphics != NO_QUEUE_FAMILY &&
-    queue_family_indices.present != NO_QUEUE_FAMILY;
+static bool are_queue_family_indices_complete(QueueFamilyIndices queue_family_indices) {
+  return queue_family_indices.graphics != NO_QUEUE_FAMILY && queue_family_indices.present != NO_QUEUE_FAMILY;
 }
 
 
 static bool are_required_extensions_supported(VkPhysicalDevice physical_device) {
   u32 n_supported_extensions;
-  vkEnumerateDeviceExtensionProperties(physical_device,
-    nullptr, &n_supported_extensions, nullptr);
+  vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &n_supported_extensions, nullptr);
 
-  std::vector<VkExtensionProperties> supported_extensions(
-    n_supported_extensions);
-  vkEnumerateDeviceExtensionProperties(physical_device,
-    nullptr, &n_supported_extensions, supported_extensions.data());
+  std::vector<VkExtensionProperties> supported_extensions( n_supported_extensions);
+  vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &n_supported_extensions, supported_extensions.data());
 
   for (auto required_extension : REQUIRED_DEVICE_EXTENSIONS) {
     bool did_find_extension = false;
@@ -236,26 +211,20 @@ static void print_physical_device_info(
   logs::info("    present: %d", queue_family_indices.present);
   logs::info("  Swap chain support");
   logs::info("    Capabilities");
-  logs::info("      minImageCount: %d",
-    swapchain_support_details->capabilities.minImageCount);
-  logs::info("      maxImageCount: %d",
-    swapchain_support_details->capabilities.maxImageCount);
-  logs::info("      currentExtent: %d x %d",
-    swapchain_support_details->capabilities.currentExtent.width,
+  logs::info("      minImageCount: %d", swapchain_support_details->capabilities.minImageCount);
+  logs::info("      maxImageCount: %d", swapchain_support_details->capabilities.maxImageCount);
+  logs::info("      currentExtent: %d x %d", swapchain_support_details->capabilities.currentExtent.width,
     swapchain_support_details->capabilities.currentExtent.height);
-  logs::info("      minImageExtent: %d x %d",
-    swapchain_support_details->capabilities.minImageExtent.width,
+  logs::info("      minImageExtent: %d x %d", swapchain_support_details->capabilities.minImageExtent.width,
     swapchain_support_details->capabilities.minImageExtent.height);
-  logs::info("      maxImageExtent: %d x %d",
-    swapchain_support_details->capabilities.maxImageExtent.width,
+  logs::info("      maxImageExtent: %d x %d", swapchain_support_details->capabilities.maxImageExtent.width,
     swapchain_support_details->capabilities.maxImageExtent.height);
   logs::info("      ...");
   logs::info("    Formats (%d)", swapchain_support_details->n_formats);
   range (0, swapchain_support_details->n_formats) {
     logs::info("      %d", swapchain_support_details->formats[idx].format);
   }
-  logs::info("    Present modes (%d)",
-    swapchain_support_details->n_present_modes);
+  logs::info("    Present modes (%d)", swapchain_support_details->n_present_modes);
   range (0, swapchain_support_details->n_present_modes) {
     logs::info("      %d", swapchain_support_details->present_modes[idx]);
   }
@@ -317,21 +286,12 @@ static void init_physical_device(VkState *vk_state) {
   // Check which physical device we actually want
   range (0, n_devices) {
     VkPhysicalDevice *physical_device = &physical_devices[idx];
-
-    QueueFamilyIndices queue_family_indices = get_queue_family_indices(
-      *physical_device, vk_state->surface);
-
+    QueueFamilyIndices queue_family_indices = get_queue_family_indices(*physical_device, vk_state->surface);
     SwapchainSupportDetails swapchain_support_details = {};
-    init_swapchain_support_details(&swapchain_support_details,
-      *physical_device, vk_state->surface);
+    init_swapchain_support_details(&swapchain_support_details, *physical_device, vk_state->surface);
+    print_physical_device_info(*physical_device, queue_family_indices, &swapchain_support_details);
 
-    print_physical_device_info(*physical_device,
-      queue_family_indices, &swapchain_support_details);
-
-    if (
-      is_physical_device_suitable(*physical_device,
-        queue_family_indices, &swapchain_support_details)
-    ) {
+    if (is_physical_device_suitable(*physical_device, queue_family_indices, &swapchain_support_details)) {
       VkPhysicalDeviceProperties properties;
       vkGetPhysicalDeviceProperties(*physical_device, &properties);
       logs::info("Using physical device: %s", properties.deviceName);
@@ -393,23 +353,14 @@ static void init_logical_device(VkState *vk_state) {
     .pEnabledFeatures        = &device_features,
   };
 
-  vkutils::check(vkCreateDevice(vk_state->physical_device, &device_info,
-    nullptr, &vk_state->device));
-
-  vkGetDeviceQueue(vk_state->device,
-    (u32)vk_state->queue_family_indices.graphics,
-    0,
-    &vk_state->graphics_queue);
-  vkGetDeviceQueue(vk_state->device,
-    (u32)vk_state->queue_family_indices.present,
-    0,
-    &vk_state->present_queue);
+  vkutils::check(vkCreateDevice(vk_state->physical_device, &device_info, nullptr, &vk_state->device));
+  vkGetDeviceQueue(vk_state->device, (u32)vk_state->queue_family_indices.graphics, 0, &vk_state->graphics_queue);
+  vkGetDeviceQueue(vk_state->device, (u32)vk_state->queue_family_indices.present, 0, &vk_state->present_queue);
 }
 
 
 static void init_surface(VkState *vk_state, GLFWwindow *window) {
-  vkutils::check(glfwCreateWindowSurface(vk_state->instance, window, nullptr,
-    &vk_state->surface));
+  vkutils::check(glfwCreateWindowSurface(vk_state->instance, window, nullptr, &vk_state->surface));
 }
 
 
@@ -420,6 +371,5 @@ static void init_command_pool(VkState *vk_state) {
     .queueFamilyIndex = (u32)vk_state->queue_family_indices.graphics,
   };
 
-  vkutils::check(vkCreateCommandPool(vk_state->device, &pool_info, nullptr,
-    &vk_state->command_pool));
+  vkutils::check(vkCreateCommandPool(vk_state->device, &pool_info, nullptr, &vk_state->command_pool));
 }

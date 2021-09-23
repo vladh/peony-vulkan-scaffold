@@ -18,8 +18,8 @@ namespace util {
   quat aiQuaternion_to_glm(aiQuaternion *rotation);
   m4 aimatrix4x4_to_glm(aiMatrix4x4 *from);
   void APIENTRY debug_message_callback(
-    GLenum source, GLenum type, unsigned int id, GLenum severity, GLsizei length,
-    const char *message, const void *userParam
+    GLenum source, GLenum type, unsigned int id, GLenum severity, GLsizei length, const char *message,
+    const void *userParam
   );
   f32 round_to_nearest_multiple(f32 n, f32 multiple_of);
   f64 get_us_from_duration(chrono::duration<f64> duration);

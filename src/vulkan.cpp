@@ -43,8 +43,7 @@ static void init_synchronization(VkState *vk_state) {
     FrameResources *frame_resources = &vk_state->frame_resources[idx];
     vkutils::check(vkCreateSemaphore(vk_state->device, &semaphore_info, nullptr,
       &frame_resources->image_available_semaphore));
-    vkutils::check(vkCreateFence(vk_state->device, &fence_info, nullptr,
-      &frame_resources->frame_rendered_fence));
+    vkutils::check(vkCreateFence(vk_state->device, &fence_info, nullptr, &frame_resources->frame_rendered_fence));
   }
 }
 
@@ -57,13 +56,9 @@ void vulkan::init(VkState *vk_state, CommonState *common_state) {
       logs::fatal("Could not get required validation layers.");
     }
 
-    debug_messenger_info.sType =
-      VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+    debug_messenger_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
     debug_messenger_info.messageSeverity =
-      /* VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | */
-      /* VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | */
-      VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-      VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+      VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
     debug_messenger_info.messageType =
       VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
       VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
@@ -93,23 +88,17 @@ void vulkan::init(VkState *vk_state, CommonState *common_state) {
 
 static void destroy_swapchain(VkState *vk_state) {
   vkutils::destroy_image_resources(vk_state->device, &vk_state->depthbuffer);
-  vkutils::destroy_image_resources_with_sampler(vk_state->device,
-    &vk_state->g_position);
-  vkutils::destroy_image_resources_with_sampler(vk_state->device,
-    &vk_state->g_normal);
-  vkutils::destroy_image_resources_with_sampler(vk_state->device,
-    &vk_state->g_albedo);
-  vkutils::destroy_image_resources_with_sampler(vk_state->device,
-    &vk_state->g_pbr);
+  vkutils::destroy_image_resources_with_sampler(vk_state->device, &vk_state->g_position);
+  vkutils::destroy_image_resources_with_sampler(vk_state->device, &vk_state->g_normal);
+  vkutils::destroy_image_resources_with_sampler(vk_state->device, &vk_state->g_albedo);
+  vkutils::destroy_image_resources_with_sampler(vk_state->device, &vk_state->g_pbr);
 
   vkDestroySwapchainKHR(vk_state->device, vk_state->swapchain, nullptr);
 
   range (0, N_PARALLEL_FRAMES) {
     FrameResources *frame_resources = &vk_state->frame_resources[idx];
-    vkDestroyBuffer(vk_state->device,
-      frame_resources->uniform_buffer, nullptr);
-    vkFreeMemory(vk_state->device,
-      frame_resources->uniform_buffer_memory, nullptr);
+    vkDestroyBuffer(vk_state->device, frame_resources->uniform_buffer, nullptr);
+    vkFreeMemory(vk_state->device, frame_resources->uniform_buffer_memory, nullptr);
   }
 
   destroy_geometry_stage_swapchain(vk_state);
@@ -117,8 +106,7 @@ static void destroy_swapchain(VkState *vk_state) {
   destroy_forward_stage_swapchain(vk_state);
 
   range (0, vk_state->n_swapchain_images) {
-    vkDestroyImageView(vk_state->device, vk_state->swapchain_image_views[idx],
-      nullptr);
+    vkDestroyImageView(vk_state->device, vk_state->swapchain_image_views[idx], nullptr);
   }
 }
 
@@ -126,36 +114,29 @@ static void destroy_swapchain(VkState *vk_state) {
 void vulkan::destroy(VkState *vk_state) {
   destroy_swapchain(vk_state);
 
-  vkutils::destroy_image_resources_with_sampler(vk_state->device,
-    &vk_state->alpaca);
+  vkutils::destroy_image_resources_with_sampler(vk_state->device, &vk_state->alpaca);
 
   vkutils::destroy_buffer_resources(vk_state->device, &vk_state->sign.vertex);
   vkutils::destroy_buffer_resources(vk_state->device, &vk_state->fsign.vertex);
-  vkutils::destroy_buffer_resources(vk_state->device,
-    &vk_state->screenquad.vertex);
+  vkutils::destroy_buffer_resources(vk_state->device, &vk_state->screenquad.vertex);
   vkutils::destroy_buffer_resources(vk_state->device, &vk_state->sign.index);
   vkutils::destroy_buffer_resources(vk_state->device, &vk_state->fsign.index);
-  vkutils::destroy_buffer_resources(vk_state->device,
-    &vk_state->screenquad.index);
+  vkutils::destroy_buffer_resources(vk_state->device, &vk_state->screenquad.index);
 
   range (0, N_PARALLEL_FRAMES) {
     FrameResources *frame_resources = &vk_state->frame_resources[idx];
-    vkDestroySemaphore(vk_state->device,
-      frame_resources->image_available_semaphore, nullptr);
-    vkDestroyFence(vk_state->device, frame_resources->frame_rendered_fence,
-      nullptr);
+    vkDestroySemaphore(vk_state->device, frame_resources->image_available_semaphore, nullptr);
+    vkDestroyFence(vk_state->device, frame_resources->frame_rendered_fence, nullptr);
   }
 
   destroy_geometry_stage_nonswapchain(vk_state);
   destroy_lighting_stage_nonswapchain(vk_state);
   destroy_forward_stage_nonswapchain(vk_state);
 
-  vkDestroyCommandPool(vk_state->device, vk_state->command_pool,
-    nullptr);
+  vkDestroyCommandPool(vk_state->device, vk_state->command_pool, nullptr);
   vkDestroyDevice(vk_state->device, nullptr);
   if (USE_VALIDATION) {
-    DestroyDebugUtilsMessengerEXT(vk_state->instance, vk_state->debug_messenger,
-      nullptr);
+    DestroyDebugUtilsMessengerEXT(vk_state->instance, vk_state->debug_messenger, nullptr);
   }
   vkDestroySurfaceKHR(vk_state->instance, vk_state->surface, nullptr);
   vkDestroyInstance(vk_state->instance, nullptr);
@@ -179,8 +160,7 @@ void vulkan::recreate_swapchain(VkState *vk_state, CommonState *common_state) {
 
   destroy_swapchain(vk_state);
 
-  init_swapchain_support_details(&vk_state->swapchain_support_details,
-    vk_state->physical_device, vk_state->surface);
+  init_swapchain_support_details(&vk_state->swapchain_support_details, vk_state->physical_device, vk_state->surface);
   init_swapchain(vk_state, common_state->window, &common_state->extent);
   init_uniform_buffers(vk_state);
 
@@ -191,32 +171,26 @@ void vulkan::recreate_swapchain(VkState *vk_state, CommonState *common_state) {
 
 
 void vulkan::render(VkState *vk_state, CommonState *common_state) {
-  FrameResources *frame_resources =
-    &vk_state->frame_resources[vk_state->idx_frame];
+  FrameResources *frame_resources = &vk_state->frame_resources[vk_state->idx_frame];
 
-  vkWaitForFences(vk_state->device, 1, &frame_resources->frame_rendered_fence,
-    VK_TRUE, UINT64_MAX);
+  vkWaitForFences(vk_state->device, 1, &frame_resources->frame_rendered_fence, VK_TRUE, UINT64_MAX);
 
   // Update UBO
   void *memory;
-  vkMapMemory(vk_state->device, frame_resources->uniform_buffer_memory, 0,
-    sizeof(CoreSceneState), 0, &memory);
+  vkMapMemory(vk_state->device, frame_resources->uniform_buffer_memory, 0, sizeof(CoreSceneState), 0, &memory);
   memcpy(memory, &common_state->core_scene_state, sizeof(CoreSceneState));
   vkUnmapMemory(vk_state->device, frame_resources->uniform_buffer_memory);
 
   // Acquire image
   u32 idx_image;
   {
-    VkResult acquire_image_res = vkAcquireNextImageKHR(vk_state->device,
-      vk_state->swapchain, UINT64_MAX,
+    VkResult acquire_image_res = vkAcquireNextImageKHR(vk_state->device, vk_state->swapchain, UINT64_MAX,
       frame_resources->image_available_semaphore, VK_NULL_HANDLE, &idx_image);
 
     if (acquire_image_res == VK_ERROR_OUT_OF_DATE_KHR) {
       recreate_swapchain(vk_state, common_state);
       return;
-    } else if (
-      acquire_image_res != VK_SUCCESS && acquire_image_res != VK_SUBOPTIMAL_KHR
-    ) {
+    } else if (acquire_image_res != VK_SUCCESS && acquire_image_res != VK_SUBOPTIMAL_KHR) {
       logs::fatal("Could not acquire swap chain image.");
     }
   }
@@ -228,9 +202,7 @@ void vulkan::render(VkState *vk_state, CommonState *common_state) {
 
   // Present image
   {
-    VkSemaphore const signal_semaphores[] = {
-      vk_state->forward_stage.render_finished_semaphore
-    };
+    VkSemaphore const signal_semaphores[] = {vk_state->forward_stage.render_finished_semaphore};
     VkSwapchainKHR const swapchains[] = {vk_state->swapchain};
     VkPresentInfoKHR const present_info = {
       .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -240,8 +212,7 @@ void vulkan::render(VkState *vk_state, CommonState *common_state) {
       .pSwapchains        = swapchains,
       .pImageIndices      = &idx_image,
     };
-    VkResult const present_res = vkQueuePresentKHR(vk_state->present_queue,
-      &present_info);
+    VkResult const present_res = vkQueuePresentKHR(vk_state->present_queue, &present_info);
 
     if (
       present_res == VK_ERROR_OUT_OF_DATE_KHR ||

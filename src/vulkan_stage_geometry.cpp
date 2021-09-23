@@ -1,3 +1,12 @@
+static constexpr VkClearValue GEOMETRY_CLEAR_COLORS[] = {
+    {{{0.0f, 0.0f, 0.0f, 1.0f}}},
+    {{{0.0f, 0.0f, 0.0f, 1.0f}}},
+    {{{0.0f, 0.0f, 0.0f, 1.0f}}},
+    {{{0.0f, 0.0f, 0.0f, 1.0f}}},
+    {{{1.0f, 0.0f}}},
+};
+
+
 static void record_geometry_command_buffer(
   VkState *vk_state,
   VkCommandBuffer *command_buffer,
@@ -7,40 +16,25 @@ static void record_geometry_command_buffer(
 ) {
   auto *descriptor_set = &vk_state->geometry_stage.descriptor_sets[idx_frame];
 
-  // Reset commmand buffer
-  vkResetCommandBuffer(*command_buffer, 0);
-
   // Begin command buffer
+  vkResetCommandBuffer(*command_buffer, 0);
   auto const buffer_info = vkutils::command_buffer_begin_info();
   vkutils::check(vkBeginCommandBuffer(*command_buffer, &buffer_info));
 
   // Begin render pass
-  VkClearValue const clear_colors[] = {
-    {{{0.0f, 0.0f, 0.0f, 1.0f}}},
-    {{{0.0f, 0.0f, 0.0f, 1.0f}}},
-    {{{0.0f, 0.0f, 0.0f, 1.0f}}},
-    {{{0.0f, 0.0f, 0.0f, 1.0f}}},
-    {{{1.0f, 0.0f}}},
-  };
-  VkRenderPassBeginInfo const renderpass_info = {
-    .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-    .renderPass      = vk_state->geometry_stage.render_pass,
-    .framebuffer     = vk_state->geometry_stage.framebuffers[idx_image],
-    .renderArea = {
-      .offset        = {0, 0},
-      .extent        = extent,
-    },
-    .clearValueCount = LEN(clear_colors),
-    .pClearValues    = clear_colors,
-  };
-  vkCmdBeginRenderPass(*command_buffer, &renderpass_info,
-    VK_SUBPASS_CONTENTS_INLINE);
+  VkRenderPassBeginInfo const renderpass_info = vkutils::render_pass_begin_info(
+    vk_state->geometry_stage.render_pass,
+    vk_state->geometry_stage.framebuffers[idx_image],
+    extent,
+    LEN(GEOMETRY_CLEAR_COLORS),
+    GEOMETRY_CLEAR_COLORS
+  );
+  vkCmdBeginRenderPass(*command_buffer, &renderpass_info, VK_SUBPASS_CONTENTS_INLINE);
 
   // Bind pipeline and descriptor sets
-  vkCmdBindPipeline(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    vk_state->geometry_stage.pipeline);
-  vkCmdBindDescriptorSets(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    vk_state->geometry_stage.pipeline_layout, 0, 1, descriptor_set, 0, nullptr);
+  vkCmdBindPipeline(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state->geometry_stage.pipeline);
+  vkCmdBindDescriptorSets(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state->geometry_stage.pipeline_layout,
+    0, 1, descriptor_set, 0, nullptr);
 
   // Render
   render_drawable_component(&vk_state->sign, command_buffer);
@@ -51,25 +45,15 @@ static void record_geometry_command_buffer(
 }
 
 
-static void render_geometry_stage(
-  VkState *vk_state, VkExtent2D extent, u32 idx_image
-) {
+static void render_geometry_stage(VkState *vk_state, VkExtent2D extent, u32 idx_image) {
+  auto *stage = &vk_state->geometry_stage;
   auto *frame_resources = &vk_state->frame_resources[vk_state->idx_frame];
+  auto *command_buffer = &stage->command_buffers[vk_state->idx_frame];
 
-  auto *command_buffer =
-    &vk_state->geometry_stage.command_buffers[vk_state->idx_frame];
-
-  record_geometry_command_buffer(vk_state, command_buffer,
-    extent, vk_state->idx_frame, idx_image);
-  VkSemaphore const wait_semaphores[] = {
-    frame_resources->image_available_semaphore
-  };
-  VkPipelineStageFlags const wait_stages[] = {
-    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-  };
-  VkSemaphore const signal_semaphores[] = {
-    vk_state->geometry_stage.render_finished_semaphore
-  };
+  record_geometry_command_buffer(vk_state, command_buffer, extent, vk_state->idx_frame, idx_image);
+  VkSemaphore const wait_semaphores[] = {frame_resources->image_available_semaphore};
+  VkPipelineStageFlags const wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+  VkSemaphore const signal_semaphores[] = {stage->render_finished_semaphore};
   VkSubmitInfo const submit_info = {
     .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
     .waitSemaphoreCount   = 1,
@@ -80,19 +64,15 @@ static void render_geometry_stage(
     .signalSemaphoreCount = 1,
     .pSignalSemaphores    = signal_semaphores,
   };
-  vkutils::check(vkQueueSubmit(vk_state->graphics_queue, 1, &submit_info,
-    nullptr));
+  vkutils::check(vkQueueSubmit(vk_state->graphics_queue, 1, &submit_info, nullptr));
 }
 
 
-static void init_geometry_stage_swapchain(
-  VkState *vk_state, VkExtent2D extent
-) {
+static void init_geometry_stage_swapchain(VkState *vk_state, VkExtent2D extent) {
   // Command buffers
   {
     range (0, N_PARALLEL_FRAMES) {
-      auto const alloc_info =
-        vkutils::command_buffer_allocate_info(vk_state->command_pool);
+      auto const alloc_info = vkutils::command_buffer_allocate_info(vk_state->command_pool);
       vkutils::check(vkAllocateCommandBuffers(vk_state->device, &alloc_info,
         &vk_state->geometry_stage.command_buffers[idx]));
     }
@@ -104,13 +84,10 @@ static void init_geometry_stage_swapchain(
   {
     // Create descriptor pool
     VkDescriptorPoolSize pool_sizes[] = {
-      vkutils::descriptor_pool_size(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        N_PARALLEL_FRAMES),
-      vkutils::descriptor_pool_size(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        N_PARALLEL_FRAMES),
+      vkutils::descriptor_pool_size(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, N_PARALLEL_FRAMES),
+      vkutils::descriptor_pool_size(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, N_PARALLEL_FRAMES),
     };
-    auto const pool_info = vkutils::descriptor_pool_create_info(
-      N_PARALLEL_FRAMES, n_descriptors, pool_sizes);
+    auto const pool_info = vkutils::descriptor_pool_create_info(N_PARALLEL_FRAMES, n_descriptors, pool_sizes);
     vkutils::check(vkCreateDescriptorPool(vk_state->device, &pool_info, nullptr,
       &vk_state->geometry_stage.descriptor_pool));
 
@@ -132,56 +109,41 @@ static void init_geometry_stage_swapchain(
 
       // Create descriptor sets
       auto *descriptor_set = &vk_state->geometry_stage.descriptor_sets[idx];
-      auto const alloc_info = vkutils::descriptor_set_allocate_info(
-          vk_state->geometry_stage.descriptor_pool,
-          &vk_state->geometry_stage.descriptor_set_layout);
-      vkutils::check(vkAllocateDescriptorSets(vk_state->device, &alloc_info,
-        descriptor_set));
+      auto const alloc_info = vkutils::descriptor_set_allocate_info(vk_state->geometry_stage.descriptor_pool,
+        &vk_state->geometry_stage.descriptor_set_layout);
+      vkutils::check(vkAllocateDescriptorSets(vk_state->device, &alloc_info, descriptor_set));
 
       // Update descriptor sets
       VkWriteDescriptorSet descriptor_writes[] = {
         vkutils::write_descriptor_set_buffer(*descriptor_set, 0, &buffer_info),
         vkutils::write_descriptor_set_image(*descriptor_set, 1, &image_info),
       };
-      vkUpdateDescriptorSets(vk_state->device, n_descriptors, descriptor_writes,
-        0, nullptr);
+      vkUpdateDescriptorSets(vk_state->device, n_descriptors, descriptor_writes, 0, nullptr);
     }
   }
 
   // Render pass
   {
-    auto const g_position_attachment = vkutils::attachment_description(
-      VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    auto const g_position_ref = vkutils::attachment_reference(
-      0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    #define create_g_attachment_and_ref(attachment_var, ref_var, idx) \
+      auto const attachment_var = vkutils::attachment_description( \
+        VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL); \
+      auto const ref_var = vkutils::attachment_reference( \
+        idx, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-    auto const g_normal_attachment = vkutils::attachment_description(
-      VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    auto const g_normal_ref = vkutils::attachment_reference(
-      1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    create_g_attachment_and_ref(g_position_attachment, g_position_ref, 0);
+    create_g_attachment_and_ref(g_normal_attachment, g_normal_ref, 1);
+    create_g_attachment_and_ref(g_albedo_attachment, g_albedo_ref, 2);
+    create_g_attachment_and_ref(g_pbr_attachment, g_pbr_ref, 3);
 
-    auto const g_albedo_attachment = vkutils::attachment_description(
-      VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    auto const g_albedo_ref = vkutils::attachment_reference(
-      2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    auto const depthbuffer_attachment = vkutils::attachment_description(VK_FORMAT_D32_SFLOAT,
+      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    auto const depthbuffer_attachment_ref = vkutils::attachment_reference(4,
+      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-    auto const g_pbr_attachment = vkutils::attachment_description(
-      VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    auto const g_pbr_ref = vkutils::attachment_reference(
-      3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
-    auto const depthbuffer_attachment = vkutils::attachment_description(
-      VK_FORMAT_D32_SFLOAT, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-    auto const depthbuffer_attachment_ref = vkutils::attachment_reference(
-      4, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-
-    VkAttachmentReference const color_attachment_refs[] = {
-      g_position_ref, g_normal_ref, g_albedo_ref, g_pbr_ref
-    };
+    VkAttachmentReference const color_attachment_refs[] = {g_position_ref, g_normal_ref, g_albedo_ref, g_pbr_ref};
 
     VkAttachmentDescription const attachments[] = {
-      g_position_attachment, g_normal_attachment, g_albedo_attachment,
-      g_pbr_attachment, depthbuffer_attachment
+      g_position_attachment, g_normal_attachment, g_albedo_attachment, g_pbr_attachment, depthbuffer_attachment
     };
 
     VkSubpassDescription const subpass = {
@@ -190,18 +152,7 @@ static void init_geometry_stage_swapchain(
       .pColorAttachments       = color_attachment_refs,
       .pDepthStencilAttachment = &depthbuffer_attachment_ref,
     };
-    VkSubpassDependency const dependency = {
-      .srcSubpass    = VK_SUBPASS_EXTERNAL,
-      .dstSubpass    = 0,
-      .srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-      .dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-      .srcAccessMask = 0,
-      .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-    };
-
+    VkSubpassDependency const dependency = vkutils::subpass_dependency_depth();
     VkRenderPassCreateInfo const render_pass_info = {
       .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
       .attachmentCount = LEN(attachments),
@@ -212,59 +163,28 @@ static void init_geometry_stage_swapchain(
       .pDependencies   = &dependency,
     };
 
-    vkutils::check(vkCreateRenderPass(vk_state->device, &render_pass_info,
-      nullptr, &vk_state->geometry_stage.render_pass));
+    vkutils::check(vkCreateRenderPass(vk_state->device, &render_pass_info, nullptr,
+      &vk_state->geometry_stage.render_pass));
   }
 
   // Framebuffers
   {
-    // g_position
-    vkutils::create_image_resources_with_sampler(vk_state->device,
-      &vk_state->g_position,
-      vk_state->physical_device,
-      extent.width, extent.height,
-      VK_FORMAT_B8G8R8A8_SRGB,
-      VK_IMAGE_TILING_OPTIMAL,
-      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-      VK_IMAGE_ASPECT_COLOR_BIT,
-      vk_state->physical_device_properties);
+    #define create_g_image_resources(var) \
+      vkutils::create_image_resources_with_sampler(vk_state->device, \
+        var, \
+        vk_state->physical_device, \
+        extent.width, extent.height, \
+        VK_FORMAT_B8G8R8A8_SRGB, \
+        VK_IMAGE_TILING_OPTIMAL, \
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, \
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, \
+        VK_IMAGE_ASPECT_COLOR_BIT, \
+        vk_state->physical_device_properties);
 
-    // g_normal
-    vkutils::create_image_resources_with_sampler(vk_state->device,
-      &vk_state->g_normal,
-      vk_state->physical_device,
-      extent.width, extent.height,
-      VK_FORMAT_B8G8R8A8_SRGB,
-      VK_IMAGE_TILING_OPTIMAL,
-      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-      VK_IMAGE_ASPECT_COLOR_BIT,
-      vk_state->physical_device_properties);
-
-    // g_albedo
-    vkutils::create_image_resources_with_sampler(vk_state->device,
-      &vk_state->g_albedo,
-      vk_state->physical_device,
-      extent.width, extent.height,
-      VK_FORMAT_B8G8R8A8_SRGB,
-      VK_IMAGE_TILING_OPTIMAL,
-      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-      VK_IMAGE_ASPECT_COLOR_BIT,
-      vk_state->physical_device_properties);
-
-    // g_pbr
-    vkutils::create_image_resources_with_sampler(vk_state->device,
-      &vk_state->g_pbr,
-      vk_state->physical_device,
-      extent.width, extent.height,
-      VK_FORMAT_B8G8R8A8_SRGB,
-      VK_IMAGE_TILING_OPTIMAL,
-      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-      VK_IMAGE_ASPECT_COLOR_BIT,
-      vk_state->physical_device_properties);
+    create_g_image_resources(&vk_state->g_position);
+    create_g_image_resources(&vk_state->g_normal);
+    create_g_image_resources(&vk_state->g_albedo);
+    create_g_image_resources(&vk_state->g_pbr);
 
     // Depth buffer
     vkutils::create_image_resources(vk_state->device,
@@ -280,11 +200,7 @@ static void init_geometry_stage_swapchain(
     // Framebuffers
     range (0, vk_state->n_swapchain_images) {
       VkImageView const attachments[] = {
-        /* vk_state->swapchain_image_views[idx], */
-        vk_state->g_position.view,
-        vk_state->g_normal.view,
-        vk_state->g_albedo.view,
-        vk_state->g_pbr.view,
+        vk_state->g_position.view, vk_state->g_normal.view, vk_state->g_albedo.view, vk_state->g_pbr.view,
         vk_state->depthbuffer.view,
       };
       VkFramebufferCreateInfo const framebuffer_info = {
@@ -296,8 +212,8 @@ static void init_geometry_stage_swapchain(
         .height          = extent.height,
         .layers          = 1,
       };
-      vkutils::check(vkCreateFramebuffer(vk_state->device, &framebuffer_info,
-        nullptr, &vk_state->geometry_stage.framebuffers[idx]));
+      vkutils::check(vkCreateFramebuffer(vk_state->device, &framebuffer_info, nullptr,
+        &vk_state->geometry_stage.framebuffers[idx]));
     }
   }
 
@@ -305,16 +221,16 @@ static void init_geometry_stage_swapchain(
   {
     // Pipeline layout
     auto const pipeline_layout_info = vkutils::pipeline_layout_create_info(
-        &vk_state->geometry_stage.descriptor_set_layout);
-    vkutils::check(vkCreatePipelineLayout(vk_state->device, &pipeline_layout_info,
-      nullptr, &vk_state->geometry_stage.pipeline_layout));
+      &vk_state->geometry_stage.descriptor_set_layout);
+    vkutils::check(vkCreatePipelineLayout(vk_state->device, &pipeline_layout_info, nullptr,
+      &vk_state->geometry_stage.pipeline_layout));
 
     // Shaders
     MemoryPool pool = {};
-    auto const vert_shader_module = vkutils::create_shader_module_from_file(
-      vk_state->device, &pool, "bin/shaders/geometry.vert.spv");
-    auto const frag_shader_module = vkutils::create_shader_module_from_file(
-      vk_state->device, &pool, "bin/shaders/geometry.frag.spv");
+    auto const vert_shader_module = vkutils::create_shader_module_from_file(vk_state->device, &pool,
+      "bin/shaders/geometry.vert.spv");
+    auto const frag_shader_module = vkutils::create_shader_module_from_file(vk_state->device, &pool,
+      "bin/shaders/geometry.frag.spv");
     VkPipelineShaderStageCreateInfo const shader_stages[] = {
       vkutils::pipeline_shader_stage_create_info_vert(vert_shader_module),
       vkutils::pipeline_shader_stage_create_info_frag(frag_shader_module),
@@ -333,18 +249,8 @@ static void init_geometry_stage_swapchain(
       .topology               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
       .primitiveRestartEnable = VK_FALSE,
     };
-    VkViewport const viewport = {
-      .x        = 0.0f,
-      .y        = 0.0f,
-      .width    = (f32)extent.width,
-      .height   = (f32)extent.height,
-      .minDepth = 0.0f,
-      .maxDepth = 1.0f,
-    };
-    VkRect2D const scissor = {
-      .offset = {0, 0},
-      .extent = extent,
-    };
+    VkViewport const viewport = vkutils::viewport_from_extent(extent);
+    VkRect2D const scissor = vkutils::rect_from_extent(extent);
     auto const viewport_state_info =
       vkutils::pipeline_viewport_state_create_info(&viewport, &scissor);
     VkPipelineRasterizationStateCreateInfo const rasterizer_info = {
@@ -400,8 +306,8 @@ static void init_geometry_stage_swapchain(
       .subpass             = 0,
     };
 
-    vkutils::check(vkCreateGraphicsPipelines(vk_state->device, VK_NULL_HANDLE, 1,
-      &pipeline_info, nullptr, &vk_state->geometry_stage.pipeline));
+    vkutils::check(vkCreateGraphicsPipelines(vk_state->device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr,
+      &vk_state->geometry_stage.pipeline));
 
     vkDestroyShaderModule(vk_state->device, vert_shader_module, nullptr);
     vkDestroyShaderModule(vk_state->device, frag_shader_module, nullptr);
@@ -414,19 +320,15 @@ static void init_geometry_stage(VkState *vk_state, VkExtent2D extent) {
   {
     u32 n_descriptors = 2;
     VkDescriptorSetLayoutBinding bindings[] = {
-      vkutils::descriptor_set_layout_binding(0,
-        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
-      vkutils::descriptor_set_layout_binding(1,
-        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+      vkutils::descriptor_set_layout_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+      vkutils::descriptor_set_layout_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
     };
-    auto const layout_info =
-      vkutils::descriptor_set_layout_create_info(n_descriptors, bindings);
+    auto const layout_info = vkutils::descriptor_set_layout_create_info(n_descriptors, bindings);
     vkutils::check(vkCreateDescriptorSetLayout(vk_state->device, &layout_info,
       nullptr, &vk_state->geometry_stage.descriptor_set_layout));
   }
 
-  vkutils::create_semaphore(vk_state->device,
-    &vk_state->geometry_stage.render_finished_semaphore);
+  vkutils::create_semaphore(vk_state->device, &vk_state->geometry_stage.render_finished_semaphore);
 
   init_geometry_stage_swapchain(vk_state, extent);
 }
@@ -434,27 +336,19 @@ static void init_geometry_stage(VkState *vk_state, VkExtent2D extent) {
 
 static void destroy_geometry_stage_swapchain(VkState *vk_state) {
   range (0, N_PARALLEL_FRAMES) {
-    vkFreeCommandBuffers(vk_state->device, vk_state->command_pool, 1,
-      &vk_state->geometry_stage.command_buffers[idx]);
+    vkFreeCommandBuffers(vk_state->device, vk_state->command_pool, 1, &vk_state->geometry_stage.command_buffers[idx]);
   }
-  vkDestroyDescriptorPool(vk_state->device,
-    vk_state->geometry_stage.descriptor_pool, nullptr);
+  vkDestroyDescriptorPool(vk_state->device, vk_state->geometry_stage.descriptor_pool, nullptr);
   range (0, vk_state->n_swapchain_images) {
-    vkDestroyFramebuffer(vk_state->device,
-      vk_state->geometry_stage.framebuffers[idx], nullptr);
+    vkDestroyFramebuffer(vk_state->device, vk_state->geometry_stage.framebuffers[idx], nullptr);
   }
-  vkDestroyPipeline(vk_state->device, vk_state->geometry_stage.pipeline,
-    nullptr);
-  vkDestroyPipelineLayout(vk_state->device,
-    vk_state->geometry_stage.pipeline_layout, nullptr);
-  vkDestroyRenderPass(vk_state->device, vk_state->geometry_stage.render_pass,
-    nullptr);
+  vkDestroyPipeline(vk_state->device, vk_state->geometry_stage.pipeline, nullptr);
+  vkDestroyPipelineLayout(vk_state->device, vk_state->geometry_stage.pipeline_layout, nullptr);
+  vkDestroyRenderPass(vk_state->device, vk_state->geometry_stage.render_pass, nullptr);
 }
 
 
 static void destroy_geometry_stage_nonswapchain(VkState *vk_state) {
-  vkDestroyDescriptorSetLayout(vk_state->device,
-    vk_state->geometry_stage.descriptor_set_layout, nullptr);
-  vkDestroySemaphore(vk_state->device,
-    vk_state->geometry_stage.render_finished_semaphore, nullptr);
+  vkDestroyDescriptorSetLayout(vk_state->device, vk_state->geometry_stage.descriptor_set_layout, nullptr);
+  vkDestroySemaphore(vk_state->device, vk_state->geometry_stage.render_finished_semaphore, nullptr);
 }

@@ -6,10 +6,7 @@
 static VkSurfaceFormatKHR choose_swap_surface_format(SwapchainSupportDetails *details) {
   range (0, details->n_formats) {
     VkSurfaceFormatKHR candidate = details->formats[idx];
-    if (
-      candidate.format == VK_FORMAT_B8G8R8A8_SRGB &&
-      candidate.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
-    ) {
+    if (candidate.format == VK_FORMAT_B8G8R8A8_SRGB && candidate.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
       return candidate;
     }
   }
@@ -30,9 +27,7 @@ static VkPresentModeKHR choose_swap_present_mode(SwapchainSupportDetails *detail
 }
 
 
-static VkExtent2D choose_swap_extent(
-  SwapchainSupportDetails *details, GLFWwindow *window
-) {
+static VkExtent2D choose_swap_extent(SwapchainSupportDetails *details, GLFWwindow *window) {
   if (details->capabilities.currentExtent.width != UINT32_MAX) {
     return details->capabilities.currentExtent;
   } else {
@@ -40,11 +35,9 @@ static VkExtent2D choose_swap_extent(
     glfwGetFramebufferSize(window, &width, &height);
 
     VkExtent2D extent = {(u32)width, (u32)height};
-    extent.width = clamp(extent.width,
-      details->capabilities.minImageExtent.width,
+    extent.width = clamp(extent.width, details->capabilities.minImageExtent.width,
       details->capabilities.maxImageExtent.width);
-    extent.height = clamp(extent.height,
-      details->capabilities.minImageExtent.height,
+    extent.height = clamp(extent.height, details->capabilities.minImageExtent.height,
       details->capabilities.maxImageExtent.height);
 
     return extent;
@@ -53,30 +46,24 @@ static VkExtent2D choose_swap_extent(
 
 
 static void init_swapchain_support_details(
-  SwapchainSupportDetails *details,
-  VkPhysicalDevice physical_device,
-  VkSurfaceKHR surface
+  SwapchainSupportDetails *details, VkPhysicalDevice physical_device, VkSurfaceKHR surface
 ) {
   *details = {};
 
   // Capabilities
-  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device,
-    surface, &details->capabilities);
+  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface, &details->capabilities);
 
   // Formats
-  vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device,
-    surface, &details->n_formats, nullptr);
+  vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &details->n_formats, nullptr);
   if (details->n_formats != 0) {
-    vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device,
-      surface, &details->n_formats, details->formats);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &details->n_formats, details->formats);
   }
 
   // Present modes
-  vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device,
-    surface, &details->n_present_modes, nullptr);
+  vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &details->n_present_modes, nullptr);
   if (details->n_present_modes != 0) {
-    vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device,
-      surface, &details->n_present_modes, details->present_modes);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &details->n_present_modes,
+      details->present_modes);
   }
 }
 
@@ -117,9 +104,7 @@ static void init_swapchain(VkState *vk_state, GLFWwindow *window, VkExtent2D *ex
     .oldSwapchain     = VK_NULL_HANDLE,
   };
 
-  u32 const queue_family_indices[] = {
-    (u32)indices->graphics, (u32)indices->present
-  };
+  u32 const queue_family_indices[] = {(u32)indices->graphics, (u32)indices->present};
 
   if (indices->graphics != indices->present) {
     // If we need to use this swapchain from two different queues, allow that
@@ -131,14 +116,11 @@ static void init_swapchain(VkState *vk_state, GLFWwindow *window, VkExtent2D *ex
     swapchain_info.imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE;
   }
 
-  vkutils::check(vkCreateSwapchainKHR(vk_state->device, &swapchain_info,
-    nullptr, &vk_state->swapchain));
+  vkutils::check(vkCreateSwapchainKHR(vk_state->device, &swapchain_info, nullptr, &vk_state->swapchain));
 
   VkImage swapchain_images[MAX_N_SWAPCHAIN_IMAGES];
-  vkGetSwapchainImagesKHR(vk_state->device,
-    vk_state->swapchain, &vk_state->n_swapchain_images, nullptr);
-  vkGetSwapchainImagesKHR(vk_state->device,
-    vk_state->swapchain, &vk_state->n_swapchain_images, swapchain_images);
+  vkGetSwapchainImagesKHR(vk_state->device, vk_state->swapchain, &vk_state->n_swapchain_images, nullptr);
+  vkGetSwapchainImagesKHR(vk_state->device, vk_state->swapchain, &vk_state->n_swapchain_images, swapchain_images);
 
   vk_state->swapchain_image_format = surface_format.format;
 
@@ -166,7 +148,6 @@ static void init_swapchain(VkState *vk_state, GLFWwindow *window, VkExtent2D *ex
       },
     };
 
-    vkutils::check(vkCreateImageView(vk_state->device, &image_view_info,
-      nullptr, image_view));
+    vkutils::check(vkCreateImageView(vk_state->device, &image_view_info, nullptr, image_view));
   }
 }

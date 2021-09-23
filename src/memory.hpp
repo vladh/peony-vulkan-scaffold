@@ -27,11 +27,7 @@ namespace memory {
     #endif
   };
 
-  void* push(
-    MemoryPool *pool,
-    size_t item_size,
-    const char *item_debug_name
-  );
+  void* push(MemoryPool *pool, size_t item_size, const char *item_debug_name);
   void print_memory_pool(MemoryPool *pool);
   void destroy_memory_pool(MemoryPool *memory_pool);
 }

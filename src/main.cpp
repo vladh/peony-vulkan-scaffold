@@ -18,17 +18,13 @@ struct State {
 };
 
 
-static void framebuffer_size_callback(
-  GLFWwindow* window, int width, int height
-) {
+static void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
   State *state = (State*)glfwGetWindowUserPointer(window);
   state->vk_state.should_recreate_swapchain = true;
 }
 
 
-void key_callback(
-  GLFWwindow* window, int key, int scancode, int action, int mods
-) {
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
   State *state = (State*)glfwGetWindowUserPointer(window);
 
   if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
@@ -54,10 +50,7 @@ static void destroy_window(GLFWwindow *window) {
 
 
 static void run_main_loop(State *state) {
-  while (
-    !glfwWindowShouldClose(state->common_state.window) &&
-    !state->common_state.should_quit
-  ) {
+  while (!glfwWindowShouldClose(state->common_state.window) && !state->common_state.should_quit) {
     glfwPollEvents();
     engine::update(&state->common_state);
     vulkan::render(&state->vk_state, &state->common_state);

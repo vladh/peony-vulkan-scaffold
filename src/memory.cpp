@@ -42,11 +42,7 @@ void* memory::push(
   // If we haven't allocated anything in the pool, let's allocate something now.
   if (pool->memory == nullptr) {
     #if USE_MEMORY_DEBUG_LOGS
-      logs::info(
-        "Allocating memory pool: %.2fMB (%dB)",
-        util::b_to_mb((real64)pool->size),
-        pool->size
-      );
+      logs::info("Allocating memory pool: %.2fMB (%dB)", util::b_to_mb((real64)pool->size), pool->size);
     #endif
 
     pool->memory = (uint8*)calloc(1, pool->size);
@@ -72,10 +68,7 @@ void* memory::push(
   #if USE_MEMORY_DEBUG_LOGS
     logs::info(
       "Pusing to memory pool: %.2fMB (%dB) for %s, now at %.2fMB (%dB)",
-      util::b_to_mb((real64)item_size),
-      item_size, item_debug_name,
-      util::b_to_mb((real64)pool->used),
-      pool->used
+      util::b_to_mb((real64)item_size), item_size, item_debug_name, util::b_to_mb((real64)pool->used), pool->used
     );
   #endif
 
@@ -95,9 +88,7 @@ void memory::print_memory_pool(MemoryPool *pool) {
     for (uint32 idx = 0; idx < pool->n_items; idx++) {
       logs::info(
         "    %02d. %s, %.2fMB (%dB)",
-        idx,
-        pool->item_debug_names[idx],
-        util::b_to_mb((real64)pool->item_debug_sizes[idx]),
+        idx, pool->item_debug_names[idx], util::b_to_mb((real64)pool->item_debug_sizes[idx]),
         pool->item_debug_sizes[idx]
       );
     }

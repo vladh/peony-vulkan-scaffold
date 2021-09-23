@@ -12,15 +12,12 @@
 
 
 unsigned char* files::load_image(
-  char const *path, int32 *width, int32 *height, int32 *n_channels,
-  int32 desired_channels, bool should_flip
+  char const *path, int32 *width, int32 *height, int32 *n_channels, int32 desired_channels, bool should_flip
 ) {
   stbi_set_flip_vertically_on_load(should_flip);
-  unsigned char *image_data = stbi_load(path, width, height, n_channels,
-    desired_channels);
+  unsigned char *image_data = stbi_load(path, width, height, n_channels, desired_channels);
   if (!image_data) {
-    logs::fatal(
-      "Could not open file %s: (strerror: %s) (stbi_failure_reason: %s)",
+    logs::fatal("Could not open file %s: (strerror: %s) (stbi_failure_reason: %s)",
       path, strerror(errno), stbi_failure_reason());
   }
   return image_data;
@@ -45,9 +42,7 @@ u32 files::get_file_size(char const * const path) {
 }
 
 
-char* files::load_file_to_pool_str(
-  MemoryPool *memory_pool, char const *path, size_t *file_size
-) {
+char* files::load_file_to_pool_str(MemoryPool *memory_pool, char const *path, size_t *file_size) {
   FILE *f = fopen(path, "rb");
   if (!f) {
     logs::error("Could not open file %s.", path);
@@ -70,9 +65,7 @@ char* files::load_file_to_pool_str(
 }
 
 
-u8* files::load_file_to_pool_u8(
-  MemoryPool *memory_pool, char const *path, size_t *file_size
-) {
+u8* files::load_file_to_pool_u8(MemoryPool *memory_pool, char const *path, size_t *file_size) {
   FILE *f = fopen(path, "rb");
   if (!f) {
     logs::error("Could not open file %s.", path);
@@ -94,9 +87,7 @@ u8* files::load_file_to_pool_u8(
 }
 
 
-char* files::load_file_to_str(
-  char *buffer, char const *path, size_t *file_size
-) {
+char* files::load_file_to_str(char *buffer, char const *path, size_t *file_size) {
   FILE *f = fopen(path, "rb");
   if (!f) {
     logs::error("Could not open file %s.", path);

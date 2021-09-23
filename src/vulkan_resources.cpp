@@ -7,8 +7,7 @@ static void init_textures(VkState *vk_state) {
   // Load alpaca
   {
     int width, height, n_channels;
-    unsigned char *image = files::load_image(
-      "../peony/resources/textures/alpaca.jpg", &width, &height, &n_channels,
+    unsigned char *image = files::load_image("../peony/resources/textures/alpaca.jpg", &width, &height, &n_channels,
       STBI_rgb_alpha, false);
     defer { files::free_image(image); };
 
