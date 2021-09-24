@@ -4,59 +4,55 @@ static constexpr VkClearValue FORWARD_CLEAR_COLORS[] = {
 };
 
 
-static void record_forward_command_buffer(
-  VkState *vk_state,
-  VkCommandBuffer *command_buffer,
-  VkExtent2D extent,
-  u32 idx_frame,
-  u32 idx_image
-) {
+static void render_forward_stage(VkState *vk_state, VkExtent2D extent, u32 idx_image) {
+  auto idx_frame = vk_state->idx_frame;
+  auto *frame_resources = &vk_state->frame_resources[idx_frame];
+  auto *command_buffer = &vk_state->forward_stage.command_buffers[idx_frame];
   auto *descriptor_set = &vk_state->forward_stage.descriptor_sets[idx_frame];
 
-  // Begin command buffer
-  vkResetCommandBuffer(*command_buffer, 0);
-  auto const buffer_info = vkutils::command_buffer_begin_info();
-  vkutils::check(vkBeginCommandBuffer(*command_buffer, &buffer_info));
+  // Record command buffer
+  {
+    // Begin command buffer
+    vkResetCommandBuffer(*command_buffer, 0);
+    auto const buffer_info = vkutils::command_buffer_begin_info();
+    vkutils::check(vkBeginCommandBuffer(*command_buffer, &buffer_info));
 
-  // Begin render pass
-  VkRenderPassBeginInfo const render_pass_info = vkutils::render_pass_begin_info(vk_state->forward_stage.render_pass,
-    vk_state->forward_stage.framebuffers[idx_image], extent, LEN(FORWARD_CLEAR_COLORS), FORWARD_CLEAR_COLORS);
-  vkCmdBeginRenderPass(*command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+    // Begin render pass
+    VkRenderPassBeginInfo const render_pass_info = vkutils::render_pass_begin_info(vk_state->forward_stage.render_pass,
+      vk_state->forward_stage.framebuffers[idx_image], extent, LEN(FORWARD_CLEAR_COLORS), FORWARD_CLEAR_COLORS);
+    vkCmdBeginRenderPass(*command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
-  // Bind pipeline and descriptor sets
-  vkCmdBindPipeline(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state->forward_stage.pipeline);
-  vkCmdBindDescriptorSets(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state->forward_stage.pipeline_layout,
-    0, 1, descriptor_set, 0, nullptr);
+    // Bind pipeline and descriptor sets
+    vkCmdBindPipeline(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state->forward_stage.pipeline);
+    vkCmdBindDescriptorSets(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state->forward_stage.pipeline_layout,
+      0, 1, descriptor_set, 0, nullptr);
 
-  // Render
-  render_drawable_component(&vk_state->fsign, command_buffer);
+    // Render
+    render_drawable_component(&vk_state->fsign, command_buffer);
 
-  // End render pass and command buffer
-  vkCmdEndRenderPass(*command_buffer);
-  vkutils::check(vkEndCommandBuffer(*command_buffer));
-}
+    // End render pass and command buffer
+    vkCmdEndRenderPass(*command_buffer);
+    vkutils::check(vkEndCommandBuffer(*command_buffer));
+  }
 
-
-static void render_forward_stage(VkState *vk_state, VkExtent2D extent, u32 idx_image) {
-  auto *frame_resources = &vk_state->frame_resources[vk_state->idx_frame];
-  auto *command_buffer = &vk_state->forward_stage.command_buffers[vk_state->idx_frame];
-
-  record_forward_command_buffer(vk_state, command_buffer, extent, vk_state->idx_frame, idx_image);
-  VkSemaphore const wait_semaphores[] = {vk_state->lighting_stage.render_finished_semaphore};
-  VkPipelineStageFlags const wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-  VkSemaphore const signal_semaphores[] = {vk_state->forward_stage.render_finished_semaphore};
-  VkSubmitInfo const submit_info = {
-    .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-    .waitSemaphoreCount   = 1,
-    .pWaitSemaphores      = wait_semaphores,
-    .pWaitDstStageMask    = wait_stages,
-    .commandBufferCount   = 1,
-    .pCommandBuffers      = command_buffer,
-    .signalSemaphoreCount = 1,
-    .pSignalSemaphores    = signal_semaphores,
-  };
-  vkResetFences(vk_state->device, 1, &frame_resources->frame_rendered_fence);
-  vkutils::check(vkQueueSubmit(vk_state->graphics_queue, 1, &submit_info, frame_resources->frame_rendered_fence));
+  // Submit command buffer
+  {
+    VkSemaphore const wait_semaphores[] = {vk_state->lighting_stage.render_finished_semaphore};
+    VkPipelineStageFlags const wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    VkSemaphore const signal_semaphores[] = {vk_state->forward_stage.render_finished_semaphore};
+    VkSubmitInfo const submit_info = {
+      .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+      .waitSemaphoreCount   = 1,
+      .pWaitSemaphores      = wait_semaphores,
+      .pWaitDstStageMask    = wait_stages,
+      .commandBufferCount   = 1,
+      .pCommandBuffers      = command_buffer,
+      .signalSemaphoreCount = 1,
+      .pSignalSemaphores    = signal_semaphores,
+    };
+    vkResetFences(vk_state->device, 1, &frame_resources->frame_rendered_fence);
+    vkutils::check(vkQueueSubmit(vk_state->graphics_queue, 1, &submit_info, frame_resources->frame_rendered_fence));
+  }
 }
 
 
