@@ -147,17 +147,8 @@ static void init_lighting_stage_swapchain(VkState *vk_state, VkExtent2D extent) 
   {
     range (0, vk_state->n_swapchain_images) {
       VkImageView const attachments[] = {vk_state->swapchain_image_views[idx]};
-      VkFramebufferCreateInfo const framebuffer_info = {
-        .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-        .renderPass      = vk_state->lighting_stage.render_pass,
-        .attachmentCount = LEN(attachments),
-        .pAttachments    = attachments,
-        .width           = extent.width,
-        .height          = extent.height,
-        .layers          = 1,
-      };
-      vkutils::check(vkCreateFramebuffer(vk_state->device, &framebuffer_info, nullptr,
-        &vk_state->lighting_stage.framebuffers[idx]));
+      vkutils::create_framebuffer(vk_state->device, &vk_state->lighting_stage.framebuffers[idx],
+        vk_state->lighting_stage.render_pass, LEN(attachments), attachments, extent);
     }
   }
 

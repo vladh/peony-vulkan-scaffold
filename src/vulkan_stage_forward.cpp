@@ -135,17 +135,8 @@ static void init_forward_stage_swapchain(VkState *vk_state, VkExtent2D extent) {
         vk_state->swapchain_image_views[idx],
         vk_state->depthbuffer.view,
       };
-      VkFramebufferCreateInfo const framebuffer_info = {
-        .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-        .renderPass      = vk_state->forward_stage.render_pass,
-        .attachmentCount = LEN(attachments),
-        .pAttachments    = attachments,
-        .width           = extent.width,
-        .height          = extent.height,
-        .layers          = 1,
-      };
-      vkutils::check(vkCreateFramebuffer(vk_state->device, &framebuffer_info, nullptr,
-        &vk_state->forward_stage.framebuffers[idx]));
+      vkutils::create_framebuffer(vk_state->device, &vk_state->forward_stage.framebuffers[idx],
+        vk_state->forward_stage.render_pass, LEN(attachments), attachments, extent);
     }
   }
 

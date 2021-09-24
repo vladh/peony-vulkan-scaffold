@@ -140,6 +140,7 @@ static void init_geometry_stage_swapchain(VkState *vk_state, VkExtent2D extent) 
 
   // Framebuffers
   {
+    // g buffers
     #define create_g_image_resources(var) \
       vkutils::create_image_resources_with_sampler(vk_state->device, \
         var, \
@@ -174,17 +175,8 @@ static void init_geometry_stage_swapchain(VkState *vk_state, VkExtent2D extent) 
         vk_state->g_position.view, vk_state->g_normal.view, vk_state->g_albedo.view, vk_state->g_pbr.view,
         vk_state->depthbuffer.view,
       };
-      VkFramebufferCreateInfo const framebuffer_info = {
-        .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-        .renderPass      = vk_state->geometry_stage.render_pass,
-        .attachmentCount = LEN(attachments),
-        .pAttachments    = attachments,
-        .width           = extent.width,
-        .height          = extent.height,
-        .layers          = 1,
-      };
-      vkutils::check(vkCreateFramebuffer(vk_state->device, &framebuffer_info, nullptr,
-        &vk_state->geometry_stage.framebuffers[idx]));
+      vkutils::create_framebuffer(vk_state->device, &vk_state->geometry_stage.framebuffers[idx],
+        vk_state->geometry_stage.render_pass, LEN(attachments), attachments, extent);
     }
   }
 

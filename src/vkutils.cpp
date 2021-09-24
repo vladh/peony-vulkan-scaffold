@@ -313,6 +313,28 @@ namespace vkutils {
     assert(result == VK_SUCCESS);
   }
 
+
+  void create_framebuffer(
+    VkDevice device,
+    VkFramebuffer *framebuffer,
+    VkRenderPass renderPass,
+    u32 attachmentCount,
+    VkImageView const *pAttachments,
+    VkExtent2D extent
+  ) {
+    VkFramebufferCreateInfo const framebuffer_info = {
+      .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+      .renderPass      = renderPass,
+      .attachmentCount = attachmentCount,
+      .pAttachments    = pAttachments,
+      .width           = extent.width,
+      .height          = extent.height,
+      .layers          = 1,
+    };
+    check(vkCreateFramebuffer(device, &framebuffer_info, nullptr, framebuffer));
+  }
+
+
   void create_render_pass(
     VkDevice device,
     VkRenderPass *render_pass,
@@ -339,6 +361,7 @@ namespace vkutils {
 
     check(vkCreateRenderPass(device, &render_pass_info, nullptr, render_pass));
   }
+
 
   void create_semaphore(VkDevice device, VkSemaphore *semaphore) {
     VkSemaphoreCreateInfo const semaphore_info = {.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
