@@ -3,6 +3,16 @@ static constexpr VkClearValue FORWARD_CLEAR_COLORS[] = {
   {{{1.0f, 0.0f}}},
 };
 
+static constexpr VkDescriptorPoolSize FORWARD_DESCRIPTOR_POOL_SIZES[] = {
+  vkutils::descriptor_pool_size(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, N_PARALLEL_FRAMES),
+  vkutils::descriptor_pool_size(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, N_PARALLEL_FRAMES),
+};
+static constexpr VkDescriptorSetLayoutBinding FORWARD_DESCRIPTOR_BINDINGS[] = {
+  vkutils::descriptor_set_layout_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+  vkutils::descriptor_set_layout_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+};
+static constexpr u32 FORWARD_N_DESCRIPTORS = LEN(FORWARD_DESCRIPTOR_POOL_SIZES);
+
 
 static void render_forward_stage(VkState *vk_state, VkExtent2D extent, u32 idx_image) {
   auto idx_frame = vk_state->idx_frame;
@@ -68,20 +78,10 @@ static void init_forward_stage_swapchain(VkState *vk_state, VkExtent2D extent) {
   // Descriptors
   {
     // Create descriptor pool
-    VkDescriptorPoolSize pool_sizes[] = {
-      vkutils::descriptor_pool_size(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, N_PARALLEL_FRAMES),
-      vkutils::descriptor_pool_size(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, N_PARALLEL_FRAMES),
-    };
-    u32 n_descriptors = LEN(pool_sizes);
-    auto const pool_info = vkutils::descriptor_pool_create_info(N_PARALLEL_FRAMES, n_descriptors, pool_sizes);
+    auto const pool_info = vkutils::descriptor_pool_create_info(N_PARALLEL_FRAMES, FORWARD_N_DESCRIPTORS,
+      FORWARD_DESCRIPTOR_POOL_SIZES);
     vkutils::check(vkCreateDescriptorPool(vk_state->device, &pool_info, nullptr,
       &vk_state->forward_stage.descriptor_pool));
-
-    VkDescriptorImageInfo const image_info = {
-      .sampler     = vk_state->alpaca.sampler,
-      .imageView   = vk_state->alpaca.view,
-      .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-    };
 
     // Create descriptors
     range (0, N_PARALLEL_FRAMES) {
@@ -92,20 +92,24 @@ static void init_forward_stage_swapchain(VkState *vk_state, VkExtent2D extent) {
         .offset = 0,
         .range  = sizeof(CoreSceneState),
       };
+      VkDescriptorImageInfo const image_info = {
+        .sampler     = vk_state->alpaca.sampler,
+        .imageView   = vk_state->alpaca.view,
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      };
 
       // Create descriptor sets
       auto *descriptor_set = &vk_state->forward_stage.descriptor_sets[idx];
       auto const alloc_info = vkutils::descriptor_set_allocate_info(vk_state->forward_stage.descriptor_pool,
         &vk_state->forward_stage.descriptor_set_layout);
-      vkutils::check(vkAllocateDescriptorSets(vk_state->device, &alloc_info,
-        descriptor_set));
+      vkutils::check(vkAllocateDescriptorSets(vk_state->device, &alloc_info, descriptor_set));
 
       // Update descriptor sets
       VkWriteDescriptorSet descriptor_writes[] = {
         vkutils::write_descriptor_set_buffer(*descriptor_set, 0, &buffer_info),
         vkutils::write_descriptor_set_image(*descriptor_set, 1, &image_info),
       };
-      vkUpdateDescriptorSets(vk_state->device, n_descriptors, descriptor_writes, 0, nullptr);
+      vkUpdateDescriptorSets(vk_state->device, FORWARD_N_DESCRIPTORS, descriptor_writes, 0, nullptr);
     }
   }
 
@@ -237,12 +241,8 @@ static void init_forward_stage_swapchain(VkState *vk_state, VkExtent2D extent) {
 static void init_forward_stage(VkState *vk_state, VkExtent2D extent) {
   // Descriptor set layout
   {
-    VkDescriptorSetLayoutBinding bindings[] = {
-      vkutils::descriptor_set_layout_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
-      vkutils::descriptor_set_layout_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-    };
-    u32 n_descriptors = LEN(bindings);
-    auto const layout_info = vkutils::descriptor_set_layout_create_info(n_descriptors, bindings);
+    auto const layout_info = vkutils::descriptor_set_layout_create_info(FORWARD_N_DESCRIPTORS,
+      FORWARD_DESCRIPTOR_BINDINGS);
     vkutils::check(vkCreateDescriptorSetLayout(vk_state->device, &layout_info, nullptr,
       &vk_state->forward_stage.descriptor_set_layout));
   }

@@ -2,6 +2,22 @@ static constexpr VkClearValue LIGHTING_CLEAR_COLORS[] = {
   {{{0.0f, 0.0f, 0.0f, 1.0f}}}
 };
 
+static constexpr VkDescriptorPoolSize LIGHTING_DESCRIPTOR_POOL_SIZES[] = {
+  vkutils::descriptor_pool_size(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, N_PARALLEL_FRAMES),
+  vkutils::descriptor_pool_size(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, N_PARALLEL_FRAMES),
+  vkutils::descriptor_pool_size(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, N_PARALLEL_FRAMES),
+  vkutils::descriptor_pool_size(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, N_PARALLEL_FRAMES),
+  vkutils::descriptor_pool_size(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, N_PARALLEL_FRAMES),
+};
+static constexpr VkDescriptorSetLayoutBinding LIGHTING_DESCRIPTOR_BINDINGS[] = {
+  vkutils::descriptor_set_layout_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+  vkutils::descriptor_set_layout_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+  vkutils::descriptor_set_layout_binding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+  vkutils::descriptor_set_layout_binding(3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+  vkutils::descriptor_set_layout_binding(4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+};
+static constexpr u32 LIGHTING_N_DESCRIPTORS = LEN(LIGHTING_DESCRIPTOR_POOL_SIZES);
+
 
 static void render_lighting_stage(VkState *vk_state, VkExtent2D extent, u32 idx_image) {
   auto idx_frame = vk_state->idx_frame;
@@ -70,15 +86,8 @@ static void init_lighting_stage_swapchain(VkState *vk_state, VkExtent2D extent) 
   // Descriptors
   {
     // Create descriptor pool
-    VkDescriptorPoolSize pool_sizes[] = {
-      vkutils::descriptor_pool_size(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, N_PARALLEL_FRAMES),
-      vkutils::descriptor_pool_size(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, N_PARALLEL_FRAMES),
-      vkutils::descriptor_pool_size(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, N_PARALLEL_FRAMES),
-      vkutils::descriptor_pool_size(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, N_PARALLEL_FRAMES),
-      vkutils::descriptor_pool_size(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, N_PARALLEL_FRAMES),
-    };
-    u32 n_descriptors = LEN(pool_sizes);
-    auto const pool_info = vkutils::descriptor_pool_create_info(N_PARALLEL_FRAMES, n_descriptors, pool_sizes);
+    auto const pool_info = vkutils::descriptor_pool_create_info(N_PARALLEL_FRAMES, LIGHTING_N_DESCRIPTORS,
+      LIGHTING_DESCRIPTOR_POOL_SIZES);
     vkutils::check(vkCreateDescriptorPool(vk_state->device, &pool_info, nullptr,
       &vk_state->lighting_stage.descriptor_pool));
 
@@ -127,7 +136,7 @@ static void init_lighting_stage_swapchain(VkState *vk_state, VkExtent2D extent) 
         vkutils::write_descriptor_set_image(*descriptor_set, 3, &g_albedo_info),
         vkutils::write_descriptor_set_image(*descriptor_set, 4, &g_pbr_info),
       };
-      vkUpdateDescriptorSets(vk_state->device, n_descriptors, descriptor_writes, 0, nullptr);
+      vkUpdateDescriptorSets(vk_state->device, LIGHTING_N_DESCRIPTORS, descriptor_writes, 0, nullptr);
     }
   }
 
@@ -244,15 +253,8 @@ static void init_lighting_stage_swapchain(VkState *vk_state, VkExtent2D extent) 
 static void init_lighting_stage(VkState *vk_state, VkExtent2D extent) {
   {
     // Create descriptor set layout
-    VkDescriptorSetLayoutBinding bindings[] = {
-      vkutils::descriptor_set_layout_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
-      vkutils::descriptor_set_layout_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-      vkutils::descriptor_set_layout_binding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-      vkutils::descriptor_set_layout_binding(3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-      vkutils::descriptor_set_layout_binding(4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-    };
-    u32 n_descriptors = LEN(bindings);
-    auto const layout_info = vkutils::descriptor_set_layout_create_info(n_descriptors, bindings);
+    auto const layout_info = vkutils::descriptor_set_layout_create_info(LIGHTING_N_DESCRIPTORS,
+      LIGHTING_DESCRIPTOR_BINDINGS);
     vkutils::check(vkCreateDescriptorSetLayout(vk_state->device, &layout_info, nullptr,
       &vk_state->lighting_stage.descriptor_set_layout));
   }

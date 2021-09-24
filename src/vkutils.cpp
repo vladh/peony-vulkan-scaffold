@@ -252,7 +252,7 @@ namespace vkutils {
   }
 
 
-  VkDescriptorPoolSize descriptor_pool_size(
+  constexpr VkDescriptorPoolSize descriptor_pool_size(
     VkDescriptorType type, u32 descriptorCount
   ) {
     return {
@@ -285,7 +285,7 @@ namespace vkutils {
   }
 
 
-  VkDescriptorSetLayoutBinding descriptor_set_layout_binding(u32 binding, VkDescriptorType descriptorType) {
+  constexpr VkDescriptorSetLayoutBinding descriptor_set_layout_binding(u32 binding, VkDescriptorType descriptorType) {
     return {
       .binding         = binding,
       .descriptorType  = descriptorType,
