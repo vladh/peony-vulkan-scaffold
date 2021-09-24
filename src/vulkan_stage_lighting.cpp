@@ -21,7 +21,7 @@ namespace lighting_stage {
 
 
   static void render(VkState *vk_state, VkExtent2D extent, u32 idx_image) {
-    auto idx_frame = vk_state->idx_frame;
+    auto idx_frame       = vk_state->idx_frame;
     auto *command_buffer = &vk_state->lighting_stage.command_buffers[idx_frame];
     auto *descriptor_set = &vk_state->lighting_stage.descriptor_sets[idx_frame];
 
@@ -91,27 +91,6 @@ namespace lighting_stage {
       vkutils::check(vkCreateDescriptorPool(vk_state->device, &pool_info, nullptr,
         &vk_state->lighting_stage.descriptor_pool));
 
-      VkDescriptorImageInfo const g_position_info = {
-        .sampler     = vk_state->g_position.sampler,
-        .imageView   = vk_state->g_position.view,
-        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-      };
-      VkDescriptorImageInfo const g_normal_info = {
-        .sampler     = vk_state->g_normal.sampler,
-        .imageView   = vk_state->g_normal.view,
-        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-      };
-      VkDescriptorImageInfo const g_albedo_info = {
-        .sampler     = vk_state->g_albedo.sampler,
-        .imageView   = vk_state->g_albedo.view,
-        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-      };
-      VkDescriptorImageInfo const g_pbr_info = {
-        .sampler     = vk_state->g_pbr.sampler,
-        .imageView   = vk_state->g_pbr.view,
-        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-      };
-
       // Create descriptors
       range (0, N_PARALLEL_FRAMES) {
         auto *frame_resources = &vk_state->frame_resources[idx];
@@ -127,6 +106,26 @@ namespace lighting_stage {
           .buffer = frame_resources->uniform_buffer,
           .offset = 0,
           .range  = sizeof(CoreSceneState),
+        };
+        VkDescriptorImageInfo const g_position_info = {
+          .sampler     = vk_state->g_position.sampler,
+          .imageView   = vk_state->g_position.view,
+          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+        VkDescriptorImageInfo const g_normal_info = {
+          .sampler     = vk_state->g_normal.sampler,
+          .imageView   = vk_state->g_normal.view,
+          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+        VkDescriptorImageInfo const g_albedo_info = {
+          .sampler     = vk_state->g_albedo.sampler,
+          .imageView   = vk_state->g_albedo.view,
+          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+        VkDescriptorImageInfo const g_pbr_info = {
+          .sampler     = vk_state->g_pbr.sampler,
+          .imageView   = vk_state->g_pbr.view,
+          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
         VkWriteDescriptorSet descriptor_writes[] = {
           vkutils::write_descriptor_set_buffer(*descriptor_set, 0, &buffer_info),
@@ -181,14 +180,14 @@ namespace lighting_stage {
 
       // Pipeline
       VkPipelineVertexInputStateCreateInfo const vertex_input_info = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .vertexBindingDescriptionCount   = 1,
         .pVertexBindingDescriptions      = &VERTEX_BINDING_DESCRIPTION,
         .vertexAttributeDescriptionCount = LEN(VERTEX_ATTRIBUTE_DESCRIPTIONS),
         .pVertexAttributeDescriptions    = VERTEX_ATTRIBUTE_DESCRIPTIONS,
       };
       VkPipelineInputAssemblyStateCreateInfo const input_assembly_info = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
         .topology               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
         .primitiveRestartEnable = VK_FALSE,
       };
@@ -196,7 +195,7 @@ namespace lighting_stage {
       VkRect2D const scissor = vkutils::rect_from_extent(extent);
       auto const viewport_state_info = vkutils::pipeline_viewport_state_create_info(&viewport, &scissor);
       VkPipelineRasterizationStateCreateInfo const rasterizer_info = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
         .depthClampEnable        = VK_FALSE,
         .rasterizerDiscardEnable = VK_FALSE,
         .polygonMode             = VK_POLYGON_MODE_FILL,
@@ -206,7 +205,7 @@ namespace lighting_stage {
         .lineWidth               = 1.0f,
       };
       VkPipelineMultisampleStateCreateInfo const multisampling_info = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        .sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
         .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
         .sampleShadingEnable  = VK_FALSE,
       };
@@ -217,14 +216,14 @@ namespace lighting_stage {
         vkutils::pipeline_color_blend_attachment_state(),
       };
       VkPipelineColorBlendStateCreateInfo const color_blending_info = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        .sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
         .logicOpEnable   = VK_FALSE,
         .attachmentCount = LEN(color_blend_attachments),
         .pAttachments    = color_blend_attachments,
       };
 
       VkGraphicsPipelineCreateInfo const pipeline_info = {
-        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
         .stageCount          = 2,
         .pStages             = shader_stages,
         .pVertexInputState   = &vertex_input_info,
