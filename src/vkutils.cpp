@@ -313,6 +313,33 @@ namespace vkutils {
     assert(result == VK_SUCCESS);
   }
 
+  void create_render_pass(
+    VkDevice device,
+    VkRenderPass *render_pass,
+    u32 colorAttachmentCount, VkAttachmentReference const *pColorAttachments,
+    VkAttachmentReference const *pDepthStencilAttachment,
+    u32 attachmentCount, VkAttachmentDescription const *pAttachments
+  ) {
+    VkSubpassDescription const subpass = {
+      .pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS,
+      .colorAttachmentCount    = colorAttachmentCount,
+      .pColorAttachments       = pColorAttachments,
+      .pDepthStencilAttachment = pDepthStencilAttachment,
+    };
+    VkSubpassDependency const dependency = subpass_dependency_no_depth();
+    VkRenderPassCreateInfo const render_pass_info = {
+      .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+      .attachmentCount = attachmentCount,
+      .pAttachments    = pAttachments,
+      .subpassCount    = 1,
+      .pSubpasses      = &subpass,
+      .dependencyCount = 1,
+      .pDependencies   = &dependency,
+    };
+
+    check(vkCreateRenderPass(device, &render_pass_info, nullptr, render_pass));
+  }
+
   void create_semaphore(VkDevice device, VkSemaphore *semaphore) {
     VkSemaphoreCreateInfo const semaphore_info = {.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     check(vkCreateSemaphore(device, &semaphore_info, nullptr, semaphore));

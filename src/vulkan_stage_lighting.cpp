@@ -18,14 +18,14 @@ static void record_lighting_command_buffer (
   vkutils::check(vkBeginCommandBuffer(*command_buffer, &buffer_info));
 
   // Begin render pass
-  VkRenderPassBeginInfo const renderpass_info = vkutils::render_pass_begin_info(
+  VkRenderPassBeginInfo const render_pass_info = vkutils::render_pass_begin_info(
     vk_state->lighting_stage.render_pass,
     vk_state->lighting_stage.framebuffers[idx_image],
     extent,
     LEN(LIGHTING_CLEAR_COLORS),
     LIGHTING_CLEAR_COLORS
   );
-  vkCmdBeginRenderPass(*command_buffer, &renderpass_info, VK_SUBPASS_CONTENTS_INLINE);
+  vkCmdBeginRenderPass(*command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
   // Bind pipeline and descriptor sets
   vkCmdBindPipeline(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state->lighting_stage.pipeline);
@@ -141,25 +141,10 @@ static void init_lighting_stage_swapchain(VkState *vk_state, VkExtent2D extent) 
       VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
     auto const color_attachment_ref = vkutils::attachment_reference(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     VkAttachmentDescription const attachments[] = {color_attachment};
-
-    VkSubpassDescription const subpass = {
-      .pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS,
-      .colorAttachmentCount    = 1,
-      .pColorAttachments       = &color_attachment_ref,
-    };
-    VkSubpassDependency const dependency = vkutils::subpass_dependency_no_depth();
-    VkRenderPassCreateInfo const render_pass_info = {
-      .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-      .attachmentCount = LEN(attachments),
-      .pAttachments    = attachments,
-      .subpassCount    = 1,
-      .pSubpasses      = &subpass,
-      .dependencyCount = 1,
-      .pDependencies   = &dependency,
-    };
-
-    vkutils::check(vkCreateRenderPass(vk_state->device, &render_pass_info, nullptr,
-      &vk_state->lighting_stage.render_pass));
+    vkutils::create_render_pass(vk_state->device, &vk_state->lighting_stage.render_pass,
+      1, &color_attachment_ref,
+      nullptr,
+      LEN(attachments), attachments);
   }
 
   // Framebuffers
