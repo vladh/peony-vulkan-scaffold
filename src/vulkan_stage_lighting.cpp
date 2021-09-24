@@ -63,16 +63,13 @@ static void render_lighting_stage(VkState *vk_state, VkExtent2D extent, u32 idx_
 
 
 static void init_lighting_stage_swapchain(VkState *vk_state, VkExtent2D extent) {
-  // Command buffer
+  // Command buffers
   {
     range (0, N_PARALLEL_FRAMES) {
-      auto const alloc_info = vkutils::command_buffer_allocate_info(vk_state->command_pool);
-      vkutils::check(vkAllocateCommandBuffers(vk_state->device, &alloc_info,
-        &vk_state->lighting_stage.command_buffers[idx]));
+      vkutils::create_command_buffer(vk_state->device, &vk_state->lighting_stage.command_buffers[idx],
+        vk_state->command_pool);
     }
   }
-
-  u32 n_descriptors = 5;
 
   // Descriptors
   {
@@ -84,6 +81,7 @@ static void init_lighting_stage_swapchain(VkState *vk_state, VkExtent2D extent) 
       vkutils::descriptor_pool_size(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, N_PARALLEL_FRAMES),
       vkutils::descriptor_pool_size(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, N_PARALLEL_FRAMES),
     };
+    u32 n_descriptors = LEN(pool_sizes);
     auto const pool_info = vkutils::descriptor_pool_create_info(N_PARALLEL_FRAMES, n_descriptors, pool_sizes);
     vkutils::check(vkCreateDescriptorPool(vk_state->device, &pool_info, nullptr,
       &vk_state->lighting_stage.descriptor_pool));

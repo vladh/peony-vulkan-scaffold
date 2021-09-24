@@ -73,7 +73,8 @@ void vulkan::init(VkState *vk_state, CommonState *common_state) {
   init_logical_device(vk_state);
   init_swapchain(vk_state, common_state->window, &common_state->extent);
 
-  init_command_pool(vk_state);
+  // We only create one command pool which we use for everything graphics-related
+  vkutils::create_command_pool(vk_state->device, &vk_state->command_pool, (u32)vk_state->queue_family_indices.graphics);
   init_textures(vk_state);
   init_buffers(vk_state);
   init_uniform_buffers(vk_state);

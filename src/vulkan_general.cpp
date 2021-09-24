@@ -362,14 +362,3 @@ static void init_logical_device(VkState *vk_state) {
 static void init_surface(VkState *vk_state, GLFWwindow *window) {
   vkutils::check(glfwCreateWindowSurface(vk_state->instance, window, nullptr, &vk_state->surface));
 }
-
-
-static void init_command_pool(VkState *vk_state) {
-  VkCommandPoolCreateInfo const pool_info = {
-    .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-    .flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-    .queueFamilyIndex = (u32)vk_state->queue_family_indices.graphics,
-  };
-
-  vkutils::check(vkCreateCommandPool(vk_state->device, &pool_info, nullptr, &vk_state->command_pool));
-}

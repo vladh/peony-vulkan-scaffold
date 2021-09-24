@@ -318,6 +318,23 @@ namespace vkutils {
     check(vkCreateSemaphore(device, &semaphore_info, nullptr, semaphore));
   }
 
+
+  void create_command_pool(VkDevice device, VkCommandPool *command_pool, u32 queueFamilyIndex) {
+    VkCommandPoolCreateInfo const pool_info = {
+      .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+      .flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+      .queueFamilyIndex = queueFamilyIndex,
+    };
+    check(vkCreateCommandPool(device, &pool_info, nullptr, command_pool));
+  }
+
+
+  void create_command_buffer(VkDevice device, VkCommandBuffer *command_buffer, VkCommandPool command_pool) {
+      auto const alloc_info = command_buffer_allocate_info(command_pool);
+      vkutils::check(vkAllocateCommandBuffers(device, &alloc_info, command_buffer));
+  }
+
+
   u32 find_memory_type(VkPhysicalDevice physical_device, u32 type_filter, VkMemoryPropertyFlags desired_properties) {
     VkPhysicalDeviceMemoryProperties actual_properties;
     vkGetPhysicalDeviceMemoryProperties(physical_device, &actual_properties);

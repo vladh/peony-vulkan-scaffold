@@ -28,7 +28,7 @@ static void record_forward_command_buffer(
   vkCmdBindDescriptorSets(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state->forward_stage.pipeline_layout,
     0, 1, descriptor_set, 0, nullptr);
 
-  // render
+  // Render
   render_drawable_component(&vk_state->fsign, command_buffer);
 
   // End render pass and command buffer
@@ -64,13 +64,10 @@ static void init_forward_stage_swapchain(VkState *vk_state, VkExtent2D extent) {
   // Command buffers
   {
     range (0, N_PARALLEL_FRAMES) {
-      auto const alloc_info = vkutils::command_buffer_allocate_info(vk_state->command_pool);
-      vkutils::check(vkAllocateCommandBuffers(vk_state->device, &alloc_info,
-        &vk_state->forward_stage.command_buffers[idx]));
+      vkutils::create_command_buffer(vk_state->device, &vk_state->forward_stage.command_buffers[idx],
+        vk_state->command_pool);
     }
   }
-
-  u32 n_descriptors = 2;
 
   // Descriptors
   {
@@ -79,6 +76,7 @@ static void init_forward_stage_swapchain(VkState *vk_state, VkExtent2D extent) {
       vkutils::descriptor_pool_size(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, N_PARALLEL_FRAMES),
       vkutils::descriptor_pool_size(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, N_PARALLEL_FRAMES),
     };
+    u32 n_descriptors = LEN(pool_sizes);
     auto const pool_info = vkutils::descriptor_pool_create_info(N_PARALLEL_FRAMES, n_descriptors, pool_sizes);
     vkutils::check(vkCreateDescriptorPool(vk_state->device, &pool_info, nullptr,
       &vk_state->forward_stage.descriptor_pool));
@@ -267,11 +265,11 @@ static void init_forward_stage_swapchain(VkState *vk_state, VkExtent2D extent) {
 static void init_forward_stage(VkState *vk_state, VkExtent2D extent) {
   // Descriptor set layout
   {
-    u32 n_descriptors = 2;
     VkDescriptorSetLayoutBinding bindings[] = {
       vkutils::descriptor_set_layout_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
       vkutils::descriptor_set_layout_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
     };
+    u32 n_descriptors = LEN(bindings);
     auto const layout_info = vkutils::descriptor_set_layout_create_info(n_descriptors, bindings);
     vkutils::check(vkCreateDescriptorSetLayout(vk_state->device, &layout_info, nullptr,
       &vk_state->forward_stage.descriptor_set_layout));
