@@ -79,9 +79,9 @@ void vulkan::init(VkState *vk_state, CommonState *common_state) {
   init_buffers(vk_state);
   init_uniform_buffers(vk_state);
 
-  init_geometry_stage(vk_state, common_state->extent);
-  init_lighting_stage(vk_state, common_state->extent);
-  init_forward_stage(vk_state, common_state->extent);
+  geometry_stage::init(vk_state, common_state->extent);
+  lighting_stage::init(vk_state, common_state->extent);
+  forward_stage::init(vk_state, common_state->extent);
 
   init_synchronization(vk_state);
 }
@@ -102,9 +102,9 @@ static void destroy_swapchain(VkState *vk_state) {
     vkFreeMemory(vk_state->device, frame_resources->uniform_buffer_memory, nullptr);
   }
 
-  destroy_geometry_stage_swapchain(vk_state);
-  destroy_lighting_stage_swapchain(vk_state);
-  destroy_forward_stage_swapchain(vk_state);
+  geometry_stage::destroy_swapchain(vk_state);
+  lighting_stage::destroy_swapchain(vk_state);
+  forward_stage::destroy_swapchain(vk_state);
 
   range (0, vk_state->n_swapchain_images) {
     vkDestroyImageView(vk_state->device, vk_state->swapchain_image_views[idx], nullptr);
@@ -130,9 +130,9 @@ void vulkan::destroy(VkState *vk_state) {
     vkDestroyFence(vk_state->device, frame_resources->frame_rendered_fence, nullptr);
   }
 
-  destroy_geometry_stage_nonswapchain(vk_state);
-  destroy_lighting_stage_nonswapchain(vk_state);
-  destroy_forward_stage_nonswapchain(vk_state);
+  geometry_stage::destroy_nonswapchain(vk_state);
+  lighting_stage::destroy_nonswapchain(vk_state);
+  forward_stage::destroy_nonswapchain(vk_state);
 
   vkDestroyCommandPool(vk_state->device, vk_state->command_pool, nullptr);
   vkDestroyDevice(vk_state->device, nullptr);
@@ -165,9 +165,9 @@ void vulkan::recreate_swapchain(VkState *vk_state, CommonState *common_state) {
   init_swapchain(vk_state, common_state->window, &common_state->extent);
   init_uniform_buffers(vk_state);
 
-  init_geometry_stage_swapchain(vk_state, common_state->extent);
-  init_lighting_stage_swapchain(vk_state, common_state->extent);
-  init_forward_stage_swapchain(vk_state, common_state->extent);
+  geometry_stage::init_swapchain(vk_state, common_state->extent);
+  lighting_stage::init_swapchain(vk_state, common_state->extent);
+  forward_stage::init_swapchain(vk_state, common_state->extent);
 }
 
 
@@ -197,9 +197,9 @@ void vulkan::render(VkState *vk_state, CommonState *common_state) {
   }
 
   // Render each stage
-  render_geometry_stage(vk_state, common_state->extent, idx_image);
-  render_lighting_stage(vk_state, common_state->extent, idx_image);
-  render_forward_stage(vk_state, common_state->extent, idx_image);
+  geometry_stage::render(vk_state, common_state->extent, idx_image);
+  lighting_stage::render(vk_state, common_state->extent, idx_image);
+  forward_stage::render(vk_state, common_state->extent, idx_image);
 
   // Present image
   {

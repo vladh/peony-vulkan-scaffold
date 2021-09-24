@@ -314,6 +314,12 @@ namespace vkutils {
   }
 
 
+  void begin_command_buffer(VkCommandBuffer command_buffer) {
+    auto const buffer_info = command_buffer_begin_info();
+    check(vkBeginCommandBuffer(command_buffer, &buffer_info));
+  }
+
+
   void create_framebuffer(
     VkDevice device,
     VkFramebuffer *framebuffer,
