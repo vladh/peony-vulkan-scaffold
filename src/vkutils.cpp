@@ -375,6 +375,15 @@ namespace vkutils {
   }
 
 
+  void create_fence(VkDevice device, VkFence *fence) {
+    VkFenceCreateInfo fence_info = {
+      .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+      .flags = VK_FENCE_CREATE_SIGNALED_BIT,
+    };
+    check(vkCreateFence(device, &fence_info, nullptr, fence));
+  }
+
+
   void create_command_pool(VkDevice device, VkCommandPool *command_pool, u32 queueFamilyIndex) {
     VkCommandPoolCreateInfo const pool_info = {
       .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -451,10 +460,10 @@ namespace vkutils {
     VkDeviceMemory *memory
   ) {
     VkBufferCreateInfo const buffer_info = {
-      .sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-      .size        = size,
-      .usage       = usage,
-      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+      .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+      .size                  = size,
+      .usage                 = usage,
+      .sharingMode           = VK_SHARING_MODE_EXCLUSIVE
     };
 
     check(vkCreateBuffer(device, &buffer_info, nullptr, buffer));
@@ -556,21 +565,21 @@ namespace vkutils {
   ) {
     // Create VkImage
     VkImageCreateInfo const image_info = {
-      .sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-      .imageType     = VK_IMAGE_TYPE_2D,
-      .format        = format,
+      .sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+      .imageType             = VK_IMAGE_TYPE_2D,
+      .format                = format,
       .extent = {
-        .width       = width,
-        .height      = height,
-        .depth       = 1,
+        .width               = width,
+        .height              = height,
+        .depth               = 1,
       },
-      .mipLevels     = 1,
-      .arrayLayers   = 1,
-      .samples       = VK_SAMPLE_COUNT_1_BIT,
-      .tiling        = tiling,
-      .usage         = usage,
-      .sharingMode   = VK_SHARING_MODE_EXCLUSIVE,
-      .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+      .mipLevels             = 1,
+      .arrayLayers           = 1,
+      .samples               = VK_SAMPLE_COUNT_1_BIT,
+      .tiling                = tiling,
+      .usage                 = usage,
+      .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
+      .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED,
     };
     check(vkCreateImage(device, &image_info, nullptr, image));
 
@@ -742,34 +751,16 @@ namespace vkutils {
   }
 
 
-  void create_image_resources_with_sampler_from_image(
+  void upload_image(
     VkDevice device,
     ImageResources *image_resources,
     VkPhysicalDevice physical_device,
     unsigned char *image,
     u32 width, u32 height,
     VkFormat format,
-    VkImageTiling tiling,
-    VkImageUsageFlags usage,
-    VkMemoryPropertyFlags properties,
-    VkImageAspectFlags aspect_flags,
-    VkPhysicalDeviceProperties physical_device_properties,
     VkQueue graphics_queue,
     VkCommandPool command_pool
   ) {
-    // Create ImageResources
-    create_image_resources_with_sampler(
-      device,
-      image_resources,
-      physical_device,
-      width, height,
-      format,
-      tiling,
-      usage,
-      properties,
-      aspect_flags,
-      physical_device_properties);
-
     VkDeviceSize image_size = width * height * 4;
 
     // Copy image to staging buffer

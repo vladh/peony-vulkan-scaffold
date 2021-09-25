@@ -8,7 +8,7 @@ COMPILER_FLAGS = \
 	-FC -GS -MTd -MP18 -W4 -WL -WX -Z7 -Zo -diagnostics:column -fp:fast -nologo \
 	-sdl -guard:cf -permissive- -std:c++latest \
 	-GL -Oi -O2 \
-	-wd4100 -wd4127 -wd4201 -wd4505 -wd4706 -wd4702 \
+	-wd4100 -wd4127 -wd4201 -wd4505 -wd4706 -wd4702 -wd4530 \
 	-D_CRT_SECURE_NO_WARNINGS -DNOMINMAX
 
 LINKER_FLAGS = \

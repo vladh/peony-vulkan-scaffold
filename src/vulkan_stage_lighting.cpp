@@ -1,4 +1,4 @@
-namespace lighting_stage {
+namespace vulkan::lighting_stage {
   static constexpr VkClearValue CLEAR_COLORS[] = {
     {{{0.0f, 0.0f, 0.0f, 1.0f}}}
   };
@@ -47,7 +47,7 @@ namespace lighting_stage {
         0, 1, descriptor_set, 0, nullptr);
 
       // Render
-      render_drawable_component(&vk_state->screenquad, command_buffer);
+      rendering::render_drawable_component(&vk_state->screenquad, command_buffer);
 
       // End render pass and command buffer
       vkCmdEndRenderPass(*command_buffer);

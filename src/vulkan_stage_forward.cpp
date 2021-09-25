@@ -1,4 +1,4 @@
-namespace forward_stage {
+namespace vulkan::forward_stage {
   static constexpr VkClearValue CLEAR_COLORS[] = {
     {{{0.0f, 0.0f, 0.0f, 1.0f}}},
     {{{1.0f, 0.0f}}},
@@ -43,7 +43,7 @@ namespace forward_stage {
         0, 1, descriptor_set, 0, nullptr);
 
       // Render
-      render_drawable_component(&vk_state->fsign, command_buffer);
+      rendering::render_drawable_component(&vk_state->fsign, command_buffer);
 
       // End render pass and command buffer
       vkCmdEndRenderPass(*command_buffer);
@@ -105,8 +105,8 @@ namespace forward_stage {
           .range  = sizeof(CoreSceneState),
         };
         VkDescriptorImageInfo const image_info = {
-          .sampler     = vk_state->alpaca.sampler,
-          .imageView   = vk_state->alpaca.view,
+          .sampler     = stage_common::guard_sampler(vk_state->alpaca.sampler, vk_state->dummy_image.sampler),
+          .imageView   = stage_common::guard_image_view(vk_state->alpaca.view, vk_state->dummy_image.view),
           .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
         VkWriteDescriptorSet descriptor_writes[] = {

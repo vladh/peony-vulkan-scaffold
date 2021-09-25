@@ -13,12 +13,13 @@ struct Vertex {
   v2 tex_coords;
 };
 
-static constexpr i64 NO_QUEUE_FAMILY               = -1;
-static constexpr u32 MAX_N_SWAPCHAIN_FORMATS       = 32;
-static constexpr u32 MAX_N_SWAPCHAIN_PRESENT_MODES = 32;
-static constexpr u32 MAX_N_SWAPCHAIN_IMAGES        = 8;
-static constexpr u32 N_PARALLEL_FRAMES             = 3;
-static constexpr u32 MAX_N_REQUIRED_EXTENSIONS     = 256;
+static constexpr i64 NO_QUEUE_FAMILY                       = -1;
+static constexpr u32 MAX_N_CONCURRENT_QUEUE_FAMILY_INDICES = 3;
+static constexpr u32 MAX_N_SWAPCHAIN_FORMATS               = 32;
+static constexpr u32 MAX_N_SWAPCHAIN_PRESENT_MODES         = 32;
+static constexpr u32 MAX_N_SWAPCHAIN_IMAGES                = 8;
+static constexpr u32 N_PARALLEL_FRAMES                     = 3;
+static constexpr u32 MAX_N_REQUIRED_EXTENSIONS             = 256;
 
 static constexpr bool USE_VALIDATION = true;
 static constexpr std::array VALIDATION_LAYERS = {
@@ -26,6 +27,7 @@ static constexpr std::array VALIDATION_LAYERS = {
 };
 static constexpr std::array REQUIRED_DEVICE_EXTENSIONS = {
   VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+  VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
   #if PLATFORM & PLATFORM_MACOS
     "VK_KHR_portability_subset",
   #endif
@@ -97,6 +99,7 @@ VERTEX_ATTRIBUTE_DESCRIPTIONS[] = {
 struct QueueFamilyIndices {
   i64 graphics;
   i64 present;
+  i64 transfer;
 };
 
 struct SwapchainSupportDetails {
@@ -155,8 +158,10 @@ struct VkState {
   VkDevice device;
   VkQueue graphics_queue;
   VkQueue present_queue;
+  VkQueue asset_queue;
   VkSurfaceKHR surface;
   VkCommandPool command_pool;
+  VkCommandPool asset_command_pool;
 
   // Swapchain stuff
   VkSwapchainKHR swapchain;
@@ -172,6 +177,7 @@ struct VkState {
   DrawableComponent sign;
   DrawableComponent fsign;
   DrawableComponent screenquad;
+  ImageResources dummy_image;
   ImageResources alpaca;
 
   // Rendering resources and information
