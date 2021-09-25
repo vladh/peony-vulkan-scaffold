@@ -21,13 +21,13 @@
 
 #include "vkutils.cpp"
 #include "vulkan_swapchain.cpp"
-#include "vulkan_resources.cpp"
 #include "vulkan_setup.cpp"
 #include "vulkan_rendering.cpp"
 #include "vulkan_stage_common.cpp"
 #include "vulkan_stage_geometry.cpp"
 #include "vulkan_stage_lighting.cpp"
 #include "vulkan_stage_forward.cpp"
+#include "vulkan_resources.cpp"
 
 
 static std::thread loading_thread;
@@ -142,6 +142,8 @@ namespace vulkan {
     }
     vkDestroySurfaceKHR(vk_state->instance, vk_state->surface, nullptr);
     vkDestroyInstance(vk_state->instance, nullptr);
+
+    loading_thread.join();
   }
 
 

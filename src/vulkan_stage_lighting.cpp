@@ -74,6 +74,50 @@ namespace vulkan::lighting_stage {
   }
 
 
+  static void update_descriptor_sets(VkState *vk_state) {
+    // Create descriptors
+    range (0, N_PARALLEL_FRAMES) {
+      auto *frame_resources = &vk_state->frame_resources[idx];
+      auto *descriptor_set = &vk_state->lighting_stage.descriptor_sets[idx];
+
+      // Update descriptor sets
+      VkDescriptorBufferInfo const buffer_info = {
+        .buffer = frame_resources->uniform_buffer,
+        .offset = 0,
+        .range  = sizeof(CoreSceneState),
+      };
+      VkDescriptorImageInfo const g_position_info = {
+        .sampler     = vk_state->g_position.sampler,
+        .imageView   = vk_state->g_position.view,
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      };
+      VkDescriptorImageInfo const g_normal_info = {
+        .sampler     = vk_state->g_normal.sampler,
+        .imageView   = vk_state->g_normal.view,
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      };
+      VkDescriptorImageInfo const g_albedo_info = {
+        .sampler     = vk_state->g_albedo.sampler,
+        .imageView   = vk_state->g_albedo.view,
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      };
+      VkDescriptorImageInfo const g_pbr_info = {
+        .sampler     = vk_state->g_pbr.sampler,
+        .imageView   = vk_state->g_pbr.view,
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      };
+      VkWriteDescriptorSet descriptor_writes[] = {
+        vkutils::write_descriptor_set_buffer(*descriptor_set, 0, &buffer_info),
+        vkutils::write_descriptor_set_image(*descriptor_set, 1, &g_position_info),
+        vkutils::write_descriptor_set_image(*descriptor_set, 2, &g_normal_info),
+        vkutils::write_descriptor_set_image(*descriptor_set, 3, &g_albedo_info),
+        vkutils::write_descriptor_set_image(*descriptor_set, 4, &g_pbr_info),
+      };
+      vkUpdateDescriptorSets(vk_state->device, lighting_stage::N_DESCRIPTORS, descriptor_writes, 0, nullptr);
+    }
+  }
+
+
   static void init_swapchain(VkState *vk_state, VkExtent2D extent) {
     // Command buffers
     {
@@ -93,49 +137,14 @@ namespace vulkan::lighting_stage {
 
       // Create descriptors
       range (0, N_PARALLEL_FRAMES) {
-        auto *frame_resources = &vk_state->frame_resources[idx];
-
         // Create descriptor sets
         auto *descriptor_set = &vk_state->lighting_stage.descriptor_sets[idx];
         auto const alloc_info = vkutils::descriptor_set_allocate_info(vk_state->lighting_stage.descriptor_pool,
           &vk_state->lighting_stage.descriptor_set_layout);
         vkutils::check(vkAllocateDescriptorSets(vk_state->device, &alloc_info, descriptor_set));
-
-        // Update descriptor sets
-        VkDescriptorBufferInfo const buffer_info = {
-          .buffer = frame_resources->uniform_buffer,
-          .offset = 0,
-          .range  = sizeof(CoreSceneState),
-        };
-        VkDescriptorImageInfo const g_position_info = {
-          .sampler     = vk_state->g_position.sampler,
-          .imageView   = vk_state->g_position.view,
-          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        };
-        VkDescriptorImageInfo const g_normal_info = {
-          .sampler     = vk_state->g_normal.sampler,
-          .imageView   = vk_state->g_normal.view,
-          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        };
-        VkDescriptorImageInfo const g_albedo_info = {
-          .sampler     = vk_state->g_albedo.sampler,
-          .imageView   = vk_state->g_albedo.view,
-          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        };
-        VkDescriptorImageInfo const g_pbr_info = {
-          .sampler     = vk_state->g_pbr.sampler,
-          .imageView   = vk_state->g_pbr.view,
-          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        };
-        VkWriteDescriptorSet descriptor_writes[] = {
-          vkutils::write_descriptor_set_buffer(*descriptor_set, 0, &buffer_info),
-          vkutils::write_descriptor_set_image(*descriptor_set, 1, &g_position_info),
-          vkutils::write_descriptor_set_image(*descriptor_set, 2, &g_normal_info),
-          vkutils::write_descriptor_set_image(*descriptor_set, 3, &g_albedo_info),
-          vkutils::write_descriptor_set_image(*descriptor_set, 4, &g_pbr_info),
-        };
-        vkUpdateDescriptorSets(vk_state->device, lighting_stage::N_DESCRIPTORS, descriptor_writes, 0, nullptr);
       }
+
+      update_descriptor_sets(vk_state);
     }
 
     // Render pass

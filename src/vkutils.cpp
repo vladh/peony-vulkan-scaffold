@@ -758,50 +758,52 @@ namespace vkutils {
     unsigned char *image,
     u32 width, u32 height,
     VkFormat format,
-    VkQueue graphics_queue,
+    VkQueue queue,
     VkCommandPool command_pool
   ) {
     VkDeviceSize image_size = width * height * 4;
 
-    // Copy image to staging buffer
-    VkBuffer staging_buffer;
-    VkDeviceMemory staging_buffer_memory;
-    create_buffer(device, physical_device,
-      image_size,
-      VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-      &staging_buffer,
-      &staging_buffer_memory);
-    void *memory;
-    vkMapMemory(device, staging_buffer_memory, 0, image_size, 0, &memory);
-    memcpy(memory, image, (size_t)image_size);
-    vkUnmapMemory(device, staging_buffer_memory);
+    if (image_size < 50) {
+      // Copy image to staging buffer
+      VkBuffer staging_buffer;
+      VkDeviceMemory staging_buffer_memory;
+      create_buffer(device, physical_device,
+        image_size,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        &staging_buffer,
+        &staging_buffer_memory);
+      void *memory;
+      vkMapMemory(device, staging_buffer_memory, 0, image_size, 0, &memory);
+      memcpy(memory, image, (size_t)image_size);
+      vkUnmapMemory(device, staging_buffer_memory);
 
-    // Copy image
-    transition_image_layout(device,
-      graphics_queue,
-      command_pool,
-      image_resources->image,
-      format,
-      VK_IMAGE_LAYOUT_UNDEFINED,
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    copy_buffer_to_image(device,
-      graphics_queue,
-      command_pool,
-      staging_buffer,
-      image_resources->image,
-      width,
-      height);
-    transition_image_layout(device,
-      graphics_queue,
-      command_pool,
-      image_resources->image,
-      format,
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+      // Copy image
+      transition_image_layout(device,
+        queue,
+        command_pool,
+        image_resources->image,
+        format,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+      copy_buffer_to_image(device,
+        queue,
+        command_pool,
+        staging_buffer,
+        image_resources->image,
+        width,
+        height);
+      transition_image_layout(device,
+        queue,
+        command_pool,
+        image_resources->image,
+        format,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-    vkDestroyBuffer(device, staging_buffer, nullptr);
-    vkFreeMemory(device, staging_buffer_memory, nullptr);
+      vkDestroyBuffer(device, staging_buffer, nullptr);
+      vkFreeMemory(device, staging_buffer_memory, nullptr);
+    }
   }
 
 

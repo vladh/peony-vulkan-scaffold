@@ -74,7 +74,46 @@ namespace vulkan::geometry_stage {
   }
 
 
+  static void update_descriptor_sets(VkState *vk_state) {
+    // Create descriptors
+    range (0, N_PARALLEL_FRAMES) {
+      auto *frame_resources = &vk_state->frame_resources[idx];
+      auto *descriptor_set = &vk_state->geometry_stage.descriptor_sets[idx];
+
+      // Update descriptor sets
+      VkDescriptorBufferInfo const buffer_info = {
+        .buffer = frame_resources->uniform_buffer,
+        .offset = 0,
+        .range  = sizeof(CoreSceneState),
+      };
+      VkDescriptorImageInfo const image_info = {
+        .sampler     = stage_common::guard_sampler(vk_state->alpaca.sampler, vk_state->dummy_image.sampler),
+        .imageView   = stage_common::guard_image_view(vk_state->alpaca.view, vk_state->dummy_image.view),
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      };
+      if (vk_state->alpaca.sampler == VK_NULL_HANDLE) {
+        logs::info("dummy");
+      } else {
+        logs::info("alpaca");
+      }
+      VkWriteDescriptorSet descriptor_writes[] = {
+        vkutils::write_descriptor_set_buffer(*descriptor_set, 0, &buffer_info),
+        vkutils::write_descriptor_set_image(*descriptor_set, 1, &image_info),
+      };
+      vkUpdateDescriptorSets(vk_state->device, geometry_stage::N_DESCRIPTORS, descriptor_writes, 0, nullptr);
+    }
+  }
+
+
   static void init_swapchain(VkState *vk_state, VkExtent2D extent) {
+    // Command buffers
+    {
+      range (0, N_PARALLEL_FRAMES) {
+        vkutils::create_command_buffer(vk_state->device, &vk_state->geometry_stage.command_buffers[idx],
+          vk_state->command_pool);
+      }
+    }
+
     // Descriptors
     {
       // Create descriptor pool
@@ -85,31 +124,14 @@ namespace vulkan::geometry_stage {
 
       // Create descriptors
       range (0, N_PARALLEL_FRAMES) {
-        auto *frame_resources = &vk_state->frame_resources[idx];
-
         // Create descriptor sets
         auto *descriptor_set = &vk_state->geometry_stage.descriptor_sets[idx];
         auto const alloc_info = vkutils::descriptor_set_allocate_info(vk_state->geometry_stage.descriptor_pool,
           &vk_state->geometry_stage.descriptor_set_layout);
         vkutils::check(vkAllocateDescriptorSets(vk_state->device, &alloc_info, descriptor_set));
-
-        // Update descriptor sets
-        VkDescriptorBufferInfo const buffer_info = {
-          .buffer = frame_resources->uniform_buffer,
-          .offset = 0,
-          .range  = sizeof(CoreSceneState),
-        };
-        VkDescriptorImageInfo const image_info = {
-          .sampler     = stage_common::guard_sampler(vk_state->alpaca.sampler, vk_state->dummy_image.sampler),
-          .imageView   = stage_common::guard_image_view(vk_state->alpaca.view, vk_state->dummy_image.view),
-          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        };
-        VkWriteDescriptorSet descriptor_writes[] = {
-          vkutils::write_descriptor_set_buffer(*descriptor_set, 0, &buffer_info),
-          vkutils::write_descriptor_set_image(*descriptor_set, 1, &image_info),
-        };
-        vkUpdateDescriptorSets(vk_state->device, geometry_stage::N_DESCRIPTORS, descriptor_writes, 0, nullptr);
       }
+
+      update_descriptor_sets(vk_state);
     }
 
     // Render pass
@@ -281,14 +303,6 @@ namespace vulkan::geometry_stage {
 
 
   static void init(VkState *vk_state, VkExtent2D extent) {
-    // Command buffers
-    {
-      range (0, N_PARALLEL_FRAMES) {
-        vkutils::create_command_buffer(vk_state->device, &vk_state->geometry_stage.command_buffers[idx],
-          vk_state->command_pool);
-      }
-    }
-
     // Descriptor set layout
     {
       auto const layout_info = vkutils::descriptor_set_layout_create_info(geometry_stage::N_DESCRIPTORS,

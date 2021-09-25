@@ -170,7 +170,12 @@ namespace vulkan::setup {
         indices.present = idx;
       }
       // Transfer queue
-      if (family->queueFlags & VK_QUEUE_TRANSFER_BIT) {
+      // NOTE: This check might be too restrictive
+      if (
+        family->queueFlags & VK_QUEUE_TRANSFER_BIT &&
+        !(family->queueFlags & VK_QUEUE_GRAPHICS_BIT) &&
+        !(supports_present)
+      ) {
         indices.transfer = idx;
       }
     }
@@ -222,6 +227,7 @@ namespace vulkan::setup {
     logs::info("  Queue families");
     logs::info("    graphics: %d", queue_family_indices.graphics);
     logs::info("    present: %d", queue_family_indices.present);
+    logs::info("    transfer: %d", queue_family_indices.transfer);
     logs::info("  Swap chain support");
     logs::info("    Capabilities");
     logs::info("      minImageCount: %d", swapchain_support_details->capabilities.minImageCount);
@@ -241,6 +247,19 @@ namespace vulkan::setup {
     range (0, swapchain_support_details->n_present_modes) {
       logs::info("      %d", swapchain_support_details->present_modes[idx]);
     }
+  }
+
+
+  static void print_logical_device_info(
+    VkQueue graphics_queue,
+    VkQueue present_queue,
+    VkQueue asset_queue
+  ) {
+    logs::info("Logical device:");
+    logs::info("  Queues");
+    logs::info("    graphics_queue: %d", graphics_queue);
+    logs::info("    present_queue: %d", present_queue);
+    logs::info("    asset_queue: %d", asset_queue);
   }
 
 
@@ -343,8 +362,13 @@ namespace vulkan::setup {
       },
     };
     VkPhysicalDeviceFeatures const device_features = {.samplerAnisotropy = VK_TRUE};
+    /* VkPhysicalDeviceRobustness2FeaturesEXT const robustness_features = { */
+    /*   .sType          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT, */
+    /*   .nullDescriptor = true, */
+    /* }; */
     VkDeviceCreateInfo const device_info = {
       .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+      /* .pNext                   = &robustness_features, */
       .queueCreateInfoCount    = 2,
       .pQueueCreateInfos       = queue_infos,
       .enabledExtensionCount   = (u32)REQUIRED_DEVICE_EXTENSIONS.size(),
@@ -356,6 +380,7 @@ namespace vulkan::setup {
     vkGetDeviceQueue(vk_state->device, (u32)vk_state->queue_family_indices.graphics, 0, &vk_state->graphics_queue);
     vkGetDeviceQueue(vk_state->device, (u32)vk_state->queue_family_indices.present, 0, &vk_state->present_queue);
     vkGetDeviceQueue(vk_state->device, (u32)vk_state->queue_family_indices.graphics, 1, &vk_state->asset_queue);
+    print_logical_device_info(vk_state->graphics_queue, vk_state->present_queue, vk_state->asset_queue);
   }
 
 

@@ -74,6 +74,11 @@ namespace vulkan::resources {
         vk_state->asset_queue,
         vk_state->asset_command_pool);
     }
+
+    // Update descriptors because we changed the resources
+    vulkan::geometry_stage::update_descriptor_sets(vk_state);
+    vulkan::lighting_stage::update_descriptor_sets(vk_state);
+    vulkan::forward_stage::update_descriptor_sets(vk_state);
   }
 
 
