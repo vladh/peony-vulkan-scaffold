@@ -67,8 +67,8 @@ namespace vulkan {
       (u32)vk_state->queue_family_indices.graphics);
 
     resources::init_static_textures(vk_state);
-    /* resources::init_textures(vk_state); */
-    loading_thread = std::thread(resources::init_textures, vk_state);
+    resources::init_textures(vk_state);
+    /* loading_thread = std::thread(resources::init_textures, vk_state); */
     resources::init_buffers(vk_state);
     resources::init_uniform_buffers(vk_state);
 
@@ -143,7 +143,7 @@ namespace vulkan {
     vkDestroySurfaceKHR(vk_state->instance, vk_state->surface, nullptr);
     vkDestroyInstance(vk_state->instance, nullptr);
 
-    loading_thread.join();
+    /* loading_thread.join(); */
   }
 
 

@@ -50,7 +50,7 @@ namespace vulkan::resources {
         STBI_rgb_alpha, false);
       defer { files::free_image(image); };
 
-      std::this_thread::sleep_for(std::chrono::milliseconds(2500));
+      /* std::this_thread::sleep_for(std::chrono::milliseconds(2500)); */
 
       vkutils::create_image_resources_with_sampler(
         vk_state->device,
@@ -74,11 +74,6 @@ namespace vulkan::resources {
         vk_state->asset_queue,
         vk_state->asset_command_pool);
     }
-
-    // Update descriptors because we changed the resources
-    vulkan::geometry_stage::update_descriptor_sets(vk_state);
-    vulkan::lighting_stage::update_descriptor_sets(vk_state);
-    vulkan::forward_stage::update_descriptor_sets(vk_state);
   }
 
 

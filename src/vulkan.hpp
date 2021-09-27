@@ -20,6 +20,7 @@ static constexpr u32 MAX_N_SWAPCHAIN_PRESENT_MODES         = 32;
 static constexpr u32 MAX_N_SWAPCHAIN_IMAGES                = 8;
 static constexpr u32 N_PARALLEL_FRAMES                     = 3;
 static constexpr u32 MAX_N_REQUIRED_EXTENSIONS             = 256;
+static constexpr u32 MAX_N_QUEUE_FAMILIES = 64;
 
 static constexpr bool USE_VALIDATION = true;
 static constexpr std::array VALIDATION_LAYERS = {
@@ -154,6 +155,8 @@ struct VkState {
   VkPhysicalDevice physical_device;
   VkPhysicalDeviceProperties physical_device_properties;
   QueueFamilyIndices queue_family_indices;
+  u32 n_queue_families;
+  VkQueueFamilyProperties queue_families[MAX_N_QUEUE_FAMILIES];
   SwapchainSupportDetails swapchain_support_details;
   VkDevice device;
   VkQueue graphics_queue;

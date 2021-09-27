@@ -144,20 +144,22 @@ namespace vulkan::setup {
   }
 
 
-  static QueueFamilyIndices get_queue_family_indices(VkPhysicalDevice physical_device, VkSurfaceKHR surface) {
-    constexpr u32 MAX_N_QUEUE_FAMILIES = 64;
+  static QueueFamilyIndices get_queue_families(
+    VkPhysicalDevice physical_device,
+    u32 *n_queue_families,
+    VkQueueFamilyProperties *queue_families,
+    VkSurfaceKHR surface
+  ) {
     QueueFamilyIndices indices = {
       .graphics = NO_QUEUE_FAMILY,
       .present  = NO_QUEUE_FAMILY,
       .transfer = NO_QUEUE_FAMILY,
     };
-    VkQueueFamilyProperties queue_families[MAX_N_QUEUE_FAMILIES];
-    u32 n_queue_families = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &n_queue_families, nullptr);
-    assert(n_queue_families <= MAX_N_QUEUE_FAMILIES);
-    vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &n_queue_families, queue_families);
+    vkGetPhysicalDeviceQueueFamilyProperties(physical_device, n_queue_families, nullptr);
+    assert(*n_queue_families <= MAX_N_QUEUE_FAMILIES);
+    vkGetPhysicalDeviceQueueFamilyProperties(physical_device, n_queue_families, queue_families);
 
-    range (0, n_queue_families) {
+    range (0, *n_queue_families) {
       VkQueueFamilyProperties *family = &queue_families[idx];
       VkBool32 supports_present = false;
       vkGetPhysicalDeviceSurfaceSupportKHR(physical_device, idx, surface, &supports_present);
@@ -185,9 +187,9 @@ namespace vulkan::setup {
 
 
   static bool are_queue_family_indices_complete(QueueFamilyIndices indices) {
+    // We don't need the transfer family right now!
     return indices.graphics != NO_QUEUE_FAMILY &&
-      indices.present != NO_QUEUE_FAMILY &&
-      indices.transfer != NO_QUEUE_FAMILY;
+      indices.present != NO_QUEUE_FAMILY;
   }
 
 
@@ -318,7 +320,8 @@ namespace vulkan::setup {
     // Check which physical device we actually want
     range (0, n_devices) {
       VkPhysicalDevice *physical_device = &physical_devices[idx];
-      QueueFamilyIndices queue_family_indices = get_queue_family_indices(*physical_device, vk_state->surface);
+      QueueFamilyIndices queue_family_indices = get_queue_families(*physical_device, &vk_state->n_queue_families,
+        vk_state->queue_families, vk_state->surface);
       SwapchainSupportDetails swapchain_support_details = {};
       vulkan::swapchain::init_support_details(&swapchain_support_details, *physical_device, vk_state->surface);
       print_physical_device_info(*physical_device, queue_family_indices, &swapchain_support_details);
@@ -344,42 +347,112 @@ namespace vulkan::setup {
 
 
   static void init_logical_device(VkState *vk_state) {
-    f32 const queue_priorities[2] = {1.0f, 1.0f};
-    VkDeviceQueueCreateInfo queue_infos[2] = {
-      // Graphics and asset queues
-      {
-        .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-        .queueFamilyIndex = (u32)vk_state->queue_family_indices.graphics,
-        .queueCount       = 2,
-        .pQueuePriorities = queue_priorities,
-      },
-      // Present queue
-      {
-        .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-        .queueFamilyIndex = (u32)vk_state->queue_family_indices.present,
-        .queueCount       = 1,
-        .pQueuePriorities = queue_priorities,
-      },
-    };
-    VkPhysicalDeviceFeatures const device_features = {.samplerAnisotropy = VK_TRUE};
-    /* VkPhysicalDeviceRobustness2FeaturesEXT const robustness_features = { */
-    /*   .sType          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT, */
-    /*   .nullDescriptor = true, */
-    /* }; */
-    VkDeviceCreateInfo const device_info = {
-      .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-      /* .pNext                   = &robustness_features, */
-      .queueCreateInfoCount    = 2,
-      .pQueueCreateInfos       = queue_infos,
-      .enabledExtensionCount   = (u32)REQUIRED_DEVICE_EXTENSIONS.size(),
-      .ppEnabledExtensionNames = REQUIRED_DEVICE_EXTENSIONS.data(),
-      .pEnabledFeatures        = &device_features,
-    };
+    f32 const queue_priorities[3] = {1.0f, 1.0f, 1.0f};
 
-    vkutils::check(vkCreateDevice(vk_state->physical_device, &device_info, nullptr, &vk_state->device));
-    vkGetDeviceQueue(vk_state->device, (u32)vk_state->queue_family_indices.graphics, 0, &vk_state->graphics_queue);
-    vkGetDeviceQueue(vk_state->device, (u32)vk_state->queue_family_indices.present, 0, &vk_state->present_queue);
-    vkGetDeviceQueue(vk_state->device, (u32)vk_state->queue_family_indices.graphics, 1, &vk_state->asset_queue);
+    if (vk_state->n_queue_families == 1) {
+      // If we only have a single queue family, we need to take all of our queues out of that family
+      if (vk_state->queue_families[0].queueCount == 1) {
+        // If we have a single queue family and only a single queue in it, we're in a super annoying situation :(
+        // This happens on Intel integrated GPUs
+        // In this case, all our queues are just the same one single queue that we can make
+        // This means we can't submit to queues from multiple threads...oof!!!
+        VkDeviceQueueCreateInfo queue_infos[1] = {
+          {
+            .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+            .queueFamilyIndex = (u32)vk_state->queue_family_indices.graphics,
+            .queueCount       = 1,
+            .pQueuePriorities = queue_priorities,
+          },
+        };
+        VkPhysicalDeviceFeatures const device_features = {.samplerAnisotropy = VK_TRUE};
+        VkDeviceCreateInfo const device_info = {
+          .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+          .queueCreateInfoCount    = 1,
+          .pQueueCreateInfos       = queue_infos,
+          .enabledExtensionCount   = (u32)REQUIRED_DEVICE_EXTENSIONS.size(),
+          .ppEnabledExtensionNames = REQUIRED_DEVICE_EXTENSIONS.data(),
+          .pEnabledFeatures        = &device_features,
+        };
+
+        vkutils::check(vkCreateDevice(vk_state->physical_device, &device_info, nullptr, &vk_state->device));
+
+        VkQueue our_only_queue_oof;
+        // A single queue, from the graphics queue family
+        vkGetDeviceQueue(vk_state->device, (u32)vk_state->queue_family_indices.graphics, 0, &our_only_queue_oof);
+        vk_state->graphics_queue = our_only_queue_oof;
+        vk_state->present_queue = our_only_queue_oof;
+        vk_state->asset_queue = our_only_queue_oof;
+      } else {
+        // If we have a single queue family but we can make multiple queues out of it, just make all of our queues here
+        VkDeviceQueueCreateInfo queue_infos[1] = {
+          {
+            .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+            .queueFamilyIndex = (u32)vk_state->queue_family_indices.graphics,
+            .queueCount       = 3,
+            .pQueuePriorities = queue_priorities,
+          },
+        };
+        VkPhysicalDeviceFeatures const device_features = {.samplerAnisotropy = VK_TRUE};
+        VkDeviceCreateInfo const device_info = {
+          .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+          .queueCreateInfoCount    = 1,
+          .pQueueCreateInfos       = queue_infos,
+          .enabledExtensionCount   = (u32)REQUIRED_DEVICE_EXTENSIONS.size(),
+          .ppEnabledExtensionNames = REQUIRED_DEVICE_EXTENSIONS.data(),
+          .pEnabledFeatures        = &device_features,
+        };
+
+        vkutils::check(vkCreateDevice(vk_state->physical_device, &device_info, nullptr, &vk_state->device));
+        // Graphics queue from the graphics queue family
+        vkGetDeviceQueue(vk_state->device, (u32)vk_state->queue_family_indices.graphics, 0, &vk_state->graphics_queue);
+        // Present queue, also from the graphics queue family
+        vkGetDeviceQueue(vk_state->device, (u32)vk_state->queue_family_indices.graphics, 0, &vk_state->present_queue);
+        // Asset queue, also from the graphics queue family
+        vkGetDeviceQueue(vk_state->device, (u32)vk_state->queue_family_indices.graphics, 0, &vk_state->asset_queue);
+      }
+    } else {
+      // If we support multiple queue families, we can just get all of our queues out of the respective family
+
+      // We don't currently handle the case if somehow the graphics family and the present family is the same
+      if ((u32)vk_state->queue_family_indices.graphics == (u32)vk_state->queue_family_indices.present) {
+        logs::error("We have an as of yet unsupported queue arrangement, this should be fixed in the code here");
+      }
+
+      VkDeviceQueueCreateInfo queue_infos[2] = {
+        // Graphics and asset queues
+        {
+          .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+          .queueFamilyIndex = (u32)vk_state->queue_family_indices.graphics,
+          .queueCount       = 2,
+          .pQueuePriorities = queue_priorities,
+        },
+        // Present queue
+        {
+          .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+          .queueFamilyIndex = (u32)vk_state->queue_family_indices.present,
+          .queueCount       = 1,
+          .pQueuePriorities = queue_priorities,
+        },
+      };
+      VkPhysicalDeviceFeatures const device_features = {.samplerAnisotropy = VK_TRUE};
+      VkDeviceCreateInfo const device_info = {
+        .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        .queueCreateInfoCount    = 2,
+        .pQueueCreateInfos       = queue_infos,
+        .enabledExtensionCount   = (u32)REQUIRED_DEVICE_EXTENSIONS.size(),
+        .ppEnabledExtensionNames = REQUIRED_DEVICE_EXTENSIONS.data(),
+        .pEnabledFeatures        = &device_features,
+      };
+
+      vkutils::check(vkCreateDevice(vk_state->physical_device, &device_info, nullptr, &vk_state->device));
+      // Graphics queue from the graphics queue family
+      vkGetDeviceQueue(vk_state->device, (u32)vk_state->queue_family_indices.graphics, 0, &vk_state->graphics_queue);
+      // Present queue from the present queue family
+      vkGetDeviceQueue(vk_state->device, (u32)vk_state->queue_family_indices.present, 0, &vk_state->present_queue);
+      // Asset queue from the graphics queue family (because the graphics queue family can do everything)
+      vkGetDeviceQueue(vk_state->device, (u32)vk_state->queue_family_indices.graphics, 1, &vk_state->asset_queue);
+    }
+
     print_logical_device_info(vk_state->graphics_queue, vk_state->present_queue, vk_state->asset_queue);
   }
 

@@ -78,7 +78,7 @@ namespace vulkan::geometry_stage {
     // Create descriptors
     range (0, N_PARALLEL_FRAMES) {
       auto *frame_resources = &vk_state->frame_resources[idx];
-      auto *descriptor_set = &vk_state->geometry_stage.descriptor_sets[idx];
+      auto descriptor_set = vk_state->geometry_stage.descriptor_sets[idx];
 
       // Update descriptor sets
       VkDescriptorBufferInfo const buffer_info = {
@@ -87,18 +87,13 @@ namespace vulkan::geometry_stage {
         .range  = sizeof(CoreSceneState),
       };
       VkDescriptorImageInfo const image_info = {
-        .sampler     = stage_common::guard_sampler(vk_state->alpaca.sampler, vk_state->dummy_image.sampler),
-        .imageView   = stage_common::guard_image_view(vk_state->alpaca.view, vk_state->dummy_image.view),
+        .sampler     = vk_state->alpaca.sampler,
+        .imageView   = vk_state->alpaca.view,
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       };
-      if (vk_state->alpaca.sampler == VK_NULL_HANDLE) {
-        logs::info("dummy");
-      } else {
-        logs::info("alpaca");
-      }
       VkWriteDescriptorSet descriptor_writes[] = {
-        vkutils::write_descriptor_set_buffer(*descriptor_set, 0, &buffer_info),
-        vkutils::write_descriptor_set_image(*descriptor_set, 1, &image_info),
+        vkutils::write_descriptor_set_buffer(descriptor_set, 0, &buffer_info),
+        vkutils::write_descriptor_set_image(descriptor_set, 1, &image_info),
       };
       vkUpdateDescriptorSets(vk_state->device, geometry_stage::N_DESCRIPTORS, descriptor_writes, 0, nullptr);
     }
