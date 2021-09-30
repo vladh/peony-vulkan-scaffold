@@ -117,6 +117,8 @@ namespace vulkan {
     lighting_stage::destroy_swapchain(vk_state);
     forward_stage::destroy_swapchain(vk_state);
 
+    vkDestroyDescriptorSetLayout(vk_state->device, vk_state->global_descriptor_set_layout, nullptr);
+
     range (0, vk_state->n_swapchain_images) {
       vkDestroyImageView(vk_state->device, vk_state->swapchain_image_views[idx], nullptr);
     }
