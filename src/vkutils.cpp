@@ -181,10 +181,10 @@ namespace vkutils {
   }
 
 
-  VkPipelineLayoutCreateInfo pipeline_layout_create_info(const VkDescriptorSetLayout* pSetLayouts) {
+  VkPipelineLayoutCreateInfo pipeline_layout_create_info(u32 setLayoutCount, const VkDescriptorSetLayout* pSetLayouts) {
     return {
       .sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-      .setLayoutCount = 1,
+      .setLayoutCount = setLayoutCount,
       .pSetLayouts    = pSetLayouts,
     };
   }

@@ -6,7 +6,7 @@
 #include <vector>
 
 
-namespace vulkan::setup {
+namespace vulkan::core {
   static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
     VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
     VkDebugUtilsMessageTypeFlagsEXT message_type,
@@ -38,42 +38,30 @@ namespace vulkan::setup {
   }
 
 
-  static bool init_instance(VkState *vk_state, VkDebugUtilsMessengerCreateInfoEXT *debug_messenger_info) {
-    // Initialise info about our application (its name etc.)
-    VkApplicationInfo const app_info = {
-      .sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-      .pApplicationName   = "Peony",
-      .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
-      .pEngineName        = "peony",
-      .engineVersion      = VK_MAKE_VERSION(1, 0, 0),
-      .apiVersion         = VK_API_VERSION_1_0,
-    };
-
-    // Initialise other creation parameters such as required extensions
-    char const *required_extensions[MAX_N_REQUIRED_EXTENSIONS];
-    u32 n_required_extensions;
-    get_required_extensions(required_extensions, &n_required_extensions);
-    VkInstanceCreateInfo instance_info = {
-      .sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-      .pApplicationInfo        = &app_info,
-      .enabledExtensionCount   = n_required_extensions,
-      .ppEnabledExtensionNames = required_extensions,
-    };
-
-    // Set validation layer creation options
-    if (USE_VALIDATION) {
-      instance_info.enabledLayerCount   = (u32)VALIDATION_LAYERS.size();
-      instance_info.ppEnabledLayerNames = VALIDATION_LAYERS.data();
-      instance_info.pNext               = debug_messenger_info;
-    } else {
-      instance_info.enabledLayerCount   = 0;
+  static VkResult CreateDebugUtilsMessengerEXT(
+    VkInstance instance,
+    const VkDebugUtilsMessengerCreateInfoEXT *p_info,
+    const VkAllocationCallbacks *p_allocator,
+    VkDebugUtilsMessengerEXT *p_debug_messenger
+  ) {
+    auto const func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance,
+      "vkCreateDebugUtilsMessengerEXT");
+    if (func == nullptr) {
+      return VK_ERROR_EXTENSION_NOT_PRESENT;
     }
+    return func(instance, p_info, p_allocator, p_debug_messenger);
+  }
 
-    if (vkCreateInstance(&instance_info, nullptr, &vk_state->instance) != VK_SUCCESS) {
-      return false;
+
+  static void DestroyDebugUtilsMessengerEXT(
+    VkInstance instance, VkDebugUtilsMessengerEXT debug_messenger, const VkAllocationCallbacks* p_allocator
+  ) {
+    auto const func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance,
+      "vkDestroyDebugUtilsMessengerEXT");
+    if (func == nullptr) {
+      return;
     }
-
-    return true;
+    func(instance, debug_messenger, p_allocator);
   }
 
 
@@ -104,43 +92,61 @@ namespace vulkan::setup {
   }
 
 
-  static VkResult CreateDebugUtilsMessengerEXT(
-    VkInstance instance,
-    const VkDebugUtilsMessengerCreateInfoEXT *p_info,
-    const VkAllocationCallbacks *p_allocator,
-    VkDebugUtilsMessengerEXT *p_debug_messenger
-  ) {
-    auto const func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance,
-      "vkCreateDebugUtilsMessengerEXT");
-    if (func == nullptr) {
-      return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
-    return func(instance, p_info, p_allocator, p_debug_messenger);
-  }
+  static void init_instance(VkState *vk_state) {
+    // Debug messenger info
+    VkDebugUtilsMessengerCreateInfoEXT debug_messenger_info = {
+      .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+      .messageSeverity =
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+      .messageType =
+        VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+      .pfnUserCallback = debug_callback,
+    };
 
-
-  static void DestroyDebugUtilsMessengerEXT(
-    VkInstance instance, VkDebugUtilsMessengerEXT debug_messenger, const VkAllocationCallbacks* p_allocator
-  ) {
-    auto const func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance,
-      "vkDestroyDebugUtilsMessengerEXT");
-    if (func == nullptr) {
-      return;
-    }
-    func(instance, debug_messenger, p_allocator);
-  }
-
-
-  static void init_debug_messenger(
-    VkState *vk_state,
-    VkDebugUtilsMessengerCreateInfoEXT *debug_messenger_info
-  ) {
-    if (!USE_VALIDATION) {
-      return;
+    if (USE_VALIDATION) {
+      if (!ensure_validation_layers_supported()) {
+        logs::fatal("Could not get required validation layers.");
+      }
     }
 
-    vkutils::check(CreateDebugUtilsMessengerEXT(vk_state->instance, debug_messenger_info, nullptr,
-      &vk_state->debug_messenger));
+    // Initialise info about our application (its name etc.)
+    VkApplicationInfo const app_info = {
+      .sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+      .pApplicationName   = "Peony",
+      .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+      .pEngineName        = "peony",
+      .engineVersion      = VK_MAKE_VERSION(1, 0, 0),
+      .apiVersion         = VK_API_VERSION_1_0,
+    };
+
+    // Initialise other creation parameters such as required extensions
+    char const *required_extensions[MAX_N_REQUIRED_EXTENSIONS];
+    u32 n_required_extensions;
+    get_required_extensions(required_extensions, &n_required_extensions);
+    VkInstanceCreateInfo instance_info = {
+      .sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+      .pApplicationInfo        = &app_info,
+      .enabledExtensionCount   = n_required_extensions,
+      .ppEnabledExtensionNames = required_extensions,
+    };
+
+    // Set validation layer creation options
+    if (USE_VALIDATION) {
+      instance_info.enabledLayerCount   = (u32)VALIDATION_LAYERS.size();
+      instance_info.ppEnabledLayerNames = VALIDATION_LAYERS.data();
+      instance_info.pNext               = &debug_messenger_info;
+    } else {
+      instance_info.enabledLayerCount   = 0;
+    }
+
+    vkutils::check(vkCreateInstance(&instance_info, nullptr, &vk_state->instance));
+
+    // Init debug messenger
+    if (USE_VALIDATION) {
+      vkutils::check(CreateDebugUtilsMessengerEXT(vk_state->instance, &debug_messenger_info, nullptr,
+        &vk_state->debug_messenger));
+    }
   }
 
 
@@ -459,5 +465,37 @@ namespace vulkan::setup {
 
   static void init_surface(VkState *vk_state, GLFWwindow *window) {
     vkutils::check(glfwCreateWindowSurface(vk_state->instance, window, nullptr, &vk_state->surface));
+  }
+
+
+  static void init_descriptor_pool(VkState *vk_state) {
+    constexpr u32 n_max_sets = 1000;
+    constexpr VkDescriptorPoolSize descriptor_pool_sizes[] = {
+      vkutils::descriptor_pool_size(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 100),
+      vkutils::descriptor_pool_size(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100),
+    };
+    auto const pool_info = vkutils::descriptor_pool_create_info(n_max_sets, LEN(descriptor_pool_sizes),
+      descriptor_pool_sizes);
+    vkutils::check(vkCreateDescriptorPool(vk_state->device, &pool_info, nullptr, &vk_state->descriptor_pool));
+  }
+
+
+  static void init(VkState *vk_state, GLFWwindow *window) {
+    init_instance(vk_state);
+    init_surface(vk_state, window);
+    init_physical_device(vk_state);
+    init_logical_device(vk_state);
+    init_descriptor_pool(vk_state);
+  }
+
+
+  static void destroy(VkState *vk_state) {
+    vkDestroyDescriptorPool(vk_state->device, vk_state->descriptor_pool, nullptr);
+    vkDestroyDevice(vk_state->device, nullptr);
+    if (USE_VALIDATION) {
+      core::DestroyDebugUtilsMessengerEXT(vk_state->instance, vk_state->debug_messenger, nullptr);
+    }
+    vkDestroySurfaceKHR(vk_state->instance, vk_state->surface, nullptr);
+    vkDestroyInstance(vk_state->instance, nullptr);
   }
 }

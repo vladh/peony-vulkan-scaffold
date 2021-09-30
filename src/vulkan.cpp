@@ -21,7 +21,7 @@
 
 #include "vkutils.cpp"
 #include "vulkan_swapchain.cpp"
-#include "vulkan_setup.cpp"
+#include "vulkan_core.cpp"
 #include "vulkan_rendering.cpp"
 #include "vulkan_stage_common.cpp"
 #include "vulkan_stage_geometry.cpp"
@@ -34,29 +34,14 @@ static std::thread loading_thread;
 
 
 namespace vulkan {
+  static constexpr VkDescriptorSetLayoutBinding DESCRIPTOR_BINDINGS[] = {
+    vkutils::descriptor_set_layout_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+  };
+  static constexpr u32 N_DESCRIPTORS = LEN(DESCRIPTOR_BINDINGS);
+
+
   void init(VkState *vk_state, CommonState *common_state) {
-    VkDebugUtilsMessengerCreateInfoEXT debug_messenger_info = {};
-
-    if (USE_VALIDATION) {
-      if (!setup::ensure_validation_layers_supported()) {
-        logs::fatal("Could not get required validation layers.");
-      }
-
-      debug_messenger_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-      debug_messenger_info.messageSeverity =
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-      debug_messenger_info.messageType =
-        VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-      debug_messenger_info.pfnUserCallback = setup::debug_callback;
-    }
-
-    setup::init_instance(vk_state, &debug_messenger_info);
-    setup::init_debug_messenger(vk_state, &debug_messenger_info);
-    setup::init_surface(vk_state, common_state->window);
-    setup::init_physical_device(vk_state);
-    setup::init_logical_device(vk_state);
+    core::init(vk_state, common_state->window);
     swapchain::init(vk_state, common_state->window, &common_state->extent);
 
     // We only one command pool which we use for everything graphics-related
@@ -71,6 +56,33 @@ namespace vulkan {
     /* loading_thread = std::thread(resources::init_textures, vk_state); */
     resources::init_buffers(vk_state);
     resources::init_uniform_buffers(vk_state);
+
+    // Descriptors
+    {
+      // Create descriptor set layout
+      auto const layout_info = vkutils::descriptor_set_layout_create_info(vulkan::N_DESCRIPTORS,
+        vulkan::DESCRIPTOR_BINDINGS);
+      vkutils::check(vkCreateDescriptorSetLayout(vk_state->device, &layout_info, nullptr,
+        &vk_state->global_descriptor_set_layout));
+
+      range (0, N_PARALLEL_FRAMES) {
+        // Allocate descriptor sets
+        auto const alloc_info = vkutils::descriptor_set_allocate_info(vk_state->descriptor_pool,
+          &vk_state->global_descriptor_set_layout);
+        vkutils::check(vkAllocateDescriptorSets(vk_state->device, &alloc_info, &vk_state->global_descriptor_sets[idx]));
+
+        // Update descriptor sets
+        VkDescriptorBufferInfo const buffer_info = {
+          .buffer = vk_state->frame_resources[idx].uniform_buffer,
+          .offset = 0,
+          .range  = sizeof(CoreSceneState),
+        };
+        VkWriteDescriptorSet descriptor_writes[] = {
+          vkutils::write_descriptor_set_buffer(vk_state->global_descriptor_sets[idx], 0, &buffer_info),
+        };
+        vkUpdateDescriptorSets(vk_state->device, vulkan::N_DESCRIPTORS, descriptor_writes, 0, nullptr);
+      }
+    }
 
     // Init render stages
     geometry_stage::init(vk_state, common_state->extent);
@@ -136,12 +148,8 @@ namespace vulkan {
 
     vkDestroyCommandPool(vk_state->device, vk_state->command_pool, nullptr);
     vkDestroyCommandPool(vk_state->device, vk_state->asset_command_pool, nullptr);
-    vkDestroyDevice(vk_state->device, nullptr);
-    if (USE_VALIDATION) {
-      setup::DestroyDebugUtilsMessengerEXT(vk_state->instance, vk_state->debug_messenger, nullptr);
-    }
-    vkDestroySurfaceKHR(vk_state->instance, vk_state->surface, nullptr);
-    vkDestroyInstance(vk_state->instance, nullptr);
+
+    core::destroy(vk_state);
 
     /* loading_thread.join(); */
   }

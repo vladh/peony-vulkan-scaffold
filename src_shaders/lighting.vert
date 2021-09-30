@@ -1,6 +1,6 @@
 #version 450
 
-layout (binding = 0) uniform CoreSceneState {
+layout (set = 0, binding = 0) uniform CoreSceneState {
   mat4 model_matrix;
   mat4 model_normal_matrix; // actually mat3, we are using mat4 for padding
   mat4 view;

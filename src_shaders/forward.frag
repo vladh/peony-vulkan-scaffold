@@ -1,6 +1,6 @@
 #version 450
 
-layout (binding = 1) uniform sampler2D tex_sampler;
+layout (set = 1, binding = 0) uniform sampler2D tex_sampler;
 
 layout (location = 0) in BLOCK {
   vec3 world_position;
