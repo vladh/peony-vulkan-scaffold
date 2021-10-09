@@ -22,7 +22,8 @@ static constexpr u32 MAX_N_SWAPCHAIN_PRESENT_MODES         = 32;
 static constexpr u32 MAX_N_SWAPCHAIN_IMAGES                = 8;
 static constexpr u32 N_PARALLEL_FRAMES                     = 3;
 static constexpr u32 MAX_N_REQUIRED_EXTENSIONS             = 256;
-static constexpr u32 MAX_N_QUEUE_FAMILIES = 64;
+static constexpr u32 MAX_N_QUEUE_FAMILIES                  = 64;
+static constexpr u32 MAX_N_ENTITIES                        = 64;
 
 static constexpr bool USE_VALIDATION = true;
 static constexpr std::array VALIDATION_LAYERS = {
@@ -41,24 +42,8 @@ static constexpr Vertex SIGN_VERTICES[] = {
   {{ 0.5f,  0.0f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
   {{ 0.5f,  0.0f,  0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
   {{-0.5f,  0.0f,  0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
-
-  {{-0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-  {{ 0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-  {{ 0.5f, -0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
-  {{-0.5f, -0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
 };
 static constexpr u32 SIGN_INDICES[] = {
-  0, 1, 2, 2, 3, 0,
-  4, 5, 6, 6, 7, 4,
-};
-
-static constexpr Vertex FSIGN_VERTICES[] = {
-  {{-0.5f, -0.25f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-  {{ 0.5f, -0.25f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-  {{ 0.5f, -0.25f,  0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
-  {{-0.5f, -0.25f,  0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
-};
-static constexpr u32 FSIGN_INDICES[] = {
   0, 1, 2, 2, 3, 0,
 };
 
@@ -77,8 +62,7 @@ static constexpr VkVertexInputBindingDescription VERTEX_BINDING_DESCRIPTION = {
   .stride    = sizeof(Vertex),
   .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
 };
-static constexpr VkVertexInputAttributeDescription
-VERTEX_ATTRIBUTE_DESCRIPTIONS[] = {
+static constexpr VkVertexInputAttributeDescription VERTEX_ATTRIBUTE_DESCRIPTIONS[] = {
   {
     .location = 0,
     .binding  = 0,
@@ -120,6 +104,22 @@ struct FrameResources {
   VkDeviceMemory uniform_buffer_memory;
 };
 
+enum class RenderStageName : u32 {
+  none = 0,
+  shadowcaster = (1 << 0),
+  geometry = (1 << 1),
+  forward_depth = (1 << 2),
+  forward_nodepth = (1 << 3),
+  forward_skybox = (1 << 4),
+  lighting = (1 << 5),
+  postprocessing = (1 << 6),
+  preblur = (1 << 7),
+  blur1 = (1 << 8),
+  blur2 = (1 << 9),
+  renderdebug = (1 << 10),
+};
+inline bool has(RenderStageName s1, RenderStageName s2) { return ((u32)s1 & (u32)s2) != 0; }
+
 struct RenderStage {
   VkRenderPass render_pass;
   VkPipelineLayout pipeline_layout;
@@ -147,6 +147,9 @@ struct BufferResources {
 struct DrawableComponent {
   BufferResources vertex;
   BufferResources index;
+  RenderStageName target_render_stages;
+  // `position` will go into SpatialComponent
+  v3 position;
 };
 
 struct VkState {
@@ -181,9 +184,8 @@ struct VkState {
   FrameResources frame_resources[N_PARALLEL_FRAMES];
 
   // Scene resources
-  DrawableComponent sign;
-  DrawableComponent fsign;
-  DrawableComponent screenquad;
+  u32 n_entities;
+  DrawableComponent drawable_components[MAX_N_ENTITIES];
   ImageResources dummy_image;
   ImageResources alpaca;
 

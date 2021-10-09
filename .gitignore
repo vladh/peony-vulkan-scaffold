@@ -1,6 +1,7 @@
 resources
 *.ctm
 *.trace
+.ccls-cache
 
 # Visual Studio stuff
 .vs

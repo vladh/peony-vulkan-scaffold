@@ -1,3 +1,6 @@
+#include "vulkan.hpp"
+
+
 namespace vulkan::stage_common {
   static VkSampler guard_sampler(VkSampler sampler, VkSampler dummy_sampler) {
     if (sampler == VK_NULL_HANDLE) {

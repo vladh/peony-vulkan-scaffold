@@ -1,3 +1,9 @@
+#include "intrinsics.hpp"
+#include "vulkan.hpp"
+#include "vkutils.hpp"
+#include "vulkan_rendering.hpp"
+
+
 namespace vulkan::lighting_stage {
   static constexpr VkClearValue CLEAR_COLORS[] = {
     {{{0.0f, 0.0f, 0.0f, 1.0f}}}
@@ -42,7 +48,12 @@ namespace vulkan::lighting_stage {
         (u32)DescriptorSetIndex::stage, 1, stage_descriptor_set, 0, nullptr);
 
       // Render
-      rendering::render_drawable_component(&vk_state->screenquad, command_buffer);
+      range (0, vk_state->n_entities) {
+        DrawableComponent *drawable_component = &vk_state->drawable_components[idx];
+        if (has(drawable_component->target_render_stages, RenderStageName::lighting)) {
+          rendering::render_drawable_component(drawable_component, command_buffer);
+        }
+      }
 
       // End render pass and command buffer
       vkCmdEndRenderPass(*command_buffer);

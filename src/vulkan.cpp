@@ -19,8 +19,7 @@
 #include "constants.hpp"
 #include "files.hpp"
 
-#include "vkutils.cpp"
-#include "vulkan_swapchain.cpp"
+#include "vkutils.hpp"
 #include "vulkan_core.cpp"
 #include "vulkan_rendering.cpp"
 #include "vulkan_stage_common.cpp"
@@ -41,8 +40,7 @@ namespace vulkan {
 
 
   void init(VkState *vk_state, CommonState *common_state) {
-    core::init(vk_state, common_state->window);
-    swapchain::init(vk_state, common_state->window, &common_state->extent);
+    core::init(vk_state, common_state->window, &common_state->extent);
 
     // We only one command pool which we use for everything graphics-related
     vkutils::create_command_pool(vk_state->device, &vk_state->command_pool,
@@ -54,7 +52,7 @@ namespace vulkan {
     resources::init_static_textures(vk_state);
     resources::init_textures(vk_state);
     /* loading_thread = std::thread(resources::init_textures, vk_state); */
-    resources::init_buffers(vk_state);
+    resources::init_entities(vk_state);
     resources::init_uniform_buffers(vk_state);
 
     // Descriptors
@@ -130,13 +128,7 @@ namespace vulkan {
 
     resources::destroy_static_textures(vk_state);
     resources::destroy_textures(vk_state);
-
-    vkutils::destroy_buffer_resources(vk_state->device, &vk_state->sign.vertex);
-    vkutils::destroy_buffer_resources(vk_state->device, &vk_state->fsign.vertex);
-    vkutils::destroy_buffer_resources(vk_state->device, &vk_state->screenquad.vertex);
-    vkutils::destroy_buffer_resources(vk_state->device, &vk_state->sign.index);
-    vkutils::destroy_buffer_resources(vk_state->device, &vk_state->fsign.index);
-    vkutils::destroy_buffer_resources(vk_state->device, &vk_state->screenquad.index);
+    resources::destroy_entities(vk_state);
 
     range (0, N_PARALLEL_FRAMES) {
       FrameResources *frame_resources = &vk_state->frame_resources[idx];
@@ -174,9 +166,8 @@ namespace vulkan {
 
     destroy_swapchain(vk_state);
 
-    swapchain::init_support_details(&vk_state->swapchain_support_details, vk_state->physical_device,
-      vk_state->surface);
-    swapchain::init(vk_state, common_state->window, &common_state->extent);
+    core::init_support_details(&vk_state->swapchain_support_details, vk_state->physical_device, vk_state->surface);
+    core::init(vk_state, common_state->window, &common_state->extent);
     resources::init_uniform_buffers(vk_state);
 
     geometry_stage::init_swapchain(vk_state, common_state->extent);

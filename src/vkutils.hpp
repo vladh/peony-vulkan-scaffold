@@ -6,6 +6,12 @@
   These functions should not rely on VkState, but rather only on Vulkan types.
 */
 
+#pragma once
+#include "intrinsics.hpp"
+#include "vulkan.hpp"
+#include "files.hpp"
+#include "logs.hpp"
+
 
 namespace vkutils {
   /////////////////////////

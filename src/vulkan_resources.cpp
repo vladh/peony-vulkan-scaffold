@@ -6,6 +6,9 @@
 #include <chrono>
 #include <filesystem>
 #include <iostream>
+#include "stb.hpp"
+#include "vulkan.hpp"
+#include "vkutils.hpp"
 
 
 namespace vulkan::resources {
@@ -39,6 +42,11 @@ namespace vulkan::resources {
         vk_state->graphics_queue,
         vk_state->command_pool);
     }
+  }
+
+
+  static void destroy_static_textures(VkState *vk_state) {
+    vkutils::destroy_image_resources_with_sampler(vk_state->device, &vk_state->dummy_image);
   }
 
 
@@ -77,11 +85,6 @@ namespace vulkan::resources {
   }
 
 
-  static void destroy_static_textures(VkState *vk_state) {
-    vkutils::destroy_image_resources_with_sampler(vk_state->device, &vk_state->dummy_image);
-  }
-
-
   static void destroy_textures(VkState *vk_state) {
     vkutils::destroy_image_resources_with_sampler(vk_state->device, &vk_state->alpaca);
   }
@@ -101,69 +104,97 @@ namespace vulkan::resources {
   }
 
 
-  static void init_buffers(VkState *vk_state) {
+  static void init_entities(VkState *vk_state) {
     // TODO: #slow Allocate memory only once, and split that up ourselves into the
     // two buffers using the memory offsets in e.g. `vkCmdBindVertexBuffers()`.
     // vulkan-tutorial.com/Vertex_buffers/Index_buffer.html
 
-    // Sign
-    vkutils::create_buffer_resources(vk_state->device,
-      &vk_state->sign.vertex,
-      vk_state->physical_device,
-      SIGN_VERTICES,
-      LEN(SIGN_VERTICES),
-      sizeof(SIGN_VERTICES),
-      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-      vk_state->command_pool,
-      vk_state->graphics_queue);
-    vkutils::create_buffer_resources(vk_state->device,
-      &vk_state->sign.index,
-      vk_state->physical_device,
-      SIGN_INDICES,
-      LEN(SIGN_INDICES),
-      sizeof(SIGN_INDICES),
-      VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-      vk_state->command_pool,
-      vk_state->graphics_queue);
-
-    // Fsign
-    vkutils::create_buffer_resources(vk_state->device,
-      &vk_state->fsign.vertex,
-      vk_state->physical_device,
-      FSIGN_VERTICES,
-      LEN(FSIGN_VERTICES),
-      sizeof(FSIGN_VERTICES),
-      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-      vk_state->command_pool,
-      vk_state->graphics_queue);
-    vkutils::create_buffer_resources(vk_state->device,
-      &vk_state->fsign.index,
-      vk_state->physical_device,
-      FSIGN_INDICES,
-      LEN(FSIGN_INDICES),
-      sizeof(FSIGN_INDICES),
-      VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-      vk_state->command_pool,
-      vk_state->graphics_queue);
-
     // Screenquad
-    vkutils::create_buffer_resources(vk_state->device,
-      &vk_state->screenquad.vertex,
-      vk_state->physical_device,
-      SCREENQUAD_VERTICES,
-      LEN(SCREENQUAD_VERTICES),
-      sizeof(SCREENQUAD_VERTICES),
-      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-      vk_state->command_pool,
-      vk_state->graphics_queue);
-    vkutils::create_buffer_resources(vk_state->device,
-      &vk_state->screenquad.index,
-      vk_state->physical_device,
-      SCREENQUAD_INDICES,
-      LEN(SCREENQUAD_INDICES),
-      sizeof(SCREENQUAD_INDICES),
-      VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-      vk_state->command_pool,
-      vk_state->graphics_queue);
+    {
+      DrawableComponent *screenquad = &vk_state->drawable_components[vk_state->n_entities++];
+      *screenquad = {
+        .target_render_stages = RenderStageName::lighting,
+      };
+      vkutils::create_buffer_resources(vk_state->device,
+        &screenquad->vertex,
+        vk_state->physical_device,
+        SCREENQUAD_VERTICES,
+        LEN(SCREENQUAD_VERTICES),
+        sizeof(SCREENQUAD_VERTICES),
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        vk_state->command_pool,
+        vk_state->graphics_queue);
+      vkutils::create_buffer_resources(vk_state->device,
+        &screenquad->index,
+        vk_state->physical_device,
+        SCREENQUAD_INDICES,
+        LEN(SCREENQUAD_INDICES),
+        sizeof(SCREENQUAD_INDICES),
+        VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+        vk_state->command_pool,
+        vk_state->graphics_queue);
+    }
+
+    // Top sign
+    {
+      DrawableComponent *sign = &vk_state->drawable_components[vk_state->n_entities++];
+      *sign = {
+        .target_render_stages = RenderStageName::geometry,
+        .position = v3(0.0f, 0.0f, 0.0f),
+      };
+      vkutils::create_buffer_resources(vk_state->device,
+        &sign->vertex,
+        vk_state->physical_device,
+        SIGN_VERTICES,
+        LEN(SIGN_VERTICES),
+        sizeof(SIGN_VERTICES),
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        vk_state->command_pool,
+        vk_state->graphics_queue);
+      vkutils::create_buffer_resources(vk_state->device,
+        &sign->index,
+        vk_state->physical_device,
+        SIGN_INDICES,
+        LEN(SIGN_INDICES),
+        sizeof(SIGN_INDICES),
+        VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+        vk_state->command_pool,
+        vk_state->graphics_queue);
+    }
+
+    // Bottom sign
+    {
+      DrawableComponent *sign = &vk_state->drawable_components[vk_state->n_entities++];
+      *sign = {
+        .target_render_stages = RenderStageName::forward_depth,
+        .position = v3(0.0f, -1.0f, 0.0f),
+      };
+      vkutils::create_buffer_resources(vk_state->device,
+        &sign->vertex,
+        vk_state->physical_device,
+        SIGN_VERTICES,
+        LEN(SIGN_VERTICES),
+        sizeof(SIGN_VERTICES),
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        vk_state->command_pool,
+        vk_state->graphics_queue);
+      vkutils::create_buffer_resources(vk_state->device,
+        &sign->index,
+        vk_state->physical_device,
+        SIGN_INDICES,
+        LEN(SIGN_INDICES),
+        sizeof(SIGN_INDICES),
+        VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+        vk_state->command_pool,
+        vk_state->graphics_queue);
+    }
+  }
+
+
+  static void destroy_entities(VkState *vk_state) {
+    range (0, vk_state->n_entities) {
+      vkutils::destroy_buffer_resources(vk_state->device, &vk_state->drawable_components[idx].vertex);
+      vkutils::destroy_buffer_resources(vk_state->device, &vk_state->drawable_components[idx].index);
+    }
   }
 }

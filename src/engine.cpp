@@ -8,6 +8,7 @@ void engine::update(CommonState *common_state) {
   f64 t = glfwGetTime();
   m4 model_matrix = rotate(m4(1.0f), (f32)t, v3(0.0f, 1.0f, 0.0f));
   m4 model_normal_matrix = m4(m3(transpose(inverse(model_matrix))));
+
   common_state->core_scene_state = {
     .model_matrix = model_matrix,
     .model_normal_matrix = model_normal_matrix,
