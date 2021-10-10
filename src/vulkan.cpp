@@ -33,10 +33,23 @@ static std::thread loading_thread;
 
 
 namespace vulkan {
-  static constexpr VkDescriptorSetLayoutBinding DESCRIPTOR_BINDINGS[] = {
+  // Global descriptor sets
+  static constexpr VkDescriptorSetLayoutBinding GLOBAL_DESCRIPTOR_BINDINGS[] = {
     vkutils::descriptor_set_layout_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
   };
-  static constexpr u32 N_DESCRIPTORS = LEN(DESCRIPTOR_BINDINGS);
+  static constexpr u32 N_GLOBAL_DESCRIPTORS = LEN(GLOBAL_DESCRIPTOR_BINDINGS);
+
+  // Material descriptor sets
+  static constexpr VkDescriptorSetLayoutBinding MATERIAL_DESCRIPTOR_BINDINGS[] = {
+    vkutils::descriptor_set_layout_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+  };
+  static constexpr u32 N_MATERIAL_DESCRIPTORS = LEN(MATERIAL_DESCRIPTOR_BINDINGS);
+
+  // Entity descriptor sets
+  static constexpr VkDescriptorSetLayoutBinding ENTITY_DESCRIPTOR_BINDINGS[] = {
+    vkutils::descriptor_set_layout_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+  };
+  static constexpr u32 N_ENTITY_DESCRIPTORS = LEN(ENTITY_DESCRIPTOR_BINDINGS);
 
 
   void init(VkState *vk_state, CommonState *common_state) {
@@ -55,11 +68,11 @@ namespace vulkan {
     resources::init_entities(vk_state);
     resources::init_uniform_buffers(vk_state);
 
-    // Descriptors
+    // Global descriptors
     {
       // Create descriptor set layout
-      auto const layout_info = vkutils::descriptor_set_layout_create_info(vulkan::N_DESCRIPTORS,
-        vulkan::DESCRIPTOR_BINDINGS);
+      auto const layout_info = vkutils::descriptor_set_layout_create_info(vulkan::N_GLOBAL_DESCRIPTORS,
+        vulkan::GLOBAL_DESCRIPTOR_BINDINGS);
       vkutils::check(vkCreateDescriptorSetLayout(vk_state->device, &layout_info, nullptr,
         &vk_state->global_descriptor_set_layout));
 
@@ -71,14 +84,57 @@ namespace vulkan {
 
         // Update descriptor sets
         VkDescriptorBufferInfo const buffer_info = {
-          .buffer = vk_state->frame_resources[idx].uniform_buffer,
+          .buffer = vk_state->frame_resources[idx].global_uniform_buffer,
           .offset = 0,
-          .range  = sizeof(CoreSceneState),
+          .range  = sizeof(GlobalUniforms),
         };
         VkWriteDescriptorSet descriptor_writes[] = {
           vkutils::write_descriptor_set_buffer(vk_state->global_descriptor_sets[idx], 0, &buffer_info),
         };
-        vkUpdateDescriptorSets(vk_state->device, vulkan::N_DESCRIPTORS, descriptor_writes, 0, nullptr);
+        vkUpdateDescriptorSets(vk_state->device, vulkan::N_GLOBAL_DESCRIPTORS, descriptor_writes, 0, nullptr);
+      }
+    }
+
+    // Material descriptors
+    {
+      // Create descriptor set layout
+      auto const layout_info = vkutils::descriptor_set_layout_create_info(vulkan::N_MATERIAL_DESCRIPTORS,
+        vulkan::MATERIAL_DESCRIPTOR_BINDINGS);
+      vkutils::check(vkCreateDescriptorSetLayout(vk_state->device, &layout_info, nullptr,
+        &vk_state->material_descriptor_set_layout));
+
+      range (0, N_PARALLEL_FRAMES) {
+        // Allocate descriptor sets
+        auto const alloc_info = vkutils::descriptor_set_allocate_info(vk_state->descriptor_pool,
+          &vk_state->material_descriptor_set_layout);
+        vkutils::check(vkAllocateDescriptorSets(vk_state->device, &alloc_info, &vk_state->material_descriptor_sets[idx]));
+      }
+    }
+
+    // Entity descriptors
+    {
+      // Create descriptor set layout
+      auto const layout_info = vkutils::descriptor_set_layout_create_info(vulkan::N_ENTITY_DESCRIPTORS,
+        vulkan::ENTITY_DESCRIPTOR_BINDINGS);
+      vkutils::check(vkCreateDescriptorSetLayout(vk_state->device, &layout_info, nullptr,
+        &vk_state->entity_descriptor_set_layout));
+
+      range (0, N_PARALLEL_FRAMES) {
+        // Allocate descriptor sets
+        auto const alloc_info = vkutils::descriptor_set_allocate_info(vk_state->descriptor_pool,
+          &vk_state->entity_descriptor_set_layout);
+        vkutils::check(vkAllocateDescriptorSets(vk_state->device, &alloc_info, &vk_state->entity_descriptor_sets[idx]));
+
+        // Update descriptor sets
+        VkDescriptorBufferInfo const buffer_info = {
+          .buffer = vk_state->frame_resources[idx].entity_uniform_buffer,
+          .offset = 0,
+          .range  = sizeof(EntityUniforms),
+        };
+        VkWriteDescriptorSet descriptor_writes[] = {
+          vkutils::write_descriptor_set_buffer(vk_state->entity_descriptor_sets[idx], 0, &buffer_info),
+        };
+        vkUpdateDescriptorSets(vk_state->device, vulkan::N_ENTITY_DESCRIPTORS, descriptor_writes, 0, nullptr);
       }
     }
 
@@ -107,8 +163,10 @@ namespace vulkan {
 
     range (0, N_PARALLEL_FRAMES) {
       FrameResources *frame_resources = &vk_state->frame_resources[idx];
-      vkDestroyBuffer(vk_state->device, frame_resources->uniform_buffer, nullptr);
-      vkFreeMemory(vk_state->device, frame_resources->uniform_buffer_memory, nullptr);
+      vkDestroyBuffer(vk_state->device, frame_resources->global_uniform_buffer, nullptr);
+      vkFreeMemory(vk_state->device, frame_resources->global_uniform_buffer_memory, nullptr);
+      vkDestroyBuffer(vk_state->device, frame_resources->entity_uniform_buffer, nullptr);
+      vkFreeMemory(vk_state->device, frame_resources->entity_uniform_buffer_memory, nullptr);
     }
 
     geometry_stage::destroy_swapchain(vk_state);
@@ -116,6 +174,8 @@ namespace vulkan {
     forward_stage::destroy_swapchain(vk_state);
 
     vkDestroyDescriptorSetLayout(vk_state->device, vk_state->global_descriptor_set_layout, nullptr);
+    vkDestroyDescriptorSetLayout(vk_state->device, vk_state->material_descriptor_set_layout, nullptr);
+    vkDestroyDescriptorSetLayout(vk_state->device, vk_state->entity_descriptor_set_layout, nullptr);
 
     range (0, vk_state->n_swapchain_images) {
       vkDestroyImageView(vk_state->device, vk_state->swapchain_image_views[idx], nullptr);
@@ -182,10 +242,8 @@ namespace vulkan {
     vkWaitForFences(vk_state->device, 1, &frame_resources->frame_rendered_fence, VK_TRUE, UINT64_MAX);
 
     // Update UBO
-    void *memory;
-    vkMapMemory(vk_state->device, frame_resources->uniform_buffer_memory, 0, sizeof(CoreSceneState), 0, &memory);
-    memcpy(memory, &common_state->core_scene_state, sizeof(CoreSceneState));
-    vkUnmapMemory(vk_state->device, frame_resources->uniform_buffer_memory);
+    vkutils::copy_memory(vk_state->device, frame_resources->global_uniform_buffer_memory,
+      &common_state->global_uniforms, sizeof(GlobalUniforms));
 
     // Acquire image
     u32 idx_image;

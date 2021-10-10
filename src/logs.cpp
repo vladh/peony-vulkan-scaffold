@@ -6,7 +6,7 @@
 
 void logs::fatal(const char *format, ...) {
   va_list vargs;
-  fprintf(stderr, "fatal | ");
+  fprintf(stderr, "%sfatal%s | ", KMAG, KNRM);
   va_start(vargs, format);
   vfprintf(stderr, format, vargs);
   fprintf(stderr, "\n");
@@ -21,7 +21,7 @@ void logs::fatal(const char *format, ...) {
 
 void logs::error(const char *format, ...) {
   va_list vargs;
-  fprintf(stderr, "error | ");
+  fprintf(stderr, "%serror%s | ", KRED, KNRM);
   va_start(vargs, format);
   vfprintf(stderr, format, vargs);
   fprintf(stderr, "\n");
@@ -31,7 +31,7 @@ void logs::error(const char *format, ...) {
 
 void logs::warning(const char *format, ...) {
   va_list vargs;
-  fprintf(stderr, "warn  | ");
+  fprintf(stderr, "%swarn%s  | ", KYEL, KNRM);
   va_start(vargs, format);
   vfprintf(stderr, format, vargs);
   fprintf(stderr, "\n");
@@ -41,7 +41,7 @@ void logs::warning(const char *format, ...) {
 
 void logs::info(const char *format, ...) {
   va_list vargs;
-  fprintf(stdout, "info  | ");
+  fprintf(stdout, "%sinfo%s  | ", KBLU, KNRM);
   va_start(vargs, format);
   vfprintf(stdout, format, vargs);
   fprintf(stdout, "\n");

@@ -19,10 +19,12 @@ namespace vulkan::lighting_stage {
 
 
   static void render(VkState *vk_state, VkExtent2D extent, u32 idx_image) {
-    auto idx_frame              = vk_state->idx_frame;
-    auto *command_buffer        = &vk_state->lighting_stage.command_buffers[idx_frame];
-    auto *stage_descriptor_set  = &vk_state->lighting_stage.stage_descriptor_sets[idx_frame];
-    auto *global_descriptor_set = &vk_state->global_descriptor_sets[idx_frame];
+    auto idx_frame               = vk_state->idx_frame;
+    auto *command_buffer         = &vk_state->lighting_stage.command_buffers[idx_frame];
+    auto global_descriptor_set   = vk_state->global_descriptor_sets[idx_frame];
+    auto stage_descriptor_set    = vk_state->lighting_stage.stage_descriptor_sets[idx_frame];
+    auto material_descriptor_set = vk_state->material_descriptor_sets[idx_frame];
+    auto entity_descriptor_set   = vk_state->entity_descriptor_sets[idx_frame];
 
     // Record command buffer
     {
@@ -41,11 +43,15 @@ namespace vulkan::lighting_stage {
       vkCmdBeginRenderPass(*command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
       // Bind pipeline and descriptor sets
+      VkDescriptorSet const descriptor_sets[] = {
+        global_descriptor_set,
+        stage_descriptor_set,
+        material_descriptor_set,
+        entity_descriptor_set,
+      };
       vkCmdBindPipeline(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state->lighting_stage.pipeline);
       vkCmdBindDescriptorSets(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state->lighting_stage.pipeline_layout,
-        (u32)DescriptorSetIndex::global, 1, global_descriptor_set, 0, nullptr);
-      vkCmdBindDescriptorSets(*command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_state->lighting_stage.pipeline_layout,
-        (u32)DescriptorSetIndex::stage, 1, stage_descriptor_set, 0, nullptr);
+        0, LEN(descriptor_sets), descriptor_sets, 0, nullptr);
 
       // Render
       range (0, vk_state->n_entities) {
@@ -157,6 +163,8 @@ namespace vulkan::lighting_stage {
       VkDescriptorSetLayout const ds_layouts[] = {
         vk_state->global_descriptor_set_layout,
         vk_state->lighting_stage.stage_descriptor_set_layout,
+        vk_state->material_descriptor_set_layout,
+        vk_state->entity_descriptor_set_layout,
       };
       auto const pipeline_layout_info = vkutils::pipeline_layout_create_info(LEN(ds_layouts), ds_layouts);
       vkutils::check(vkCreatePipelineLayout(vk_state->device, &pipeline_layout_info, nullptr,

@@ -13,7 +13,7 @@ struct Vertex {
   v2 tex_coords;
 };
 
-enum class DescriptorSetIndex : u32 { global, stage };
+enum class DescriptorSetIndex : u32 { global, stage, material, entity };
 
 static constexpr i64 NO_QUEUE_FAMILY                       = -1;
 static constexpr u32 MAX_N_CONCURRENT_QUEUE_FAMILY_INDICES = 3;
@@ -100,8 +100,10 @@ struct SwapchainSupportDetails {
 struct FrameResources {
   VkSemaphore image_available_semaphore;
   VkFence frame_rendered_fence;
-  VkBuffer uniform_buffer;
-  VkDeviceMemory uniform_buffer_memory;
+  VkBuffer global_uniform_buffer;
+  VkDeviceMemory global_uniform_buffer_memory;
+  VkBuffer entity_uniform_buffer;
+  VkDeviceMemory entity_uniform_buffer_memory;
 };
 
 enum class RenderStageName : u32 {
@@ -170,6 +172,10 @@ struct VkState {
   VkDescriptorPool descriptor_pool;
   VkDescriptorSetLayout global_descriptor_set_layout;
   VkDescriptorSet global_descriptor_sets[N_PARALLEL_FRAMES];
+  VkDescriptorSetLayout material_descriptor_set_layout;
+  VkDescriptorSet material_descriptor_sets[N_PARALLEL_FRAMES];
+  VkDescriptorSetLayout entity_descriptor_set_layout;
+  VkDescriptorSet entity_descriptor_sets[N_PARALLEL_FRAMES];
   VkCommandPool command_pool;
   VkCommandPool asset_command_pool;
 

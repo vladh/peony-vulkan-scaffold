@@ -320,6 +320,14 @@ namespace vkutils {
   }
 
 
+  void copy_memory(VkDevice device, VkDeviceMemory device_memory, void *data, size_t data_size) {
+    void *memory;
+    vkMapMemory(device, device_memory, 0, data_size, 0, &memory);
+    memcpy(memory, data, data_size);
+    vkUnmapMemory(device, device_memory);
+  }
+
+
   void begin_command_buffer(VkCommandBuffer command_buffer) {
     auto const buffer_info = command_buffer_begin_info();
     check(vkBeginCommandBuffer(command_buffer, &buffer_info));

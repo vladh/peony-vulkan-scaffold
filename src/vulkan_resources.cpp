@@ -94,12 +94,19 @@ namespace vulkan::resources {
     range (0, N_PARALLEL_FRAMES) {
       FrameResources *frame_resources = &vk_state->frame_resources[idx];
       vkutils::create_buffer(vk_state->device, vk_state->physical_device,
-        sizeof(CoreSceneState),
+        sizeof(GlobalUniforms),
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
           VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        &frame_resources->uniform_buffer,
-        &frame_resources->uniform_buffer_memory);
+        &frame_resources->global_uniform_buffer,
+        &frame_resources->global_uniform_buffer_memory);
+      vkutils::create_buffer(vk_state->device, vk_state->physical_device,
+        sizeof(EntityUniforms),
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        &frame_resources->entity_uniform_buffer,
+        &frame_resources->entity_uniform_buffer_memory);
     }
   }
 
